@@ -112,3 +112,8 @@ class FunctionalTest(TestCase):
 
     def create_file_id(self):
         return str(uuid.uuid4())
+
+    def calc_sha1(self, data):
+        sha1 = hashlib.sha1()
+        sha1.update(data)
+        return sha1.hexdigest()

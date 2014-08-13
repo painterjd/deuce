@@ -39,17 +39,6 @@ class TestBlocksController(FunctionalTest):
             "X-Password": "failing_auth_hook"},
             expect_errors=True)
 
-    def _create_block_id(data=None):
-        """Creates a block ID for testing purpose"""
-        sha1 = hashlib.sha1()
-        sha1.update(data if data is None else os.urandom(2048))
-        return sha1.hexdigest()
-
-    def _calc_sha1(self, data):
-        sha1 = hashlib.sha1()
-        sha1.update(data)
-        return sha1.hexdigest()
-
     def _get_block_path(self, blockid):
         return '{0}/{1}'.format(self._blocks_path, blockid)
 
@@ -177,7 +166,7 @@ class TestBlocksController(FunctionalTest):
 
         # Try to get some blocks that don't exist. This should
         # result in 404s
-        bad_block_ids = [self._create_block_id() for _ in range(0, 5)]
+        bad_block_ids = [self.create_block_id() for _ in range(0, 5)]
 
         for bad_id in bad_block_ids:
             path = self._get_block_path(bad_id)
@@ -195,7 +184,7 @@ class TestBlocksController(FunctionalTest):
                        range(0, num_blocks)]
 
         data = [os.urandom(x) for x in block_sizes]
-        block_list = [self._calc_sha1(d) for d in data]
+        block_list = [self.calc_sha1(d) for d in data]
 
         block_data = zip(block_sizes, data, block_list)
 
