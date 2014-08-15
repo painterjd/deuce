@@ -29,6 +29,10 @@ class TestBlocksController(FunctionalTest):
         self.block_list = []
         self.total_block_num = 0
 
+    def tearDown(self):
+        import deuce
+        deuce.context = None
+
     def test_no_block_state(self):
         # Try listing the blocks. There should be none
         response = self.app.get(self._blocks_path, headers=self._hdrs)
@@ -58,7 +62,7 @@ class TestBlocksController(FunctionalTest):
         self.assertEqual(response.status_int, 404)
 
     def test_invalid_block_id(self):
-        path = self._get_block_path('/invalid_block_id')
+        path = self._get_block_path('invalid_block_id')
 
         response = self.app.put(path, headers=self._hdrs,
                                 expect_errors=True)

@@ -11,6 +11,7 @@ __all__ = ['FunctionalTest']
 import shutil
 
 
+prod_conf = None
 conf_dict = {}
 
 
@@ -19,6 +20,7 @@ def setUp():
         Unit tests environment setup.
         Called only once at the beginning.
     """
+    global prod_conf
     global conf_dict
     if not os.path.exists('/tmp/block_storage'):
         os.mkdir('/tmp/block_storage')
@@ -89,6 +91,9 @@ class FunctionalTest(TestCase):
     def tearDown(self):
         set_config({}, overwrite=True)
 
+        import deuce
+        deuce.context = None
+
     def create_auth_token(self):
         """Create a dummy Auth Token."""
         return 'auth_{0:}'.format(str(uuid.uuid4()))
@@ -117,3 +122,16 @@ class FunctionalTest(TestCase):
         sha1 = hashlib.sha1()
         sha1.update(data)
         return sha1.hexdigest()
+
+    def init_context(self, headers):
+        class DummyObject(object):
+            pass
+
+        state = DummyObject()
+        state.response = DummyObject()
+        state.request = DummyObject()
+        state.request.headers = headers
+
+        # initialize all hooks with the 'state' object from above
+        for hook in prod_conf.get_hooks():
+            hook.on_route(state)

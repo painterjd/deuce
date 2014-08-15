@@ -1,4 +1,10 @@
 
+// TODO: Tweak this replication strategy
+CREATE KEYSPACE IF NOT EXISTS deucekeyspace WITH 
+  replication = {'class': 'SimpleStrategy', 'replication_factor': 3};
+
+use deucekeyspace; 
+
 CREATE COLUMNFAMILY blocks (
   projectid TEXT,
   vaultid TEXT,

@@ -5,6 +5,8 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 # Note: calling NotImplementedError in each abstract method
 # is to enable 100% code coverage when testing
 
+import deuce
+
 
 class OverlapError(Exception):
     """OverlapError is raised when finalizing
@@ -65,39 +67,39 @@ class MetadataStorageDriver(object):
     driver.
     """
     @abstractmethod
-    def get_vault_statistics(self, project_id, vault_id):
+    def get_vault_statistics(self, vault_id):
         """Return the statistics on the vault.
 
         "param vault_id: The ID of the vault to gather statistics for"""
         raise NotImplementedError
 
     @abstractmethod
-    def create_file(self, project_id, vault_id, file_id):
+    def create_file(self, vault_id, file_id):
         """Creates a representation of an empty file."""
         raise NotImplementedError
 
     @abstractmethod
-    def delete_file(self, project_id, vault_id, file_id):
+    def delete_file(self, vault_id, file_id):
         """Deletes the file from storage."""
         raise NotImplementedError
 
     @abstractmethod
-    def file_length(self, project_id, vault_id, file_id):
+    def file_length(self, vault_id, file_id):
         """Retrieve length the of the file."""
         raise NotImplementedError
 
     @abstractmethod
-    def has_file(self, project_id, vault_id, file_id):
+    def has_file(self, vault_id, file_id):
         """Determines if the specified file exists in the vault."""
         raise NotImplementedError
 
     @abstractmethod
-    def get_file_data(self, project_id, vault_id, file_id):
+    def get_file_data(self, vault_id, file_id):
         """Returns a tule representing data for this file"""
         raise NotImplementedError
 
     @abstractmethod
-    def finalize_file(self, project_id, vault_id, file_id, file_size=None):
+    def finalize_file(self, vault_id, file_id, file_size=None):
         """Finalizes a file that has been de-duped. This
         check ensures that all blocks have been marked have
         been uploaded and that there are no 'gaps' in the
@@ -105,12 +107,12 @@ class MetadataStorageDriver(object):
         raise NotImplementedError
 
     @abstractmethod
-    def is_finalized(self, project_id, vault_id, file_id):
+    def is_finalized(self, vault_id, file_id):
         """Determines if this file has been finalized"""
         raise NotImplementedError
 
     @abstractmethod
-    def create_block_generator(self, project_id, vault_id,
+    def create_block_generator(self, vault_id,
             marker=None, limit=None):
         """Creates and returns a generator that will return
         the ID of each block file. The file must previously
@@ -118,7 +120,7 @@ class MetadataStorageDriver(object):
         raise NotImplementedError
 
     @abstractmethod
-    def create_file_generator(self, project_id, vault_id,
+    def create_file_generator(self, vault_id,
             marker=None, limit=None, finalized=True):
         """Creates and returns a generator that will return
         the ID of each block file. The file must previously
@@ -126,7 +128,7 @@ class MetadataStorageDriver(object):
         raise NotImplementedError
 
     @abstractmethod
-    def create_file_block_generator(self, project_id, vault_id, file_id,
+    def create_file_block_generator(self, vault_id, file_id,
             offset=None, limit=None):
         """Creates and returns a generator that will return
         the ID of each block contained in the specified
@@ -134,12 +136,12 @@ class MetadataStorageDriver(object):
         raise NotImplementedError
 
     @abstractmethod
-    def has_block(self, project_id, vault_id, block_id):
+    def has_block(self, vault_id, block_id):
         """Determines if the vault has the specified block."""
         raise NotImplementedError
 
     @abstractmethod
-    def assign_block(self, project_id, vault_id, file_id, block_id, offset):
+    def assign_block(self, vault_id, file_id, block_id, offset):
         """Assigns the specified block to a particular offset in
         the file. No check is performed as to whether or not the
         block overlaps (it can't be done since a block that doesn't
@@ -152,17 +154,17 @@ class MetadataStorageDriver(object):
         raise NotImplementedError
 
     @abstractmethod
-    def register_block(self, project_id, vault_id, block_id, size):
+    def register_block(self, vault_id, block_id, size):
         """Registers a block in the metadata driver."""
         raise NotImplementedError
 
     @abstractmethod
-    def get_block_data(self, project_id, vault_id, block_id):  # TODO: rename
+    def get_block_data(self, vault_id, block_id):  # TODO: rename
         """Returns the size of the block"""
         raise NotImplementedError
 
     @abstractmethod
-    def unregister_block(self, project_id, vault_id, block_id):
+    def unregister_block(self, vault_id, block_id):
         """Unregisters (removes) the block from the metadata
         store"""
         raise NotImplementedError

@@ -23,12 +23,11 @@ class FilesController(RestController):
 
     blocks = FileBlocksController()
 
-    @expose('json')
     @validate(vault_id=VaultGetRule, file_id=FileGetRule)
+    @expose('json')
     def delete(self, vault_id, file_id):
 
-        vault = Vault.get(request.project_id, vault_id,
-                request.auth_token)
+        vault = Vault.get(vault_id, request.auth_token)
         if not vault:
             abort(404)
 
@@ -38,12 +37,11 @@ class FilesController(RestController):
 
         vault.delete_file(file_id)
 
-    @expose('json')
     @validate(vault_id=VaultGetRule, marker=FileMarkerRule, limit=LimitRule)
+    @expose('json')
     def get_all(self, vault_id):
         response.headers["Transaction-ID"] = request.context.request_id
-        vault = Vault.get(request.project_id, vault_id,
-                request.auth_token)
+        vault = Vault.get(vault_id, request.auth_token)
 
         if not vault:
             logger.error('Vault [{0}] does not exist'.format(vault_id))
@@ -75,14 +73,13 @@ class FilesController(RestController):
 
         return resp
 
-    @expose(content_type='application/octet-stream;')
     @validate(vault_id=VaultGetRule, file_id=FileGetRule)
+    @expose(content_type='application/octet-stream;')
     def get_one(self, vault_id, file_id):
         """Fetches, re-assembles and streams a single
         file out of Deuce"""
         response.headers["Transaction-ID"] = request.context.request_id
-        vault = Vault.get(request.project_id, vault_id,
-                request.auth_token)
+        vault = Vault.get(vault_id, request.auth_token)
 
         if not vault:
             logger.error('Vault [{0}] does not exist'.format(vault_id))
@@ -98,7 +95,7 @@ class FilesController(RestController):
             abort(412, headers={"Transaction-ID": request.context.request_id})
 
         block_gen = deuce.metadata_driver.create_file_block_generator(
-            request.project_id, vault_id, file_id)
+            vault_id, file_id)
 
         block_ids = [block[0] for block in sorted(block_gen,
             key=lambda block: block[1])]
@@ -110,16 +107,15 @@ class FilesController(RestController):
         response.body_file = FileCat(objs)
         response.status_code = 200
 
-    @expose('json')
     @validate(vault_id=VaultPutRule, file_id=FilePostRuleNoneOk)
+    @expose('json')
     def post(self, vault_id, file_id=None):
         """Initializes a new file. The location of
         the new file is returned in the Location
         header
         """
         response.headers["Transaction-ID"] = request.context.request_id
-        vault = Vault.get(request.project_id, vault_id,
-                request.auth_token)
+        vault = Vault.get(vault_id, request.auth_token)
 
         # caller tried to post to a vault that
         # does not exist
@@ -152,8 +148,8 @@ class FilesController(RestController):
                 # Fileid with an empty body will finalize the file.
                 filesize = request.headers['Filesize'] if 'Filesize' \
                     in request.headers.keys() else 0
-                res = deuce.metadata_driver.finalize_file(request.project_id,
-                    vault_id, file_id, filesize)
+                res = deuce.metadata_driver.finalize_file(vault_id, file_id,
+                    filesize)
                 return res
             except Exception as e:
                 # There are gaps or overlaps in blocks of the file
@@ -183,12 +179,11 @@ class FilesController(RestController):
             block_id = mapping['id']
             offset = int(mapping['offset'])
 
-            if not deuce.metadata_driver.has_block(request.project_id,
-                    vault_id, block_id):
+            if not deuce.metadata_driver.has_block(vault_id, block_id):
 
                 missing_blocks.append(block_id)
 
-            deuce.metadata_driver.assign_block(request.project_id, vault_id,
-                file_id, mapping['id'], mapping['offset'])
+            deuce.metadata_driver.assign_block(vault_id, file_id,
+                mapping['id'], mapping['offset'])
 
         return missing_blocks

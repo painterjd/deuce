@@ -7,6 +7,8 @@ from deuce.util import set_qs
 from six.moves.urllib.parse import urlparse
 from deuce.controllers.validation import *
 
+import deuce
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,13 +24,12 @@ class BlocksController(RestController):
     c) Uploading blocks
     d) Deleting blocks
     """
-    @expose('json')
     @validate(vault_id=VaultGetRule, marker=BlockMarkerRule,
               limit=LimitRule)
+    @expose('json')
     def get_all(self, vault_id):
 
-        vault = Vault.get(request.project_id, vault_id,
-            request.auth_token)
+        vault = Vault.get(vault_id, request.auth_token)
         response.headers["Transaction-ID"] = request.context.request_id
         if not vault:
             logger.error('Vault [{0}] does not exist'.format(vault_id))
@@ -62,15 +63,14 @@ class BlocksController(RestController):
 
         return resp
 
-    @expose(content_type='application/octet-stream;')
     @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
+    @expose(content_type='application/octet-stream;')
     def get_one(self, vault_id, block_id):
         """Returns a specific block"""
 
         # Step 1: Is the block in our vault store?  If not, return 404
         # Step 2: Stream the block back to the user
-        vault = Vault.get(request.project_id, vault_id,
-            request.auth_token)
+        vault = Vault.get(vault_id, request.auth_token)
 
         # Existence of the vault should have been confirmed
         # in the vault controller
@@ -88,16 +88,15 @@ class BlocksController(RestController):
             request.auth_token)
         response.status_code = 200
 
-    @expose()
     @validate(vault_id=VaultPutRule, block_id=BlockPutRuleNoneOk)
+    @expose()
     def put(self, vault_id, block_id=None):
         """Uploads a block into Deuce. The URL of the block
         is returned in the Location header
         """
 
         response.headers["Transaction-ID"] = request.context.request_id
-        vault = Vault.get(request.project_id, vault_id,
-            request.auth_token)
+        vault = Vault.get(vault_id, request.auth_token)
 
         try:
             retval = vault.put_block(

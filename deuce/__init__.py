@@ -1,0 +1,5 @@
+"""
+Deuce Global
+"""
+
+context = None

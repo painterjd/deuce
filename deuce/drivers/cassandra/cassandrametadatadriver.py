@@ -7,6 +7,7 @@ from deuce.drivers.metadatadriver import MetadataStorageDriver
 from deuce.drivers.metadatadriver import GapError, OverlapError
 from pecan import conf
 
+import deuce
 
 CQL_CREATE_FILE = '''
     INSERT INTO files (projectid, vaultid, fileid, finalized, size)
@@ -64,12 +65,11 @@ CQL_GET_FILE_BLOCKS = '''
 '''
 
 CQL_GET_ALL_FILE_BLOCKS_W_SIZE = '''
-    SELECT blocks.blockid, fileblocks.offset, blocks.blocksize
-    FROM blocks, fileblocks
-    WHERE fileblocks.blockid = blocks.blockid
-    AND fileblocks.projectid = %s
-    AND fileblocks.vaultid = %s
-    AND fileblocks.fileid = %s
+    SELECT blockid, offset, blocksize
+    FROM fileblocks
+    WHERE projectid = %s
+    AND vaultid = %s
+    AND fileid = %s
     ORDER by offset
 '''
 
@@ -127,8 +127,8 @@ CQL_FINALIZE_FILE = '''
 
 CQL_ASSIGN_BLOCK_TO_FILE = '''
     INSERT INTO fileblocks
-    (projectid, vaultid, fileid, blockid, offset)
-    VALUES (%s, %s, %s, %s, %s)
+    (projectid, vaultid, fileid, blockid, blocksize, offset)
+    VALUES (%s, %s, %s, %s, %s, %s)
 '''
 
 CQL_REGISTER_BLOCK = '''
@@ -168,10 +168,17 @@ CQL_HAS_BLOCK = '''
 class CassandraStorageDriver(MetadataStorageDriver):
 
     def __init__(self):
+        # Import the driver module.
         self.cassandra = importlib.import_module(
             conf.metadata_driver.cassandra.db_module)
-        self._cluster = self.cassandra.Cluster(
+
+        # Import the cluster submodule
+        cluster_module = importlib.import_module(
+            '{0}.cluster'.format(conf.metadata_driver.cassandra.db_module))
+
+        self._cluster = cluster_module.Cluster(
             conf.metadata_driver.cassandra.cluster)
+
         deuce_keyspace = conf.metadata_driver.cassandra.keyspace
         self._session = self._cluster.connect(deuce_keyspace)
 
@@ -188,14 +195,14 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
         return res
 
-    def get_vault_statistics(self, project_id, vault_id):
+    def get_vault_statistics(self, vault_id):
         """Return the statistics on the vault.
 
         "param vault_id: The ID of the vault to gather statistics for"""
         res = {}
 
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id
         }
 
@@ -232,16 +239,16 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
         return res
 
-    def create_file(self, project_id, vault_id, file_id):
+    def create_file(self, vault_id, file_id):
         """Creates a new file with no blocks and no files"""
-        args = (project_id, vault_id, uuid.UUID(file_id), 0)
+        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id), 0)
         res = self._session.execute(CQL_CREATE_FILE, args)
 
         return file_id
 
-    def file_length(self, project_id, vault_id, file_id):
+    def file_length(self, vault_id, file_id):
         """Retrieve the length of the file."""
-        args = (project_id, vault_id, uuid.UUID(file_id))
+        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
 
         res = self._session.execute(CQL_GET_FILE_SIZE, args)
 
@@ -250,15 +257,15 @@ class CassandraStorageDriver(MetadataStorageDriver):
         except IndexError:
             return 0
 
-    def has_file(self, project_id, vault_id, file_id):
-        args = (project_id, vault_id, uuid.UUID(file_id))
+    def has_file(self, vault_id, file_id):
+        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
 
         res = self._session.execute(CQL_GET_FILE, args)
 
         return len(res) > 0
 
-    def is_finalized(self, project_id, vault_id, file_id):
-        args = (project_id, vault_id, uuid.UUID(file_id))
+    def is_finalized(self, vault_id, file_id):
+        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
         res = self._session.execute(CQL_GET_FILE, args)
 
         try:
@@ -267,12 +274,12 @@ class CassandraStorageDriver(MetadataStorageDriver):
         except IndexError:
             return False
 
-    def delete_file(self, project_id, vault_id, file_id):
-        args = (project_id, vault_id, uuid.UUID(file_id))
+    def delete_file(self, vault_id, file_id):
+        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
 
         self._session.execute(CQL_DELETE_FILE, args)
 
-    def finalize_file(self, project_id, vault_id, file_id, file_size=None):
+    def finalize_file(self, vault_id, file_id, file_size=None):
         """Updates the files table to set a file to finalized. This function
         makes no assumptions about whether or not the file record actually
         exists"""
@@ -280,18 +287,30 @@ class CassandraStorageDriver(MetadataStorageDriver):
         # Check for gaps and overlaps.
         expected_offset = 0
 
-        args = (project_id, vault_id, uuid.UUID(file_id))
+        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
 
         res = self._session.execute(CQL_GET_ALL_FILE_BLOCKS_W_SIZE, args)
 
         for blockid, offset, size in res:
+
+            # Use one last chance to check for the block size
+            # if it is not in the fileblocks row.
+            if size is None:
+                size = self._get_block_size(vault_id, blockid)
+
+                # If size is None, the block was never registered so we
+                # skip this record. This will likely result in a GapError
+                # being thrown on the next pass
+                if size is None:
+                    continue
+
             if offset == expected_offset:
                 expected_offset += size
             elif offset < expected_offset:  # Block overlaps previous block
-                raise OverlapError(project_id, vault_id, file_id, blockid,
-                    startpos=offset, endpos=expected_offset)
+                raise OverlapError(deuce.context.project_id, vault_id,
+                    file_id, blockid, startpos=offset, endpos=expected_offset)
             else:  # There is a gap between this block and the previous one
-                raise GapError(project_id, vault_id, file_id,
+                raise GapError(deuce.context.project_id, vault_id, file_id,
                     startpos=expected_offset, endpos=offset)
 
         # Now we must check the very last block and ensure
@@ -300,7 +319,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
         if file_size and file_size != expected_offset:
 
             if expected_offset < file_size:  # Gap
-                raise GapError(project_id, vault_id, file_id,
+                raise GapError(deuce.context.project_id, vault_id, file_id,
                     startpos=expected_offset, endpos=file_size)
 
             else:
@@ -308,18 +327,18 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
                 # This means that the "last" block overlaps
                 # the end of the file.
-                raise OverlapError(project_id, vault_id, file_id, blockid,
-                    startpos=file_size, endpos=expected_offset)
+                raise OverlapError(deuce.context.project_id, vault_id, file_id,
+                    blockid, startpos=file_size, endpos=expected_offset)
 
-        if self.has_file(project_id, vault_id, file_id):
+        if self.has_file(vault_id, file_id):
             if file_size is None:
                 file_size = 0
-            args = (file_size, project_id, vault_id,
+            args = (file_size, deuce.context.project_id, vault_id,
                 uuid.UUID(file_id))
             res = self._session.execute(CQL_FINALIZE_FILE, args)
 
-    def get_block_data(self, project_id, vault_id, block_id):
-        args = (project_id, vault_id, block_id)
+    def get_block_data(self, vault_id, block_id):
+        args = (deuce.context.project_id, vault_id, block_id)
 
         res = self._session.execute(CQL_GET_BLOCK_SIZE, args)
 
@@ -328,9 +347,22 @@ class CassandraStorageDriver(MetadataStorageDriver):
         except IndexError:
             raise Exception("No such block: {0}".format(block_id))
 
-    def get_file_data(self, project_id, vault_id, file_id):
+    def _get_block_size(self, vault_id, block_id):
+        """Returns the size of the specified block. If the block
+        is not found, None is returned"""
+
+        args = (deuce.context.project_id, vault_id, block_id)
+
+        res = self._session.execute(CQL_GET_BLOCK_SIZE, args)
+
+        try:
+            return res[0][0]
+        except IndexError:
+            return None
+
+    def get_file_data(self, vault_id, file_id):
         """Returns a tuple representing data for this file"""
-        args = (project_id, vault_id, uuid.UUID(file_id))
+        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
 
         res = self._session.execute(CQL_GET_FILE, args)
 
@@ -341,35 +373,35 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
         return row
 
-    def has_block(self, project_id, vault_id, block_id):
+    def has_block(self, vault_id, block_id):
         retval = False
 
-        args = (project_id, vault_id, block_id)
+        args = (deuce.context.project_id, vault_id, block_id)
         res = self._session.execute(CQL_HAS_BLOCK, args)
         cnt = res[0]
         return cnt[0] > 0
 
-    def create_block_generator(self, project_id, vault_id, marker=None,
+    def create_block_generator(self, vault_id, marker=None,
             limit=None):
 
-        args = (project_id, vault_id, marker or '0',
+        args = (deuce.context.project_id, vault_id, marker or '0',
                 self._determine_limit(limit))
 
         res = self._session.execute(CQL_GET_ALL_BLOCKS, args)
 
         return [row[0] for row in res]
 
-    def create_file_generator(self, project_id, vault_id,
-                              marker=None, limit=None, finalized=True):
+    def create_file_generator(self, vault_id, marker=None, limit=None,
+            finalized=True):
 
         if marker is None:
-            args = (project_id, vault_id, finalized,
+            args = (deuce.context.project_id, vault_id, finalized,
                     self._determine_limit(limit))
 
             query = CQL_GET_ALL_FILES
         else:
-            args = (project_id, vault_id, uuid.UUID(marker), finalized,
-                    self._determine_limit(limit))
+            args = (deuce.context.project_id, vault_id, uuid.UUID(marker),
+                    finalized, self._determine_limit(limit))
 
             query = CQL_GET_ALL_FILES_MARKER
 
@@ -377,15 +409,15 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
         return [str(row[0]) for row in res]
 
-    def create_file_block_generator(self, project_id, vault_id, file_id,
+    def create_file_block_generator(self, vault_id, file_id,
                                     offset=None, limit=None):
 
         if limit is None:
-            args = (project_id, vault_id, uuid.UUID(file_id))
+            args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
 
             query = CQL_GET_ALL_FILE_BLOCKS
         else:
-            args = (project_id, vault_id, uuid.UUID(file_id),
+            args = (deuce.context.project_id, vault_id, uuid.UUID(file_id),
                     offset or 0, self._determine_limit(limit))
 
             query = CQL_GET_FILE_BLOCKS
@@ -394,19 +426,25 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
         return [(row[0], row[1]) for row in query_res]
 
-    def assign_block(self, project_id, vault_id, file_id, block_id, offset):
-        # TODO(jdp): tweak this to support multiple assignments
-        # TODO(jdp): check for overlaps in metadata
+    def assign_block(self, vault_id, file_id, block_id, offset):
 
-        args = (project_id, vault_id, uuid.UUID(file_id), block_id, offset)
-        res = self._session.execute(CQL_ASSIGN_BLOCK_TO_FILE, args)
+        blocksize = self._get_block_size(vault_id, block_id)
 
-    def register_block(self, project_id, vault_id, block_id, blocksize):
-        if not self.has_block(project_id, vault_id, block_id):
-            args = (project_id, vault_id, block_id, blocksize)
+        # Note: blocksize can be None if the block does not yet exist. This
+        # will probably not be allowed in the future, but for now we allow
+        # this to be compatible with the other drivers.
+
+        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id),
+                block_id, blocksize, offset)
+
+        self._session.execute(CQL_ASSIGN_BLOCK_TO_FILE, args)
+
+    def register_block(self, vault_id, block_id, blocksize):
+        if not self.has_block(vault_id, block_id):
+            args = (deuce.context.project_id, vault_id, block_id, blocksize)
             res = self._session.execute(CQL_REGISTER_BLOCK, args)
 
-    def unregister_block(self, project_id, vault_id, block_id):
-        args = (project_id, vault_id, block_id)
+    def unregister_block(self, vault_id, block_id):
+        args = (deuce.context.project_id, vault_id, block_id)
 
         res = self._session.execute(CQL_UNREGISTER_BLOCK, args)

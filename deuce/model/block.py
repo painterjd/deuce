@@ -7,8 +7,7 @@ import os
 
 class Block(object):
 
-    def __init__(self, project_id, vault_id, block_id, obj=None):
-        self.project_id = project_id
+    def __init__(self, vault_id, block_id, obj=None):
         self.vault_id = vault_id
         self.block_id = block_id
         self._fileobj = obj

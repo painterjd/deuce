@@ -6,6 +6,25 @@ import os
 import sha
 
 
+class TestNoFilesCreated(base.TestBase):
+
+    def setUp(self):
+        super(TestNoFilesCreated, self).setUp()
+        self.create_empty_vault()
+
+    def test_get_missing_file(self):
+        """Get a file that has not been created"""
+
+        resp = self.client.get_file(self.vaultname, self.id_generator(50))
+        self.assertEqual(resp.status_code, 404,
+                         'Status code returned: {0} . '
+                         'Expected 404'.format(resp.status_code))
+
+    def tearDown(self):
+        super(TestNoFilesCreated, self).tearDown()
+        self.client.delete_vault(self.vaultname)
+
+
 class TestCreateFile(base.TestBase):
 
     def setUp(self):
@@ -21,7 +40,7 @@ class TestCreateFile(base.TestBase):
                          '{0}'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         self.assertIn('location', resp.headers)
-        self.assertUrl(resp.headers['location'], filelocation=True)
+        self.assertUrl(resp.headers['location'], filepath=True)
         # TODO
         if "null" == resp.content:
             self.skipTest("Skipping because the response is null")
@@ -173,18 +192,60 @@ class TestFileMissingBlock(base.TestBase):
     def test_finalize_file_missing_block(self):
         """Finalize a file with some blocks missing"""
 
+        # TODO: Revisit once issue 65 is resolved
         resp = self.client.finalize_file(alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 413,
                          'Status code for finalizing file '
                          '{0}'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
-        # resp_body = json.loads(resp.content)
-        # TODO: Add additional validation of the response content
+        # The response will only list the first missing block
+        resp_body = resp.content
+        expected = '"[{0}\\\\{1}] Gap in file {2} from {3}-{4}"'
+        self.assertEqual(resp_body, expected.format(
+            self.client.default_headers['X-Project-Id'], self.vaultname,
+            self.fileid, 30720, 30720 * 2))
 
     def tearDown(self):
         super(TestFileMissingBlock, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
-            fileid=fileid) for fileid in self.files]
+                                 fileid=fileid) for fileid in self.files]
+        [self.client.delete_block(self.vaultname, block.Id) for block in
+            self.blocks]
+        self.client.delete_vault(self.vaultname)
+
+
+class TestFileOverlappingBlock(base.TestBase):
+
+    def setUp(self):
+        super(TestFileOverlappingBlock, self).setUp()
+        self.create_empty_vault()
+        [self.upload_block() for _ in range(4)]
+        self.create_new_file()
+        # Assign the files but set the offset to half the size of the block
+        self.assign_all_blocks_to_file(offset_divisor=2)
+
+    def test_finalize_file_missing_block(self):
+        """Finalize a file with some blocks overlapping"""
+
+        # TODO: Revisit once issue 65 is resolved
+        resp = self.client.finalize_file(alternate_url=self.fileurl)
+        self.assertEqual(resp.status_code, 413,
+                         'Status code for finalizing file '
+                         '{0}'.format(resp.status_code))
+        self.assertHeaders(resp.headers, json=True)
+        # The response will only list the first overlapping block
+        resp_body = resp.content
+        expected = '"[{0}/{1}] Overlap at block {2} file {3} at [{4}-{5}]"'
+        # TODO
+        self.skipTest("Skipping. The Overlap response needs updating/fixing")
+        self.assertEqual(resp_body, expected.format(
+            self.client.default_headers['X-Project-Id'], self.vaultname,
+            self.blocks[1].Id, self.fileid, 30720 / 2, 30720))
+
+    def tearDown(self):
+        super(TestFileOverlappingBlock, self).tearDown()
+        [self.client.delete_file(vaultname=self.vaultname,
+                                 fileid=fileid) for fileid in self.files]
         [self.client.delete_block(self.vaultname, block.Id) for block in
             self.blocks]
         self.client.delete_vault(self.vaultname)
@@ -275,7 +336,7 @@ class TestListBlocksOfFile(base.TestBase):
             if i < 20 / value - (1 + pages):
                 self.assertIn('x-next-batch', resp.headers)
                 url = resp.headers['x-next-batch']
-                self.assertUrl(url, nextfileblocklist=True)
+                self.assertUrl(url, fileblock=True, nextlist=True)
             else:
                 self.assertNotIn('x-next-batch', resp.headers)
             self.assertEqual(len(resp.json()), value,
@@ -319,9 +380,6 @@ class TestFinalizedFile(base.TestBase):
     def test_get_file(self):
         """Get a (finalized) file"""
 
-        # TODO
-        self.skipTest('Skipping. Currently fails because content-type header '
-                      'returned is text/html')
         resp = self.client.get_file(self.vaultname, self.fileid)
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting a file is '
@@ -439,7 +497,7 @@ class TestMultipleFinalizedFiles(base.TestBase):
             if i < 20 / value - (1 + pages):
                 self.assertIn('x-next-batch', resp.headers)
                 url = resp.headers['x-next-batch']
-                self.assertUrl(url, nextfilelist=True)
+                self.assertUrl(url, files=True, nextlist=True)
             else:
                 self.assertNotIn('x-next-batch', resp.headers)
             self.assertEqual(len(resp.json()), value,

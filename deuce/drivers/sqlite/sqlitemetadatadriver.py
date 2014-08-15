@@ -249,14 +249,14 @@ class SqliteStorageDriver(MetadataStorageDriver):
         """
         return marker or ''
 
-    def get_vault_statistics(self, project_id, vault_id):
+    def get_vault_statistics(self, vault_id):
         """Return the statistics on the vault.
 
         "param vault_id: The ID of the vault to gather statistics for"""
         res = {}
 
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id
         }
 
@@ -298,10 +298,10 @@ class SqliteStorageDriver(MetadataStorageDriver):
 
         return res
 
-    def create_file(self, project_id, vault_id, file_id):
+    def create_file(self, vault_id, file_id):
         """Creates a new file with no blocks and no files"""
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'fileid': file_id
         }
@@ -312,10 +312,10 @@ class SqliteStorageDriver(MetadataStorageDriver):
         # TODO: check that one row was inserted
         return file_id
 
-    def file_length(self, project_id, vault_id, file_id):
+    def file_length(self, vault_id, file_id):
         """Retrieve length the of the file."""
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'fileid': file_id
         }
@@ -328,9 +328,9 @@ class SqliteStorageDriver(MetadataStorageDriver):
         except StopIteration:
             return 0
 
-    def has_file(self, project_id, vault_id, file_id):
+    def has_file(self, vault_id, file_id):
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'fileid': file_id
         }
@@ -343,9 +343,9 @@ class SqliteStorageDriver(MetadataStorageDriver):
         except StopIteration:
             return False
 
-    def is_finalized(self, project_id, vault_id, file_id):
+    def is_finalized(self, vault_id, file_id):
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'fileid': file_id
         }
@@ -358,9 +358,9 @@ class SqliteStorageDriver(MetadataStorageDriver):
         except StopIteration:
             return False
 
-    def delete_file(self, project_id, vault_id, file_id):
+    def delete_file(self, vault_id, file_id):
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'fileid': file_id
         }
@@ -368,14 +368,14 @@ class SqliteStorageDriver(MetadataStorageDriver):
         res = self._conn.execute(SQL_DELETE_FILE, args)
         self._conn.commit()
 
-    def finalize_file(self, project_id, vault_id, file_id, file_size=None):
+    def finalize_file(self, vault_id, file_id, file_size=None):
         """Updates the files table to set a file to finalized and record
         its size. This function makes no assumptions about whether or not
         the file record actually exists"""
         if file_size is None:
             file_size = 0
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'fileid': file_id,
             'file_size': file_size
@@ -390,33 +390,33 @@ class SqliteStorageDriver(MetadataStorageDriver):
             if offset == expected_offset:
                 expected_offset += size
             elif offset < expected_offset:  # Overlap scenario
-                raise OverlapError(project_id, vault_id, file_id,
+                raise OverlapError(deuce.context.project_id, vault_id, file_id,
                     blockid, startpos=offset, endpos=expected_offset)
             else:
-                raise GapError(project_id, vault_id, file_id,
+                raise GapError(deuce.context.project_id, vault_id, file_id,
                     startpos=expected_offset, endpos=offset)
 
         # Now we must check the very last block
         if file_size and file_size != expected_offset:
 
             if expected_offset < file_size:
-                raise GapError(project_id, vault_id, file_id, expected_offset,
-                    file_size)
+                raise GapError(deuce.context.project_id, vault_id, file_id,
+                    expected_offset, file_size)
 
             else:
                 assert expected_offset > file_size
 
-                raise OverlapError(project_id, vault_id, file_id, file_size,
-                    startpos=file_size, endpos=expected_offset)
+                raise OverlapError(deuce.context.project_id, vault_id, file_id,
+                    file_size, startpos=file_size, endpos=expected_offset)
 
         res = self._conn.execute(SQL_FINALIZE_FILE, args)
         self._conn.commit()
         return None
 
-    def get_block_data(self, project_id, vault_id, block_id):
+    def get_block_data(self, vault_id, block_id):
         """Returns the blocksize for this block"""
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'blockid': block_id
         }
@@ -432,10 +432,10 @@ class SqliteStorageDriver(MetadataStorageDriver):
         retval['blocksize'] = list(row)[0]
         return retval
 
-    def get_file_data(self, project_id, vault_id, file_id):
+    def get_file_data(self, vault_id, file_id):
         """Returns a tuple representing data for this file"""
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'fileid': file_id
         }
@@ -449,12 +449,12 @@ class SqliteStorageDriver(MetadataStorageDriver):
 
         return row
 
-    def has_block(self, project_id, vault_id, block_id):
+    def has_block(self, vault_id, block_id):
         # Query the blocks table
         retval = False
 
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'blockid': block_id
         }
@@ -464,11 +464,11 @@ class SqliteStorageDriver(MetadataStorageDriver):
         cnt = next(res)
         return cnt[0] > 0
 
-    def create_block_generator(self, project_id, vault_id, marker=None,
+    def create_block_generator(self, vault_id, marker=None,
             limit=None):
 
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'limit': self._determine_limit(limit),
             'marker': self._determine_marker(marker)
@@ -478,11 +478,11 @@ class SqliteStorageDriver(MetadataStorageDriver):
 
         return [row[0] for row in res]
 
-    def create_file_generator(self, project_id, vault_id,
+    def create_file_generator(self, vault_id,
                               marker=None, limit=None, finalized=True):
 
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'limit': self._determine_limit(limit),
             'marker': self._determine_marker(marker),
@@ -492,12 +492,12 @@ class SqliteStorageDriver(MetadataStorageDriver):
         res = self._conn.execute(SQL_GET_ALL_FILES, args)
         return [row[0] for row in res]
 
-    def create_file_block_generator(self, project_id, vault_id, file_id,
+    def create_file_block_generator(self, vault_id, file_id,
                                     offset=None, limit=None):
 
         args = {
             'fileid': file_id,
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
         }
 
@@ -516,10 +516,10 @@ class SqliteStorageDriver(MetadataStorageDriver):
 
         return [(row[0], row[1]) for row in query_res]
 
-    def assign_block(self, project_id, vault_id, file_id, block_id, offset):
+    def assign_block(self, vault_id, file_id, block_id, offset):
         # TODO(jdp): tweak this to support multiple assignments
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'fileid': file_id,
             'blockid': block_id,
@@ -529,10 +529,10 @@ class SqliteStorageDriver(MetadataStorageDriver):
         self._conn.execute(SQL_ASSIGN_BLOCK_TO_FILE, args)
         self._conn.commit()
 
-    def register_block(self, project_id, vault_id, block_id, blocksize):
-        if not self.has_block(project_id, vault_id, block_id):
+    def register_block(self, vault_id, block_id, blocksize):
+        if not self.has_block(vault_id, block_id):
             args = {
-                'projectid': project_id,
+                'projectid': deuce.context.project_id,
                 'vaultid': vault_id,
                 'blockid': block_id,
                 'blocksize': int(blocksize)
@@ -541,9 +541,9 @@ class SqliteStorageDriver(MetadataStorageDriver):
             self._conn.execute(SQL_REGISTER_BLOCK, args)
             self._conn.commit()
 
-    def unregister_block(self, project_id, vault_id, block_id):
+    def unregister_block(self, vault_id, block_id):
         args = {
-            'projectid': project_id,
+            'projectid': deuce.context.project_id,
             'vaultid': vault_id,
             'blockid': block_id
         }
