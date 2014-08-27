@@ -17,7 +17,7 @@ class OpenStackSwiftHook(HealthHook):
     with a 401"""
 
     def on_route(self, state):
-        if super(OpenstackSwiftHook, self).health(state):
+        if super(OpenStackSwiftHook, self).health(state):
             return
 
         class OpenStackObject(object):

@@ -89,6 +89,10 @@ class FunctionalTest(TestCase):
         import deuce
         deuce.context = DummyContextObject
         deuce.context.project_id = self.create_project_id()
+        deuce.context.openstack = DummyContextObject()
+        deuce.context.openstack.auth_token = self.create_auth_token()
+        deuce.context.openstack.swift = DummyContextObject()
+        deuce.context.openstack.swift.storage_url = 'storage.url'
 
         global conf_dict
         self.app = load_test_app(config=conf_dict)

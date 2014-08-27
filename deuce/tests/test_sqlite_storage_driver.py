@@ -25,11 +25,6 @@ class SqliteStorageDriverTest(FunctionalTest):
     def test_vault_statistics(self):
         driver = self.create_driver()
 
-        hdr_data = {
-            'x-project-id': self.create_project_id(),
-            'x-auth-token': self.create_auth_token()
-        }
-        self.init_context(hdr_data)
         vault_id = self.create_vault_id()
 
         # empty vault stats
@@ -53,12 +48,6 @@ class SqliteStorageDriverTest(FunctionalTest):
 
     def test_file_crud(self):
         driver = self.create_driver()
-
-        hdr_data = {
-            'x-project-id': self.create_project_id(),
-            'x-auth-token': self.create_auth_token()
-        }
-        self.init_context(hdr_data)
 
         vault_id = self.create_vault_id()
         file_id = self.create_file_id()
@@ -84,12 +73,6 @@ class SqliteStorageDriverTest(FunctionalTest):
     def test_finalize_empty_file(self):
         driver = self.create_driver()
 
-        hdr_data = {
-            'x-project-id': self.create_project_id(),
-            'x-auth-token': self.create_auth_token()
-        }
-        self.init_context(hdr_data)
-
         vault_id = self.create_vault_id()
         file_id = self.create_file_id()
 
@@ -105,12 +88,6 @@ class SqliteStorageDriverTest(FunctionalTest):
 
     def test_finalize_nonexistent_file(self):
         driver = self.create_driver()
-
-        hdr_data = {
-            'x-project-id': self.create_project_id(),
-            'x-auth-token': self.create_auth_token()
-        }
-        self.init_context(hdr_data)
 
         vault_id = self.create_vault_id()
         file_id = self.create_file_id()
@@ -131,12 +108,6 @@ class SqliteStorageDriverTest(FunctionalTest):
 
     def test_block_crud(self):
         driver = self.create_driver()
-
-        hdr_data = {
-            'x-project-id': self.create_project_id(),
-            'x-auth-token': self.create_auth_token()
-        }
-        self.init_context(hdr_data)
 
         vault_id = self.create_vault_id()
         block_id = self.create_block_id()
@@ -166,12 +137,6 @@ class SqliteStorageDriverTest(FunctionalTest):
 
         driver = self.create_driver()
 
-        hdr_data = {
-            'x-project-id': self.create_project_id(),
-            'x-auth-token': self.create_auth_token()
-        }
-        self.init_context(hdr_data)
-
         vault_id = self.create_vault_id()
         file_id = self.create_file_id()
 
@@ -199,12 +164,6 @@ class SqliteStorageDriverTest(FunctionalTest):
     def test_delete_block_no_refs(self):
         driver = self.create_driver()
 
-        hdr_data = {
-            'x-project-id': self.create_project_id(),
-            'x-auth-token': ''
-        }
-        self.init_context(hdr_data)
-
         vault_id = self.create_vault_id()
 
         block_id = 'block_0'
@@ -223,12 +182,6 @@ class SqliteStorageDriverTest(FunctionalTest):
     def test_delete_file_check_refs(self):
         driver = self.create_driver()
 
-        hdr_data = {
-            'x-project-id': self.create_project_id(),
-            'x-auth-token': ''
-        }
-        self.init_context(hdr_data)
-
         vault_id = self.create_vault_id()
         file_id = self.create_file_id()
         block_id = 'block_0'
@@ -245,12 +198,6 @@ class SqliteStorageDriverTest(FunctionalTest):
     def test_block_references(self):
 
         driver = self.create_driver()
-
-        hdr_data = {
-            'x-project-id': self.create_project_id(),
-            'x-auth-token': ''
-        }
-        self.init_context(hdr_data)
 
         vault_id = self.create_vault_id()
 
@@ -304,12 +251,6 @@ class SqliteStorageDriverTest(FunctionalTest):
 
         driver = self.create_driver()
 
-        hdr_data = {
-            'x-project-id': self.create_project_id(),
-            'x-auth-token': self.create_auth_token()
-        }
-        self.init_context(hdr_data)
-
         vault_id = self.create_vault_id()
         file_id = self.create_file_id()
 
@@ -338,12 +279,6 @@ class SqliteStorageDriverTest(FunctionalTest):
     def test_file_assignment(self):
 
         driver = self.create_driver()
-
-        hdr_data = {
-            'x-project-id': self.create_project_id(),
-            'x-auth-token': self.create_auth_token()
-        }
-        self.init_context(hdr_data)
 
         vault_id = self.create_vault_id()
         file_id = self.create_file_id()
@@ -529,12 +464,6 @@ class SqliteStorageDriverTest(FunctionalTest):
 
         # Adds a bunch of files and checks the generator
         driver = self.create_driver()
-
-        hdr_data = {
-            'x-project-id': self.create_project_id(),
-            'x-auth-token': self.create_auth_token()
-        }
-        self.init_context(hdr_data)
 
         vault_id = self.create_vault_id()
         num_files = 10

@@ -26,11 +26,8 @@ class SwiftStorageDriverTest(DiskStorageDriverTest):
     def setUp(self):
         super(SwiftStorageDriverTest, self).setUp()
         storage_url, auth_token = self.get_Auth_Token()
-        from deuce.tests import DummyContextObject
         import deuce
-        deuce.context.openstack = DummyContextObject()
         deuce.context.openstack.auth_token = auth_token
-        deuce.context.openstack.swift = DummyContextObject()
         deuce.context.openstack.swift.storage_url = storage_url
 
     def get_Auth_Token(self):

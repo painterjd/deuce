@@ -2,7 +2,7 @@ import os.path
 
 from unittest import TestCase
 from webtest import TestApp
-from deuce.tests import FunctionalTest, DummyContextObject
+from deuce.tests import FunctionalTest
 
 from deuce.model import Vault, Block, File
 
