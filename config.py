@@ -27,6 +27,8 @@ app = {
     }
 }
 
+datacenter = 'iad'
+
 log_directory = 'log'
 import os
 if not os.path.exists(log_directory):  # pragma: no cover
