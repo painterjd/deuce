@@ -6,7 +6,7 @@ from deuce.drivers import swift
 import deuce
 
 
-class OpenstackSwiftHook(HealthHook):
+class OpenStackSwiftHook(HealthHook):
     """Every request that hits Deuce must have a header specifying the
     x-storage-url if running the swift storage driver
 
