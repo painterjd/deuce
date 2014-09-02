@@ -11,7 +11,11 @@ def get_hooks():
     from deuce.hooks import TransactionIDHook
     from deuce.hooks import OpenStackHook
     from deuce.hooks import OpenStackSwiftHook
+
+    # Default: SQLite + Disk Driver
     return [DeuceContextHook(), TransactionIDHook(), ProjectIDHook()]
+
+    # With OpenStack Swift Storage Driver:
     # return [DeuceContextHook(), TransactionIDHook(), ProjectIDHook(),
     #        OpenStackHook(), OpenStackSwiftHook()]
 
