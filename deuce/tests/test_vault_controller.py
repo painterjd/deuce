@@ -14,8 +14,7 @@ class TestVaultController(FunctionalTest):
 
     def setUp(self):
         super(TestVaultController, self).setUp()
-        self._hdrs = {"x-project-id": self.create_project_id(),
-                      "x-auth-token": self.create_auth_token()}
+        self._hdrs = {"x-project-id": self.create_project_id()}
 
     def helper_create_vault(self, vault_name, hdrs):
         vault_path = '/v1.0/vaults/{0}'.format(vault_name)

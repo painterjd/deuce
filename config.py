@@ -31,7 +31,7 @@ app = {
     }
 }
 
-datacenter = 'iad'
+datacenter = 'my datacenter'
 
 log_directory = 'log'
 import os

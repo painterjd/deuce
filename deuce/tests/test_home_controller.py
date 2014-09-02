@@ -12,8 +12,7 @@ class TestHomeController(FunctionalTest):
 
     def setUp(self):
         super(TestHomeController, self).setUp()
-        self._hdrs = {"x-project-id": self.create_project_id(),
-                      "x-auth-token": self.create_auth_token()}
+        self._hdrs = {"x-project-id": self.create_project_id()}
 
     def test_home_leaf(self):
         response = self.app.get('/v1.0/', headers=self._hdrs,

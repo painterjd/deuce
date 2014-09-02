@@ -7,14 +7,12 @@ class TestRootController(FunctionalTest):
 
     def test_get(self):
         # Require project ID for root as well
-        response = self.app.get('/', headers={'x-auth-token':
-                                              self.create_auth_token()},
+        response = self.app.get('/', headers={},
             expect_errors=True)
         self.assertEqual(response.status_int, 400)
 
         response = self.app.get('/', headers={'x-project-id':
-                                              self.create_project_id(),
-            'x-auth-token': self.create_auth_token()},
+                                              self.create_project_id()},
             expect_errors=True)
         self.assertEqual(response.status_int, 404)
 
@@ -26,8 +24,7 @@ class TestRootController(FunctionalTest):
 
     def test_get_not_found(self):
         response = self.app.get('/a/bogus/url',
-            headers={'x-project-id': self.create_project_id(),
-                     'x-auth-token': self.create_auth_token()},
+            headers={'x-project-id': self.create_project_id()},
             expect_errors=True)
 
         self.assertEqual(response.status_int, 404)
