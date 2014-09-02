@@ -17,9 +17,6 @@ class DummyClassObject(object):
     pass
 
 
-#webob.exc.HTTPPreconditionFailed
-
-
 class TestOpenStackSwiftHook(FunctionalTest):
 
     def setUp(self):
@@ -39,8 +36,9 @@ class TestOpenStackSwiftHook(FunctionalTest):
         deuce.context.transaction.request_id = 'openstack-hook-test'
         deuce.context.openstack = DummyClassObject()
 
-    def create_service_catalog(self, objectStoreType='object-store', endpoints=True, region='test', url='url-data'):
-        
+    def create_service_catalog(self, objectStoreType='object-store',
+                               endpoints=True, region='test',
+                               url='url-data'):
         catalog = {
             'access': {
                 'serviceCatalog': []
@@ -55,7 +53,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                 ]
             }
             if endpoints:
-                endpoint =  {
+                endpoint = {
                     'internalURL': url,
                     'publicURL': url,
                     'tenantId': '9876543210',
@@ -88,10 +86,10 @@ class TestOpenStackSwiftHook(FunctionalTest):
         hook = OpenStackSwiftHook()
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
-        
-            with mock.patch(
-                    'deuce.hooks.openstackswifthook.OpenStackSwiftHook.check_storage_url'
-                    ) as hook_check_storage_url:
+
+            with mock.patch('deuce.hooks.openstackswifthook.'
+                            'OpenStackSwiftHook.check_storage_url'
+                            ) as hook_check_storage_url:
                 hook_check_storage_url.return_value = True
 
                 hook.on_route(self.state)
@@ -106,17 +104,17 @@ class TestOpenStackSwiftHook(FunctionalTest):
 
     def test_has_service_catalog(self):
         hook = OpenStackSwiftHook()
-        self.state.request.headers['x-service-catalog'] = True 
+        self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
-            with mock.patch(
-                    'deuce.hooks.openstackswifthook.OpenStackSwiftHook.decode_service_catalog'
-                    ) as decode_catalog:
+            with mock.patch('deuce.hooks.openstackswifthook.'
+                            'OpenStackSwiftHook.decode_service_catalog'
+                            ) as decode_catalog:
                 decode_catalog.return_value = True
-                
-                with mock.patch(
-                        'deuce.hooks.openstackswifthook.OpenStackSwiftHook.find_storage_url'
-                        ) as find_storage:
+
+                with mock.patch('deuce.hooks.openstackswifthook.'
+                                'OpenStackSwiftHook.find_storage_url'
+                                ) as find_storage:
                     find_storage.return_value = 'test_url'
 
                     self.assertFalse(hasattr(deuce.context.openstack, 'swift'))
@@ -163,9 +161,9 @@ class TestOpenStackSwiftHook(FunctionalTest):
             with mock.patch('base64.b64decode') as b64_decoder:
                 b64_decoder.return_value = json.dumps({'hello': 'test'})
 
-                with mock.patch(
-                        'deuce.hooks.openstackswifthook.OpenStackSwiftHook.find_storage_url'
-                        ) as find_storage:
+                with mock.patch('deuce.hooks.openstackswifthook.'
+                                'OpenStackSwiftHook.find_storage_url'
+                                ) as find_storage:
                     find_storage.return_value = 'test_url'
 
                     self.assertFalse(hasattr(deuce.context.openstack, 'swift'))
@@ -185,7 +183,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                         spec=swift.SwiftStorageDriver) as swift_driver:
             with mock.patch('base64.b64decode') as b64_decoder:
                 b64_decoder.return_value = json.dumps({'hello': 'test'})
-                
+
                 with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
                         as expected_exception:
 
@@ -197,8 +195,9 @@ class TestOpenStackSwiftHook(FunctionalTest):
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
             with mock.patch('base64.b64decode') as b64_decoder:
-                b64_decoder.return_value = json.dumps({'access': {'hello': 'test'}})
-                
+                test_dict = {'access': {'hello': 'test'}}
+                b64_decoder.return_value = json.dumps(test_dict)
+
                 with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
                         as expected_exception:
 
@@ -212,7 +211,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
             with mock.patch('base64.b64decode') as b64_decoder:
                 b64_decoder.return_value = json.dumps(
                     self.create_service_catalog(objectStoreType=''))
-                
+
                 with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
                         as expected_exception:
 
@@ -226,7 +225,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
             with mock.patch('base64.b64decode') as b64_decoder:
                 b64_decoder.return_value = json.dumps(
                     self.create_service_catalog(objectStoreType='other'))
-                
+
                 with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
                         as expected_exception:
 
@@ -240,7 +239,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
             with mock.patch('base64.b64decode') as b64_decoder:
                 b64_decoder.return_value = json.dumps(
                     self.create_service_catalog(endpoints=False))
-                
+
                 with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
                         as expected_exception:
 
@@ -254,7 +253,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
             with mock.patch('base64.b64decode') as b64_decoder:
                 b64_decoder.return_value = json.dumps(
                     self.create_service_catalog(region='other'))
-                
+
                 with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
                         as expected_exception:
 
@@ -269,7 +268,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                 b64_decoder.return_value = json.dumps(
                     self.create_service_catalog(region=self.datacenter,
                                                 url='test_url'))
-                
+
                 self.assertFalse(hasattr(deuce.context.openstack, 'swift'))
 
                 hook.on_route(self.state)

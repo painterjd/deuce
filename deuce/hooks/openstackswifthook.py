@@ -29,15 +29,15 @@ class OpenStackSwiftHook(HealthHook):
         except binascii.Error:
             abort(412, comment="X-Service-Catalog invalid encoding",
                   headers={
-                    'Transaction-ID': deuce.context.transaction.request_id
+                      'Transaction-ID': deuce.context.transaction.request_id
                   })
 
         try:
-            json_data =  json.loads(utf8_data)
+            json_data = json.loads(utf8_data)
         except ValueError:
             abort(412, comment="X-Service-Catalog: invalid format",
                   headers={
-                    'Transaction-ID': deuce.context.transaction.request_id
+                      'Transaction-ID': deuce.context.transaction.request_id
                   })
 
         return json_data
@@ -56,15 +56,15 @@ class OpenStackSwiftHook(HealthHook):
                                 deuce.context.datacenter:
                             return endpoint['internalURL']
 
-            abort(412,comment="X-Service-Catalog: missing object-store",
+            abort(412, comment="X-Service-Catalog: missing object-store",
                   headers={
-                    'Transaction-ID': deuce.context.transaction.request_id
+                      'Transaction-ID': deuce.context.transaction.request_id
                   })
 
         except (KeyError, LookupError):
-            abort(412,comment="X-Service-Catalog: invalid service catalog",
+            abort(412, comment="X-Service-Catalog: invalid service catalog",
                   headers={
-                    'Transaction-ID': deuce.context.transaction.request_id
+                      'Transaction-ID': deuce.context.transaction.request_id
                   })
 
     def check_storage_url(self, state):
@@ -92,7 +92,6 @@ class OpenStackSwiftHook(HealthHook):
     def on_route(self, state):
         if super(OpenStackSwiftHook, self).health(state):
             return
-
 
         # Enforce the existence of the x-storage-url header and assign
         # the value to the deuce context's open stack context, if the

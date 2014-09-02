@@ -29,11 +29,11 @@ class TestOpenStackHook(FunctionalTest):
     def test_token_present(self):
         hook = OpenStackHook()
         self.state.request.headers['x-auth-token'] = 'good'
-        
+
         self.assertFalse(hasattr(deuce.context, 'openstack'))
-        
+
         hook.on_route(self.state)
-        
+
         self.assertTrue(hasattr(deuce.context, 'openstack'))
 
     def test_hook_not_present(self):

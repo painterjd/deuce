@@ -12,7 +12,7 @@ def get_hooks():
     from deuce.hooks import OpenStackHook
     from deuce.hooks import OpenStackSwiftHook
     return [DeuceContextHook(), TransactionIDHook(), ProjectIDHook()]
-    #return [DeuceContextHook(), TransactionIDHook(), ProjectIDHook(),
+    # return [DeuceContextHook(), TransactionIDHook(), ProjectIDHook(),
     #        OpenStackHook(), OpenStackSwiftHook()]
 
 # Pecan Application Configurations
