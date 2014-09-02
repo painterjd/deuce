@@ -12,15 +12,6 @@ class TestRootController(FunctionalTest):
             expect_errors=True)
         self.assertEqual(response.status_int, 400)
 
-        # Note: The below tests the OpenStackHook() which is not enabled by default
-        #  as the default configuration uses Sqlite + Disk Storage
-        # 
-        # Require auth token for root as well
-        # response = self.app.get('/', headers={'x-project-id':
-        #                                      self.create_project_id()},
-        #    expect_errors=True)
-        # self.assertEqual(response.status_int, 401)
-
         response = self.app.get('/', headers={'x-project-id':
                                               self.create_project_id(),
             'x-auth-token': self.create_auth_token()},
