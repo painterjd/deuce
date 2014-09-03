@@ -89,7 +89,7 @@ class SwiftStorageDriver(BlockStorageDriver):
 
             for k, v in mapper.items():
                 try:
-                    statistics[k] = container_metadata[v]
+                    statistics[k] = int(container_metadata[v])
 
                 except KeyError:  # pragma: no cover
                     statistics[k] = 0
