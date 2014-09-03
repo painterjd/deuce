@@ -126,17 +126,3 @@ class FunctionalTest(TestCase):
 
     def create_file_id(self):
         return str(uuid.uuid4())
-
-    def init_context(self, headers):
-        """Create a Deuce Context based on the headers
-        using the hooks; required for testing the controllers"""
-
-        state = DummyContextObject()
-        state.response = DummyContextObject()
-        state.response.headers = {}
-        state.request = DummyContextObject()
-        state.request.headers = headers
-
-        # initialize all hooks with the 'state' object from above
-        for hook in prod_conf.get_hooks():
-            hook.on_route(state)
