@@ -4,13 +4,10 @@ import binascii
 import json
 from pecan.hooks import PecanHook
 from deuce.hooks import HealthHook
+from deuce.hooks.openstackhook import OpenStackObject
 from pecan.core import abort
 from deuce.drivers import swift
 import deuce
-
-
-class OpenStackObject(object):
-    pass
 
 
 class OpenStackSwiftHook(HealthHook):
