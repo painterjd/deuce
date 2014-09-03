@@ -16,11 +16,9 @@ class HomeController(RestController):
 
     vaults = VaultController()
 
-    @expose()
+    @expose('json')
     def index(self):
-
-        #  TODO: This is just a space holder. Remove me after impl.
-        #      : Need return a meaningful home document.
+        #  TODO: Implement a proper home document
         response.status_code = 200
         return b'{}'
 

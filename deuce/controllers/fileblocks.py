@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 
 class FileBlocksController(RestController):
-
     """The FileBlocksController is responsible for:
     Listing blocks belong to a particular file
     """

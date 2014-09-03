@@ -10,7 +10,7 @@ import atexit
 
 import itertools
 from deuce.drivers.metadatadriver import MetadataStorageDriver, \
-    GapError, OverlapError
+    GapError, OverlapError, ConstraintError
 
 
 class MongoDbStorageDriver(MetadataStorageDriver):
@@ -491,6 +491,9 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             self._blocks.update(args, args, upsert=True)
 
     def unregister_block(self, vault_id, block_id):
+
+        self._require_no_block_refs(vault_id, block_id)
+
         self._blocks.ensure_index([('projectid', 1),
             ('vaultid', 1), ('blockid', 1)])
 
@@ -517,7 +520,12 @@ class MongoDbStorageDriver(MetadataStorageDriver):
 
         # TODO: we currently count all documents. Let's
         # optimize this query later
-        res = self._files.find()
+        args = {
+            'projectid': deuce.context.project_id,
+            'vaultid': vault_id
+        }
+
+        res = self._files.find(args)
 
         files_cnt = 0
 

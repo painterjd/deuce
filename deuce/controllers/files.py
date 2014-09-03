@@ -15,10 +15,6 @@ from deuce.util import set_qs
 logger = logging.getLogger(__name__)
 
 
-# Standard rule for marker-limit semantics
-# for the listing files
-
-
 class FilesController(RestController):
 
     blocks = FileBlocksController()

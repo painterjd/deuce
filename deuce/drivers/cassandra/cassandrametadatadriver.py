@@ -5,6 +5,7 @@ import uuid
 
 from deuce.drivers.metadatadriver import MetadataStorageDriver
 from deuce.drivers.metadatadriver import GapError, OverlapError
+from deuce.drivers.metadatadriver import ConstraintError
 from pecan import conf
 
 import deuce
@@ -602,6 +603,8 @@ class CassandraStorageDriver(MetadataStorageDriver):
             res = self._session.execute(CQL_REGISTER_BLOCK, args)
 
     def unregister_block(self, vault_id, block_id):
+
+        self._require_no_block_refs(vault_id, block_id)
 
         args = dict(
             projectid=deuce.context.project_id,

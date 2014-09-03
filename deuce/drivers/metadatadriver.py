@@ -60,6 +60,31 @@ class GapError(Exception):
         Exception.__init__(self, msg)
 
 
+class ConstraintError(Exception):
+    """This exception is raised whenever there is
+    an attempt to perform an operation that would
+    otherwise be forbidden. This is roughly synonymous
+    with things like SQL unique constraint errors, where
+    the operation fails due to the fact that the
+    schema restrictions would be violated.
+
+    An example of where this exception should be thrown
+    is when trying to delete a block that has files
+    referring to it"""
+    def __init__(self, project_id, vault_id, msg):
+        """Creates a new InvalidOperationError Exception
+
+        :param vault_id: The ID of the vault on which
+                         operation was performed
+        :param msg: A message describing the reason
+        for the exception
+        """
+        self.project_id = project_id
+        self.vault_id = vault_id
+
+        Exception.__init__(self, msg)
+
+
 @six.add_metaclass(ABCMeta)
 class MetadataStorageDriver(object):
     """MetadataStorageDriver is an abstract base class that
@@ -213,3 +238,15 @@ class MetadataStorageDriver(object):
     def get_health(self):
         """Check the meta driver health status"""
         raise NotImplementedError
+
+    def _require_no_block_refs(self, vault_id, block_id):
+        """This function checks the number of block references and
+        requires that there be none. If there are block references,
+        this function raise an InvalidOperationError exception"""
+
+        if self.get_block_ref_count(vault_id, block_id) > 0:
+            raise ConstraintError(
+                deuce.context.project_id,
+                vault_id,
+                "Block {0} has references".format(block_id)
+            )

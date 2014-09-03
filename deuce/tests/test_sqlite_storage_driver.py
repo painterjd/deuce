@@ -1,11 +1,11 @@
-from pecan import conf
-
 import os
 from deuce.tests import FunctionalTest
 from deuce.drivers.metadatadriver import MetadataStorageDriver, GapError,\
-    OverlapError
+    OverlapError, ConstraintError
 from deuce.drivers.sqlite import SqliteStorageDriver
+import random
 
+import deuce
 from mock import MagicMock
 
 
@@ -123,7 +123,7 @@ class SqliteStorageDriverTest(FunctionalTest):
         assert driver.has_block(vault_id, block_id)
 
         self.assertEqual(driver.get_block_data(vault_id,
-            block_id)['blocksize'], size)
+                                               block_id)['blocksize'], size)
 
         # Call again, shouldn't throw
         driver.register_block(vault_id, block_id, size)
@@ -141,7 +141,7 @@ class SqliteStorageDriverTest(FunctionalTest):
         file_id = self.create_file_id()
 
         self.assertEqual(driver.has_file(vault_id,
-            file_id), False)
+                                         file_id), False)
 
         driver.create_file(vault_id, file_id)
 
@@ -159,7 +159,7 @@ class SqliteStorageDriverTest(FunctionalTest):
         self.assertEqual(ctx.exception.endpos, 2048)
 
         self.assertEqual(driver.is_finalized(vault_id, file_id),
-            False)
+                         False)
 
     def test_delete_block_no_refs(self):
         driver = self.create_driver()
@@ -178,6 +178,33 @@ class SqliteStorageDriverTest(FunctionalTest):
         driver.unregister_block(vault_id, block_id)
 
         self.assertEqual(driver.get_block_ref_count(vault_id, block_id), 0)
+
+    def test_delete_block_with_refs(self):
+        driver = self.create_driver()
+
+        vault_id = self.create_vault_id()
+        file_id = self.create_file_id()
+
+        block_id = 'block_0'
+        block_size = 1024
+
+        driver.create_file(vault_id, file_id)
+
+        driver.register_block(vault_id, block_id, block_size)
+        self.assertTrue(driver.has_block(vault_id, block_id))
+
+        # Should have refs until assigned, then it should have three
+        self.assertEqual(driver.get_block_ref_count(vault_id, block_id), 0)
+        driver.assign_block(vault_id, file_id, block_id, 0)
+        driver.assign_block(vault_id, file_id, block_id, 1024)
+        self.assertEqual(driver.get_block_ref_count(vault_id, block_id), 2)
+
+        # Now test unregistering the block. This should fail
+        with self.assertRaises(ConstraintError) as ctx:
+            driver.unregister_block(vault_id, block_id)
+
+        self.assertEqual(ctx.exception.project_id, deuce.context.project_id)
+        self.assertEqual(ctx.exception.vault_id, vault_id)
 
     def test_delete_file_check_refs(self):
         driver = self.create_driver()
@@ -274,191 +301,348 @@ class SqliteStorageDriverTest(FunctionalTest):
         driver.finalize_file(vault_id, file_id, 2048)
 
         self.assertEqual(driver.is_finalized(vault_id, file_id),
-            True)
+                         True)
 
-    def test_file_assignment(self):
+    def test_file_assignment_gap_at_front(self):
+        driver = self.create_driver()
 
+        vault_id = self.create_vault_id()
+        file_id = self.create_file_id()
+        min_block_size = 101
+        max_block_size = 10000
+
+        num_blocks = 10
+
+        driver.create_file(vault_id, file_id)
+
+        block_ids = ['block_{0}'.format(id) for id in range(0, num_blocks)]
+        block_sizes = [random.randrange(min_block_size, max_block_size)
+                       for _ in range(0, num_blocks)]
+
+        offsets = [sum(block_sizes[:x]) for x in range(0, num_blocks)]
+
+        blocklist = list(zip(block_ids, block_sizes, offsets))
+        file_size = sum(block_sizes)
+
+        # register all of the blocks
+        for block_id, block_size, offset in blocklist:
+            driver.register_block(vault_id, block_id, block_size)
+
+        # Remove the first set of blocks, creating a gap at the beginning of
+        # the file
+        _, required_offset, _ = blocklist[0]
+        del blocklist[0]
+
+        # now for fun randomize the order that we
+        # will assign the blocks in
+        # random.shuffle(blocklist)
+
+        for block_id, block_size, offset in blocklist:
+            driver.assign_block(vault_id, file_id, block_id, offset)
+
+        with self.assertRaises(GapError) as ctx:
+            driver.finalize_file(vault_id, file_id, file_size)
+
+        self.assertEqual(ctx.exception.vault_id, vault_id)
+        self.assertEqual(ctx.exception.startpos, 0)
+        self.assertEqual(ctx.exception.endpos, required_offset)
+
+    def test_file_assignment_overlap_error_in_middle(self):
+        driver = self.create_driver()
+
+        vault_id = self.create_vault_id()
+        file_id = self.create_file_id()
+        min_block_size = 101
+        max_block_size = 10000
+
+        num_blocks = 10
+
+        driver.create_file(vault_id, file_id)
+
+        block_ids = ['block_{0}'.format(id) for id in range(0, num_blocks)]
+        block_sizes = [random.randrange(min_block_size, max_block_size)
+                       for _ in range(0, num_blocks)]
+
+        offsets = [sum(block_sizes[:x]) for x in range(0, num_blocks)]
+
+        # Now take the second block's offset and subtract 10 from it's
+        # offset. This should create an overlap with the second
+        # and first block.
+        expected_startpos = offsets[1] - 10
+        expected_endpos = offsets[1]
+
+        offsets[1] = offsets[1] - 10
+
+        blocklist = list(zip(block_ids, block_sizes, offsets))
+        file_size = sum(block_sizes)
+
+        # register all of the blocks
+        for block_id, block_size, offset in blocklist:
+            driver.register_block(vault_id, block_id, block_size)
+
+        random.shuffle(blocklist)
+
+        for block_id, block_size, offset in blocklist:
+            driver.assign_block(vault_id, file_id, block_id, offset)
+
+        with self.assertRaises(OverlapError) as ctx:
+            driver.finalize_file(vault_id, file_id, file_size)
+
+        self.assertEqual(ctx.exception.vault_id, vault_id)
+        self.assertEqual(ctx.exception.startpos, expected_startpos)
+        self.assertEqual(ctx.exception.endpos, expected_endpos)
+
+    def test_file_assignment_gap_at_back(self):
+        driver = self.create_driver()
+
+        vault_id = self.create_vault_id()
+        file_id = self.create_file_id()
+        min_block_size = 101
+        max_block_size = 10000
+
+        num_blocks = 10
+
+        driver.create_file(vault_id, file_id)
+
+        block_ids = ['block_{0}'.format(id) for id in range(0, num_blocks)]
+        block_sizes = [random.randrange(min_block_size, max_block_size)
+                       for _ in range(0, num_blocks)]
+
+        offsets = [sum(block_sizes[:x]) for x in range(0, num_blocks)]
+
+        blocklist = list(zip(block_ids, block_sizes, offsets))
+        file_size = sum(block_sizes)
+
+        # register all of the blocks
+        for block_id, block_size, offset in blocklist:
+            driver.register_block(vault_id, block_id, block_size)
+
+        # Remove the last set of blocks, creating a gap at EOF
+        missing_block = blocklist[-1]
+        del blocklist[-1]
+
+        random.shuffle(blocklist)
+
+        for block_id, block_size, offset in blocklist:
+            driver.assign_block(vault_id, file_id, block_id, offset)
+
+        with self.assertRaises(GapError) as ctx:
+            driver.finalize_file(vault_id, file_id, file_size)
+
+    def test_file_assignment_overlap_at_back(self):
+        driver = self.create_driver()
+
+        vault_id = self.create_vault_id()
+        file_id = self.create_file_id()
+        min_block_size = 101
+        max_block_size = 10000
+
+        num_blocks = 10
+
+        driver.create_file(vault_id, file_id)
+
+        block_ids = ['block_{0}'.format(id) for id in range(0, num_blocks)]
+        block_sizes = [random.randrange(min_block_size, max_block_size)
+                       for _ in range(0, num_blocks)]
+
+        offsets = [sum(block_sizes[:x]) for x in range(0, num_blocks)]
+
+        blocklist = list(zip(block_ids, block_sizes, offsets))
+        file_size = sum(block_sizes)
+
+        # Now create the error: short the file size by 10 bytes
+        expected_startpos = file_size - 10
+        expected_endpos = file_size
+        file_size -= 10
+
+        # register all of the blocks
+        for block_id, block_size, offset in blocklist:
+            driver.register_block(vault_id, block_id, block_size)
+
+        random.shuffle(blocklist)
+
+        for block_id, block_size, offset in blocklist:
+            driver.assign_block(vault_id, file_id, block_id, offset)
+
+        with self.assertRaises(OverlapError) as ctx:
+            driver.finalize_file(vault_id, file_id, file_size)
+
+        self.assertEqual(ctx.exception.vault_id, vault_id)
+        self.assertEqual(ctx.exception.startpos, expected_startpos)
+        self.assertEqual(ctx.exception.endpos, expected_endpos)
+
+    def test_file_block_generator(self):
         driver = self.create_driver()
 
         vault_id = self.create_vault_id()
         file_id = self.create_file_id()
 
-        normal_block_size = 333
-        gap_block_size = 222
-        overlap_block_size = 444
+        num_blocks = 40
 
-        # GAP at front (miss the 1st block)
-        num_blocks = int(0.5 * conf.api_configuration.max_returned_num)
-        block_ids = ['block_{0}'.format(id) for id in range(1, num_blocks)]
-        offsets = [x * normal_block_size for x in range(1, num_blocks)]
-
-        blockpairs = dict(zip(block_ids, offsets))
-
-        # Create a file
         driver.create_file(vault_id, file_id)
 
-        file_length = driver.file_length(vault_id, file_id)
-        assert (file_length == 0)
+        block_ids = ['block_{0}'.format(id) for id in range(0, num_blocks)]
 
-        # Assign each block
-        for bid, offset in blockpairs.items():
-            driver.assign_block(vault_id, file_id, bid, offset)
+        # Note: the mongo DB mocking driver is hard-coded to use
+        # 40 1024-byte blocks.
+        block_sizes = [1024 for _ in range(0, num_blocks)]
 
-        assert not driver.is_finalized(vault_id, file_id)
+        offsets = [sum(block_sizes[:x]) for x in range(0, num_blocks)]
 
-        # GAPs (gap at front)
-        for bid, offset in blockpairs.items():
-            driver.register_block(vault_id, bid, gap_block_size)
+        blocklist = list(zip(block_ids, block_sizes, offsets))
+        file_size = sum(block_sizes)
 
-        with self.assertRaises(GapError) as ctx:
-            res = driver.finalize_file(vault_id, file_id)
+        # register all of the blocks
+        for block_id, block_size, offset in blocklist:
+            driver.register_block(vault_id, block_id, block_size)
 
-        self.assertEqual(ctx.exception.vault_id, vault_id)
-        self.assertEqual(ctx.exception.file_id, file_id)
-        self.assertEqual(ctx.exception.startpos, 0)
-        self.assertEqual(ctx.exception.endpos, 333)
+        for block_id, block_size, offset in blocklist:
+            driver.assign_block(vault_id, file_id, block_id, offset)
 
-        assert not driver.is_finalized(vault_id, file_id)
+        driver.finalize_file(vault_id, file_id)
 
-        # OVERLAPs (gap at front)
-        for bid, offset in blockpairs.items():
-            driver.unregister_block(vault_id, bid)
-            driver.register_block(vault_id,
-                bid, overlap_block_size)
+        output = list(driver.create_file_block_generator(vault_id, file_id))
+        outblocks, outoffsets = zip(*output)
 
-        with self.assertRaises(GapError) as ctx:
-            res = driver.finalize_file(vault_id, file_id)
+        self.assertEqual(list(outblocks), block_ids)
+        self.assertEqual(list(outoffsets), offsets)
 
-        self.assertEqual(ctx.exception.vault_id, vault_id)
-        self.assertEqual(ctx.exception.file_id, file_id)
-        self.assertEqual(ctx.exception.startpos, 0)
-        self.assertEqual(ctx.exception.endpos, 333)
+    def test_file_block_generator_marker_limit(self):
+        driver = self.create_driver()
 
-        assert not driver.is_finalized(vault_id, file_id)
+        vault_id = self.create_vault_id()
+        file_id = self.create_file_id()
 
-        # put back the missed block at the front
-        # Create a gap in the middle
-        block_ids.insert(0, 'block_0')
-        blockpairs['block_0'] = 0
+        num_blocks = 40
 
-        driver.assign_block(vault_id, file_id, 'block_0', 0)
-        for bid, offset in blockpairs.items():
-            driver.unregister_block(vault_id, bid)
-            driver.register_block(vault_id, bid, gap_block_size)
+        driver.create_file(vault_id, file_id)
 
-        with self.assertRaises(GapError) as ctx:
-            res = driver.finalize_file(vault_id, file_id)
+        block_ids = ['block_{0}'.format(id) for id in range(0, num_blocks)]
 
-        self.assertEqual(ctx.exception.vault_id, vault_id)
-        self.assertEqual(ctx.exception.file_id, file_id)
-        self.assertEqual(ctx.exception.startpos, 222)
-        self.assertEqual(ctx.exception.endpos, 333)
+        # Note: the mongo DB mocking driver is hard-coded to use
+        # 40 1024-byte blocks.
+        block_sizes = [1024 for _ in range(0, num_blocks)]
 
-        assert not driver.is_finalized(vault_id, file_id)
+        offsets = [sum(block_sizes[:x]) for x in range(0, num_blocks)]
 
-        # Create a overlap in the middle
-        for bid, offset in blockpairs.items():
-            driver.unregister_block(vault_id, bid)
-            driver.register_block(vault_id,
-                bid, overlap_block_size)
+        blocklist = list(zip(block_ids, block_sizes, offsets))
+        file_size = sum(block_sizes)
 
-        with self.assertRaises(OverlapError) as ctx:
-            res = driver.finalize_file(vault_id, file_id)
+        # register all of the blocks
+        for block_id, block_size, offset in blocklist:
+            driver.register_block(vault_id, block_id, block_size)
 
-        self.assertEqual(ctx.exception.vault_id, vault_id)
-        self.assertEqual(ctx.exception.file_id, file_id)
-        self.assertEqual(ctx.exception.block_id, 'block_1')
-        self.assertEqual(ctx.exception.startpos, 333)
-        self.assertEqual(ctx.exception.endpos, 444)
+        for block_id, block_size, offset in blocklist:
+            driver.assign_block(vault_id, file_id, block_id, offset)
 
-        assert not driver.is_finalized(vault_id, file_id)
+        driver.finalize_file(vault_id, file_id)
 
-        # Fix and back to normal
-        for bid, offset in blockpairs.items():
-            driver.unregister_block(vault_id, bid)
-            driver.register_block(vault_id, bid, normal_block_size)
-
-        # gap at the eof.
-        with self.assertRaises(GapError) as ctx:
-            res = driver.finalize_file(vault_id, file_id, file_size=14000)
-
-        self.assertEqual(ctx.exception.vault_id, vault_id)
-        self.assertEqual(ctx.exception.file_id, file_id)
-        self.assertEqual(ctx.exception.startpos, 13320)
-        self.assertEqual(ctx.exception.endpos, 14000)
-
-        assert not driver.is_finalized(vault_id, file_id)
-
-        # overlap at the eof.
-        with self.assertRaises(OverlapError) as ctx:
-            res = driver.finalize_file(vault_id, file_id, file_size=12900)
-
-        self.assertEqual(ctx.exception.vault_id, vault_id)
-        self.assertEqual(ctx.exception.file_id, file_id)
-        self.assertEqual(ctx.exception.startpos, 12900)  # end of file
-        self.assertEqual(ctx.exception.endpos, 13320)  # Overlap past EOF
-
-        assert not driver.is_finalized(vault_id, file_id)
-
-        # This should now succeed and the file
-        # should be successfully finalized
-        res = driver.finalize_file(vault_id, file_id, file_size=13320)
-
-        assert not res
-        assert driver.is_finalized(vault_id, file_id)
-        file_length = driver.file_length(vault_id, file_id)
-        assert (file_length == 13320)
-
-        # Now create a generator of the files. The output
-        # should be in the same order as block_ids
+        limit = 3
         offset = 0
-        limit = 4
 
-        retgen = \
-            driver.create_file_block_generator(vault_id, file_id, offset,
-                limit)
+        outblocks = []
+        outoffsets = []
 
-        fetched_blocks = list(retgen)
+        iterations, remainder = divmod(num_blocks, limit)
 
-        # The driver actually returns limit+1 so that any
-        # caller knows that the list is truncated.
-        self.assertEqual(len(fetched_blocks), limit)
+        for _ in range(0, iterations):
+            page = list(driver.create_file_block_generator(
+                vault_id, file_id, offset=offset, limit=limit))
 
-        # -1 to exclude the trailer
-        for x in range(0, limit):
-            self.assertEqual(fetched_blocks[x][0], block_ids[x])
+            self.assertEqual(len(page), limit)
 
-        # Add 2 more blocks that aren't assigned.
-        driver.register_block(vault_id, 'unassigned_1', 1024)
-        driver.register_block(vault_id, 'unassigned_2', 1024)
+            tempblocks, tempoffsets = zip(*page)
+            outblocks.extend(tempblocks)
+            outoffsets.extend(tempoffsets)
 
-        num_blocks += 2
+            offset = outoffsets[-1] + 1 if len(outoffsets) > 0 else None
 
-        # Now create a generator of the files. The output
-        # should be in the same order as block_ids
-        # Test driver branch with a given marker
-        gen = driver.create_block_generator(vault_id, marker=0)
-        # Test driver branch with a default marker
-        gen = driver.create_block_generator(vault_id)
+        if remainder > 0:
 
-        fetched_blocks = list(gen)
+            page = list(driver.create_file_block_generator(
+                vault_id, file_id, offset=offset, limit=limit))
 
-        self.assertEqual(len(fetched_blocks), num_blocks)
+            self.assertEqual(len(page), remainder)
 
-        # Now try file_block_generator with no limit
-        # Force returning an empty list by an unreasonable offset.
-        retgen = \
-            driver.create_file_block_generator(
-                vault_id, file_id, offset=999999999, limit=None)
-        # A good set.
-        retgen = \
-            driver.create_file_block_generator(
-                vault_id, file_id, offset=None, limit=None)
+            tempblocks, tempoffsets = zip(*page)
 
-        output = sorted(list(retgen))
-        prep = sorted(list(x for x in blockpairs.items()))
+            outblocks.extend(tempblocks)
+            outoffsets.extend(tempoffsets)
 
-        self.assertEqual(output, prep)
+        self.assertEqual(list(outblocks), block_ids)
+        self.assertEqual(list(outoffsets), offsets)
+
+        # Now try to do it again, this time with a ridiculous offset value
+        out = list(driver.create_file_block_generator(vault_id, file_id,
+                                                      offset=999999, limit=3))
+
+        self.assertEqual(out, [])
+
+    def test_block_generator(self):
+
+        driver = self.create_driver()
+
+        vault_id = self.create_vault_id()
+        min_block_size = 101
+        max_block_size = 10000
+
+        num_blocks = 20
+
+        block_ids = ['block_{0}'.format(id) for id in range(0, num_blocks)]
+        block_sizes = [random.randrange(min_block_size, max_block_size)
+                       for _ in range(0, num_blocks)]
+
+        block_data = list(zip(block_ids, block_sizes))
+
+        for block_id, block_size in block_data:
+            driver.register_block(vault_id, block_id, block_size)
+
+        outblocks = list(driver.create_block_generator(vault_id))
+
+        self.assertEqual(sorted(block_ids), outblocks)
+
+    def test_block_generator_marker_limit(self):
+
+        driver = self.create_driver()
+
+        vault_id = self.create_vault_id()
+        min_block_size = 101
+        max_block_size = 10000
+        num_blocks = 20
+        page_size = 3
+        page_count, remainder = divmod(num_blocks, page_size)
+
+        block_ids = ['block_{0:02d}'.format(id) for id in range(0, num_blocks)]
+        block_sizes = [random.randrange(min_block_size, max_block_size)
+                       for _ in range(0, num_blocks)]
+
+        block_data = list(zip(block_ids, block_sizes))
+
+        for block_id, block_size in block_data:
+
+            driver.register_block(vault_id, block_id, block_size)
+
+        marker = None
+        limit = page_size + 1
+
+        outblocks = []
+
+        for x in range(0, page_count):
+            page = list(driver.create_block_generator(vault_id, marker=marker,
+                                                      limit=limit))
+
+            self.assertEqual(len(page), limit)
+            outblocks.extend(page[:-1])
+            marker = page[-1]
+
+        if remainder > 0:
+            page = list(driver.create_block_generator(vault_id, marker=marker,
+                                                      limit=limit))
+
+            self.assertEqual(len(page), remainder)
+            outblocks.extend(page)
+
+        self.assertEqual(sorted(block_ids), outblocks)
 
     def test_file_generator(self):
 
@@ -503,9 +687,8 @@ class SqliteStorageDriverTest(FunctionalTest):
         self.assertEqual(output, sorted(file_ids))
 
         # Now try with markers
-
         gen = driver.create_file_generator(vault_id,
-            marker=sorted(file_ids)[2], limit=3)
+                                           marker=sorted(file_ids)[2], limit=3)
 
         output = list(gen)
         self.assertEqual(len(output), 3)  # Limited query to 3

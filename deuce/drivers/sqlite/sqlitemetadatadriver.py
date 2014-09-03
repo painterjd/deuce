@@ -5,7 +5,7 @@ import importlib
 
 
 from deuce.drivers.metadatadriver import MetadataStorageDriver,\
-    OverlapError, GapError
+    OverlapError, GapError, ConstraintError
 
 # SQL schemas. Note: the schema is versions
 # in such a way that new instances always start
@@ -619,6 +619,9 @@ class SqliteStorageDriver(MetadataStorageDriver):
             self._conn.commit()
 
     def unregister_block(self, vault_id, block_id):
+
+        self._require_no_block_refs(vault_id, block_id)
+
         args = {
             'projectid': deuce.context.project_id,
             'vaultid': vault_id,

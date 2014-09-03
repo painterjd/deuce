@@ -5,35 +5,40 @@
 # from pymongo import MongoClient as mongoclient
 #
 # Or from a mocking package...
+import math
 from mongomock.connection import Connection
 from mongomock.collection import Collection
 
 
 # Mongomock does not have aggregate impl.
 # Patch a quick impl.
-def patch_aggregate(self, list):
+def patch_aggregate(self, query):
+
+    max_blocks = 40
+
     limit = 0
     retval = dict()
     retval['result'] = []
     blocks = []
     blocksdict = dict()
+    offset = 0
 
-    for item in list:
-        if '$match' in item and item['$match'] == {
-                'blocks.offset': {"$gte": 999999999}}:
-            # tester asks an empty return.
-            retval['result'].append({'blocks': []})
-            return retval
-
+    for item in query:
+        if '$match' in item and 'blocks.offset' in item['$match']:
+            offset = item['$match']['blocks.offset']['$gte']
         if '$limit' in item:
             limit = item['$limit']
-    if limit > 40:
-        limit = 40
 
-    for cnt in range(0, limit):
+    if limit > max_blocks:
+        limit = max_blocks
+
+    block_index = int(math.ceil(offset / 1024.0))
+    end_index = min(block_index + limit, max_blocks)
+
+    for x in range(block_index, end_index):
         block = {}
-        block['blockid'] = 'block_{0}'.format(cnt)
-        block['offset'] = cnt * 333
+        block['blockid'] = 'block_{0}'.format(x)
+        block['offset'] = x * 1024
         blocks.append(block.copy())
 
     blocksdict['blocks'] = blocks
