@@ -116,8 +116,6 @@ class TestBlockUploaded(base.TestBase):
     def test_delete_block(self):
         """Delete one block"""
 
-        # TODO
-        self.skipTest('Skipping. Functionality not implemented')
         resp = self.client.delete_block(self.vaultname, self.blockid)
         self.assertEqual(resp.status_code, 204,
                          'Status code for deleting a block is '
@@ -238,8 +236,6 @@ class TestBlocksAssignedToFile(base.TestBase):
     def test_delete_assigned_block(self):
         """Delete one block assigned to a file"""
 
-        # TODO
-        self.skipTest('Skipping. Functionality not implemented')
         resp = self.client.delete_block(self.vaultname, self.blockid)
         self.assertEqual(resp.status_code, 412,
                          'Status code returned: {0} . '
