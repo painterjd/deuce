@@ -79,27 +79,15 @@ class SwiftStorageDriver(BlockStorageDriver):
                 token=deuce.context.openstack.auth_token,
                 container=vault_id)
 
-            mapper = {
-                'total-size': 'x-container-bytes-used',
-                'block-count': 'x-container-object-count'
-            }
-            mapper_internal = {
-                'last-modification-time': 'x-timestamp'
-            }
-
-            for k, v in mapper.items():
-                try:
-                    statistics[k] = int(container_metadata[v])
-
-                except KeyError:  # pragma: no cover
-                    statistics[k] = 0
-
-            for k, v in mapper_internal.items():
-                try:
-                    statistics['internal'][k] = container_metadata[v]
-
-                except KeyError:  # pragma: no cover
-                    statistics['internal'][k] = 0
+            statistics['total-size'] = \
+                int(container_metadata['x-container-bytes-used'])
+            statistics['block-count'] = \
+                int(container_metadata['x-container-object-count'])
+            try:
+                statistics['internal']['last-modification-time'] = \
+                    container_metadata['x-timestamp']
+            except KeyError:  # pragma: no cover
+                statistics['internal']['last-modification-time'] = 0
 
         except ClientException as e:
             pass
