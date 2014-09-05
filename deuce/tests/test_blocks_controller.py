@@ -312,6 +312,8 @@ class TestBlocksController(FunctionalTest):
                 params=json.dumps(data), headers=hdrs)
             if finalize_status:
                 # finalize file
+                filelength = {'x-file-length': '300'}
+                hdrs.update(filelength)
                 response = self.app.post(file_id, headers=hdrs)
 
         for block in block_list:
