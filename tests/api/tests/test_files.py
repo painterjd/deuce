@@ -16,10 +16,13 @@ class TestNoFilesCreated(base.TestBase):
         """Get a file that has not been created"""
 
         resp = self.client.get_file(self.vaultname, self.id_generator(50))
-        self.assertEqual(resp.status_code, 404,
-                         'Status code returned: {0} . '
-                         'Expected 404'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assert_404_response(resp)
+
+    def test_delete_missing_file(self):
+        """Delete a missing file"""
+
+        resp = self.client.delete_file(self.vaultname, self.id_generator(50))
+        self.assert_404_response(resp)
 
     def tearDown(self):
         super(TestNoFilesCreated, self).tearDown()
