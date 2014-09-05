@@ -16,7 +16,7 @@ class TestNoVaultsCreated(base.TestBase):
         self.assertEqual(resp.status_code, 404,
                          'Status code returned: {0} . '
                          'Expected 404'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -49,7 +49,7 @@ class TestCreateVaults(base.TestBase):
         self.assertEqual(resp.status_code, 201,
                          'Status code returned for Create Vault: {0} . '
                          'Expected 201'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -112,7 +112,7 @@ class TestEmptyVault(base.TestBase):
         self.assertEqual(resp.status_code, 204,
                          'Status code returned for Delete Vault: {0} . '
                          'Expected 204'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -124,7 +124,7 @@ class TestEmptyVault(base.TestBase):
         self.assertEqual(resp.status_code, 204,
                          'Status code returned for Vault HEAD: {0} . '
                          'Expected 204'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -211,7 +211,7 @@ class TestPopulatedVault(base.TestBase):
         self.assertEqual(resp.status_code, 412,
                          'Status code returned for Delete Vault: {0} . '
                          'Expected 412'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
