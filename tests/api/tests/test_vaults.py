@@ -25,10 +25,13 @@ class TestNoVaultsCreated(base.TestBase):
         """Get a vault that has not been created"""
 
         resp = self.client.get_vault(self.id_generator(50))
-        self.assertEqual(resp.status_code, 404,
-                         'Status code returned: {0} . '
-                         'Expected 404'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assert_404_response(resp)
+
+    def test_delete_missing_vault(self):
+        """Delete a missing Vault"""
+
+        resp = self.client.delete_vault(self.id_generator(55))
+        self.assert_404_response(resp)
 
     def tearDown(self):
         super(TestNoVaultsCreated, self).tearDown()

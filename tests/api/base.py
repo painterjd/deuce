@@ -122,6 +122,9 @@ class TestBase(fixtures.BaseTestFixture):
     def assertUrl(self, url, base=False, vaults=False, vaultspath=True,
                   blocks=False, files=False, filepath=False, fileblock=False,
                   nextlist=False):
+        """Check that the url provided has information according to the flags
+        passed
+        """
 
         msg = 'url: {0}'.format(url)
         u = urlparse.urlparse(url)
@@ -161,6 +164,20 @@ class TestBase(fixtures.BaseTestFixture):
             query = urlparse.parse_qs(u.query)
             self.assertIn('marker', query, msg)
             self.assertIn('limit', query, msg)
+
+    def assert_404_response(self, resp):
+        """Basic validation of a 404 response"""
+
+        self.assertEqual(resp.status_code, 404,
+                         'Status code returned: {0} . '
+                         'Expected 404'.format(resp.status_code))
+        self.assertHeaders(resp.headers, json=True)
+        resp_body = resp.json()
+        self.assertIn('message', resp_body)
+        self.assertEqual(resp_body['message'],
+                         'The resource could not be found.')
+        self.assertIn('status', resp_body)
+        self.assertEqual(resp_body['status'], 404)
 
     def _create_empty_vault(self, vaultname=None, size=50):
         """
