@@ -13,9 +13,12 @@ authentication = {
                     },
                     "required": ["id"],
                 },
+                "serviceCatalog": {
+                    "type": "array",
+                },
             },
-            "required": ["token"],
+            "required": ["token", "serviceCatalog", ],
         },
     },
-    "required": ["access"],
+    "required": ["access", ],
 }

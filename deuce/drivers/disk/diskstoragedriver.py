@@ -22,28 +22,25 @@ class DiskStorageDriver(BlockStorageDriver):
         # Load the pecan config
         self._path = conf.block_storage_driver.options.path
 
-    def _get_vault_path(self, vault_id, auth_token=None):
+    def _get_vault_path(self, vault_id):
         return os.path.join(self._path, str(deuce.context.project_id),
             vault_id)
 
-    def _get_block_path(self, vault_id, block_id,
-            auth_token=None):
+    def _get_block_path(self, vault_id, block_id):
         vault_path = self._get_vault_path(vault_id)
         return os.path.join(vault_path, str(block_id))
 
-    def create_vault(self, vault_id, auth_token=None):
+    def create_vault(self, vault_id):
         path = self._get_vault_path(vault_id)
 
         if not os.path.exists(path):
             shutil.os.makedirs(path)
 
-    def vault_exists(self, vault_id,
-            auth_token=None):
+    def vault_exists(self, vault_id):
         path = self._get_vault_path(vault_id)
         return os.path.exists(path)
 
-    def get_vault_statistics(self, vault_id,
-            auth_token=None):
+    def get_vault_statistics(self, vault_id):
         """Return the statistics on the vault.
 
         "param vault_id: The ID of the vault to gather statistics for"""
@@ -68,8 +65,7 @@ class DiskStorageDriver(BlockStorageDriver):
 
         return statistics
 
-    def delete_vault(self, vault_id,
-            auth_token=None):
+    def delete_vault(self, vault_id):
         path = self._get_vault_path(vault_id)
         try:
             if os.path.exists(path):
@@ -92,8 +88,7 @@ class DiskStorageDriver(BlockStorageDriver):
             # An error occurred
             return False
 
-    def store_block(self, vault_id, block_id, blockdata,
-            auth_token=None):
+    def store_block(self, vault_id, block_id, blockdata):
         path = self._get_block_path(vault_id, block_id)
 
         with open(path, 'wb') as outfile:
@@ -101,20 +96,28 @@ class DiskStorageDriver(BlockStorageDriver):
 
         return True
 
-    def block_exists(self, vault_id, block_id,
-            auth_token=None):
+    def store_async_block(self, vault_id, block_ids, blockdatas):
+        results = []
+        for block_id, blockdata in zip(block_ids, blockdatas):
+            path = self._get_block_path(vault_id, block_id)
+
+            with open(path, 'wb') as outfile:
+                outfile.write(blockdata)
+                results.append(True)
+
+        return True
+
+    def block_exists(self, vault_id, block_id):
         path = self._get_block_path(vault_id, block_id)
         return os.path.exists(path)
 
-    def delete_block(self, vault_id, block_id,
-            auth_token=None):
+    def delete_block(self, vault_id, block_id):
         path = self._get_block_path(vault_id, block_id)
 
         if os.path.exists(path):
             os.remove(path)
 
-    def get_block_obj(self, vault_id, block_id,
-            auth_token=None):
+    def get_block_obj(self, vault_id, block_id):
         """Returns a file-like object capable or streaming the
         block data. If the object cannot be retrieved, the list
         of objects should be returned
@@ -126,8 +129,7 @@ class DiskStorageDriver(BlockStorageDriver):
 
         return open(path, 'rb')
 
-    def get_block_object_length(self, vault_id, block_id,
-            auth_token=None):
+    def get_block_object_length(self, vault_id, block_id):
         """Returns the length of an object"""
         path = self._get_block_path(vault_id, block_id)
 

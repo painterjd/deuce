@@ -1,1 +1,3 @@
-recursive-include public *
+include config.py
+prune tests
+prune deuce/tests

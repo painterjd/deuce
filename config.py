@@ -9,16 +9,15 @@ def get_hooks():
     from deuce.hooks import DeuceContextHook
     from deuce.hooks import ProjectIDHook
     from deuce.hooks import TransactionIDHook
-    from deuce.hooks import AuthTokenHook
+    from deuce.hooks import OpenStackHook
+    from deuce.hooks import OpenstackSwiftHook
     return [DeuceContextHook(), TransactionIDHook(), ProjectIDHook(),
-        AuthTokenHook()]
+            OpenStackHook(), OpenstackSwiftHook()]
 
 # Pecan Application Configurations
 app = {
     'root': 'deuce.controllers.root.RootController',
     'modules': ['deuce'],
-    'static_root': '%(confdir)s/public',
-    'template_path': '%(confdir)s/deuce/templates',
     'debug': True,
     'hooks': get_hooks(),
     'errors': {
@@ -29,30 +28,35 @@ app = {
 
 log_directory = 'log'
 import os
-if not os.path.exists(log_directory):
+if not os.path.exists(log_directory):  # pragma: no cover
     os.makedirs(log_directory)
 
 logging = {
     'loggers': {
-        # 'root': {'level': 'INFO', 'handlers': ['logstash']},
-        # 'deuce': {'level': 'DEBUG', 'handlers': ['logstash']},
-        # 'py.warnings': {'handlers': ['logstash']},
-        'root': {'level': 'INFO', 'handlers': ['rotatelogfile']},
-        'deuce': {'level': 'DEBUG', 'handlers': ['rotatelogfile']},
-        'py.warnings': {'handlers': ['rotatelogfile']},
+        'root': {'level': 'INFO', 'handlers': ['syslog']},
+        'deuce': {'level': 'DEBUG', 'handlers': ['syslog']},
+        'py.warnings': {'handlers': ['syslog']},
         '__force_dict__': True
     },
     'handlers': {
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
-            'formatter': 'simple'
+            'formatter': 'standard'
         },
         'logfile': {
             'class': 'logging.FileHandler',
             'filename': os.path.join(log_directory, 'deuce.log'),
             'level': 'INFO',
-            'formatter': 'simple'
+            'formatter': 'standard'
+        },
+        'syslog': {
+            #  'socktype': socket.SOCK_DGRAM,
+            #  'facility': 'local0',
+            'class': 'logging.handlers.SysLogHandler',
+            'level': 'INFO',
+            'formatter': 'standard',
+            'address': '/dev/log'
         },
         'rotatelogfile': {
             'class': 'logging.handlers.RotatingFileHandler',
@@ -60,18 +64,18 @@ logging = {
             'level': 'INFO',
             'maxBytes': 400000000,
             'backupCount': 2,
-            'formatter': 'simple'
-        }  # ,
-        # 'logstash': {
-        #     'class': 'logstash.LogstashHandler',
-        #     'level': 'INFO',
-        #     'host': 'localhost',
-        #     'port': 5000,
-        #     'version': 1
-        # }
+            'formatter': 'standard'
+        },
+        'logstash': {
+            'class': 'logstash.LogstashHandler',
+            'level': 'INFO',
+            'host': 'localhost',
+            'port': 5000,
+            'version': 1
+        }
     },
     'formatters': {
-        'simple': {
+        'standard': {
             'format': ('%(asctime)s %(levelname)-5.5s [%(name)s/%(lineno)d]'
                        '[%(threadName)s] [%(request_id)s] : %(message)s')
         }
@@ -84,12 +88,20 @@ block_storage_driver = {
         'path': '/tmp/block_storage'
     },
     'swift': {
+
         'driver': 'deuce.drivers.swift.SwiftStorageDriver',
-        'swift_module': 'swiftclient',
-        'auth_url': 'Auth Url',
-        'storage_url': 'Storage Url'
-        # Example:
-        # 'auth_url': 'https://identity.api.rackspacecloud.com/v2.0/'
+        'swift_module': 'deuce.util',
+
+        'testing': {
+            'is_mocking': True,
+            'username': 'User name',
+            'password': 'Password',
+            'auth_url': 'Auth Url',
+            'storage_url': 'Storage Url'
+            # Example:
+            # 'auth_url': 'https://identity.api.rackspacecloud.com/v2.0/'
+        },
+
     }
 }
 
@@ -99,14 +111,13 @@ metadata_driver = {
     'cassandra': {
         'cluster': ['127.0.0.1'],
         'keyspace': 'deucekeyspace',
-
-        # Production DB with real cassandra
-        'is_mocking': False,
         'db_module': 'cassandra.cluster',
-        #
-        # Mocking DB module
-        # 'is_mocking': True,
-        # 'db_module': 'deuce.tests.mock_cassandra',
+
+        # Testing configuration
+        'testing': {
+            # Mocking DB module
+            'is_mocking': True
+        }
     },
 
     'sqlite': {
@@ -132,8 +143,12 @@ metadata_driver = {
         # 'FileBlockReadSegNum': 10,
 
         # pymongo block number in each File document
-        'maxFileBlockSegNum': 100000
+        'maxFileBlockSegNum': 100000,
         # 'maxFileBlockSegNum': 30
+
+        'testing': {
+            'is_mocking': True
+        }
     }
 }
 

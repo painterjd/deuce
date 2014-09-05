@@ -4,6 +4,12 @@ import uuid
 import collections
 
 MOCK_CASSANDRA_SCHEMA = ["""
+CREATE TABLE vaults (
+  projectid TEXT,
+  vaultid TEXT,
+  PRIMARY KEY(projectid, vaultid)
+);
+""", """
 CREATE TABLE blocks (
   projectid TEXT,
   vaultid TEXT,
@@ -32,6 +38,15 @@ CREATE TABLE fileblocks (
   blocksize INT,
   offset INT,
   PRIMARY KEY(projectid, vaultid, fileid, offset)
+);
+""",
+"""
+CREATE TABLE blockreferences (
+  projectid TEXT,
+  vaultid TEXT,
+  blockid TEXT,
+  refcount INTEGER,
+  PRIMARY KEY(projectid, vaultid, blockid)
 );
 """]
 

@@ -28,13 +28,6 @@ class deuceConfig(ConfigSectionInterface):
         """
         return self.get('version')
 
-    @property
-    def use_storage(self):
-        """
-        use the storage information
-        """
-        return self.get_boolean('use_storage')
-
 
 class authConfig(ConfigSectionInterface):
     """
@@ -63,13 +56,6 @@ class authConfig(ConfigSectionInterface):
         """
         return self.get('api_key')
 
-    @property
-    def tenant_id(self):
-        """
-        user's tenant id
-        """
-        return self.get('tenant_id')
-
 
 class storageConfig(ConfigSectionInterface):
     """
@@ -78,8 +64,15 @@ class storageConfig(ConfigSectionInterface):
     SECTION_NAME = 'storage'
 
     @property
-    def base_url(self):
+    def internal_url(self):
         """
-        storage url
+        boolean indicating whether to use the internal storage url
         """
-        return self.get('base_url')
+        return self.get_boolean('internal_url')
+
+    @property
+    def region(self):
+        """
+        storage url region
+        """
+        return self.get('region')

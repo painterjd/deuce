@@ -189,6 +189,34 @@ def put_object(url,
     return mdhash.hexdigest()
 
 
+# Store multiple blocks
+def put_async_object(url,
+                     token,
+                     container,
+                     names,
+                     contents,
+                     response_dict,
+                     etag=True):
+    etags = []
+    if mock_drop_connection_status:
+        raise ClientException('mocking network drop')
+
+    for name, content in zip(names, contents):
+        blocks_path = _get_vault_path(container)
+        if not os.path.exists(blocks_path):
+            raise ClientException('mocking')
+
+        path = _get_block_path(container, name)
+
+        with open(path, 'wb') as outfile:
+            outfile.write(content)
+
+        mdhash = hashlib.md5()
+        etags.append(mdhash.update(content))
+    response_dict['status'] = 201
+    return etags
+
+
 # Check Block
 def head_object(url,
             token,

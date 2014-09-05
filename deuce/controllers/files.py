@@ -15,19 +15,15 @@ from deuce.util import set_qs
 logger = logging.getLogger(__name__)
 
 
-# Standard rule for marker-limit semantics
-# for the listing files
-
-
 class FilesController(RestController):
 
     blocks = FileBlocksController()
 
     @validate(vault_id=VaultGetRule, file_id=FileGetRule)
-    @expose('json')
+    @expose()
     def delete(self, vault_id, file_id):
 
-        vault = Vault.get(vault_id, request.auth_token)
+        vault = Vault.get(vault_id)
         if not vault:
             abort(404)
 
@@ -40,12 +36,12 @@ class FilesController(RestController):
     @validate(vault_id=VaultGetRule, marker=FileMarkerRule, limit=LimitRule)
     @expose('json')
     def get_all(self, vault_id):
-        response.headers["Transaction-ID"] = request.context.request_id
-        vault = Vault.get(vault_id, request.auth_token)
+        vault = Vault.get(vault_id)
 
         if not vault:
             logger.error('Vault [{0}] does not exist'.format(vault_id))
-            abort(404, headers={"Transaction-ID": request.context.request_id})
+            abort(404, headers={"Transaction-ID":
+                deuce.context.transaction.request_id})
 
         inmarker = request.params.get('marker')
         limit = int(request.params.get('limit',
@@ -78,21 +74,23 @@ class FilesController(RestController):
     def get_one(self, vault_id, file_id):
         """Fetches, re-assembles and streams a single
         file out of Deuce"""
-        response.headers["Transaction-ID"] = request.context.request_id
-        vault = Vault.get(vault_id, request.auth_token)
+        vault = Vault.get(vault_id)
 
         if not vault:
             logger.error('Vault [{0}] does not exist'.format(vault_id))
-            abort(404, headers={"Transaction-ID": request.context.request_id})
+            abort(404, headers={"Transaction-ID":
+                deuce.context.transaction.request_id})
 
         f = vault.get_file(file_id)
 
         if not f:
             logger.error('File [{0}] does not exist'.format(file_id))
-            abort(404, headers={"Transaction-ID": request.context.request_id})
+            abort(404, headers={"Transaction-ID":
+                deuce.context.transaction.request_id})
 
         if not f.finalized:
-            abort(412, headers={"Transaction-ID": request.context.request_id})
+            abort(412, headers={"Transaction-ID":
+                deuce.context.transaction.request_id})
 
         block_gen = deuce.metadata_driver.create_file_block_generator(
             vault_id, file_id)
@@ -100,8 +98,7 @@ class FilesController(RestController):
         block_ids = [block[0] for block in sorted(block_gen,
             key=lambda block: block[1])]
 
-        objs = vault.get_blocks_generator(block_ids,
-            auth_token=request.auth_token)
+        objs = vault.get_blocks_generator(block_ids)
 
         response.content_length = vault.get_file_length(file_id)
         response.body_file = FileCat(objs)
@@ -114,14 +111,14 @@ class FilesController(RestController):
         the new file is returned in the Location
         header
         """
-        response.headers["Transaction-ID"] = request.context.request_id
-        vault = Vault.get(vault_id, request.auth_token)
+        vault = Vault.get(vault_id)
 
         # caller tried to post to a vault that
         # does not exist
         if not vault:
             logger.error('Vault [{0}] does not exist'.format(vault_id))
-            abort(400, headers={"Transaction-ID": request.context.request_id})
+            abort(400, headers={"Transaction-ID":
+                deuce.context.transaction.request_id})
 
         # overload to use the same end-point for creating a new file
         # and assigning blocks to a file that is in progress
@@ -136,18 +133,17 @@ class FilesController(RestController):
             format(response.headers["Location"]))
 
     def _assign(self, vault, vault_id, file_id):
-        response.headers["Transaction-ID"] = request.context.request_id
         f = vault.get_file(file_id)
 
         if not f:
             logger.error('File [{0}] does not exist'.format(file_id))
-            abort(404, headers={"Transaction-ID": request.context.request_id})
+            abort(404, headers={"Transaction-ID":
+                deuce.context.transaction.request_id})
 
         if not request.body:
             try:
                 # Fileid with an empty body will finalize the file.
-                filesize = request.headers['Filesize'] if 'Filesize' \
-                    in request.headers.keys() else 0
+                filesize = int(request.headers['x-file-length'])
                 res = deuce.metadata_driver.finalize_file(vault_id, file_id,
                     filesize)
                 return res
@@ -168,7 +164,8 @@ class FilesController(RestController):
             #       status code
             logger.error('Finalized file [{0}] '
                 'cannot be modified'.format(file_id))
-            abort(400, headers={"Transaction-ID": request.context.request_id})
+            abort(400, headers={"Transaction-ID":
+                deuce.context.transaction.request_id})
 
         blocks = request.json_body['blocks']
 

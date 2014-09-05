@@ -2,7 +2,7 @@ import os.path
 
 from unittest import TestCase
 from webtest import TestApp
-from deuce.tests import FunctionalTest
+from deuce.tests import FunctionalTest, DummyContextObject
 
 from deuce.model import Vault, Block, File
 
@@ -12,36 +12,28 @@ class TestModel(FunctionalTest):
     def setUp(self):
         super(TestModel, self).setUp()
 
-        self._context_data = {
-            "x-project-id": self.create_project_id(),
-            "x-auth-token": ''
-        }
-        self.init_context(self._context_data)
-
-        self.auth_token = self.create_auth_token()
-
     def test_get_nonexistent_block(self):
-        v = Vault.get('should_not_exist', self.auth_token)
+        v = Vault.get('should_not_exist')
         assert v is None
 
     def test_vault_crud(self):
         vault_id = self.create_vault_id()
 
-        v = Vault.get(vault_id, self.auth_token)
+        v = Vault.get(vault_id)
         assert v is None
 
-        v = Vault.create(vault_id, self.auth_token)
+        v = Vault.create(vault_id)
         assert v is not None
 
-        v.delete(self.auth_token)
+        v.delete()
 
-        v = Vault.get(vault_id, self.auth_token)
+        v = Vault.get(vault_id)
         assert v is None
 
     def test_file_crud(self):
         vault_id = self.create_vault_id()
 
-        v = Vault.create(vault_id, self.auth_token)
+        v = Vault.create(vault_id)
 
         f = v.create_file()
 
@@ -62,7 +54,7 @@ class TestModel(FunctionalTest):
     def test_block_crud(self):
         vault_id = self.create_vault_id()
 
-        v = Vault.create(vault_id, self.auth_token)
+        v = Vault.create(vault_id)
 
         # Check for blocks, should be none
         blocks_gen = v.get_blocks(0, 0)

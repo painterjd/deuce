@@ -246,8 +246,8 @@ class TestValidationFuncs(TestCase):
 
         rules = {v.VaultGetRule, v.VaultPutRule, v.BlockGetRule,
                  v.FileGetRule, v.FilePostRuleNoneOk,
-                 v.BlockPutRuleNoneOk, v.FileMarkerRule, v.OffsetMarkerRule,
-                 v.BlockMarkerRule, v.LimitRule}
+                 v.BlockPutRuleNoneOk, v.FileMarkerRule, v.VaultMarkerRule,
+                 v.OffsetMarkerRule, v.BlockMarkerRule, v.LimitRule}
 
         for rule in rules:
             with self.assertRaises(ValidationFailed):

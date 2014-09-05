@@ -19,7 +19,7 @@ API testing collection for Postman Google Chrome is in docs/deuce_postman.json
 
 Features
 --------
- * Python 2.7, 3.3, 3.4 and pypy are supported
+ * Python 3.3 and 3.4 are currently supported
  * Client-side de-duplication
  * Server-side reconstruction and retrieval of de-duplicated data
  * Pluggable driver support for metadata and block backend stores

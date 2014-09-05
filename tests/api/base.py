@@ -7,6 +7,7 @@ from collections import namedtuple
 
 import json
 import jsonschema
+import msgpack
 import os
 import random
 import re
@@ -15,6 +16,7 @@ import string
 import urlparse
 
 Block = namedtuple('Block', 'Id Data')
+File = namedtuple('File', 'Id Url')
 
 
 class TestBase(fixtures.BaseTestFixture):
@@ -33,20 +35,27 @@ class TestBase(fixtures.BaseTestFixture):
         cls.auth_config = config.authConfig()
         cls.auth_token = None
         cls.storage_config = config.storageConfig()
-        cls.storage_url = None
+        cls.storage_url = ''
+        cls.tenantid = None
+        cls.region = cls.storage_config.region
         if cls.config.use_auth:
             cls.a_client = client.AuthClient(cls.auth_config.base_url)
             cls.a_resp = cls.a_client.get_auth_token(cls.auth_config.user_name,
                                                      cls.auth_config.api_key)
             jsonschema.validate(cls.a_resp.json(), auth.authentication)
             cls.auth_token = cls.a_resp.entity.token
-        if cls.config.use_storage:
-            cls.storage_url = cls.storage_config.base_url
+
+            cls.tenantid = cls.a_resp.entity.regions[cls.region]['tenantId']
+            url_type = 'internalURL' if cls.storage_config.internal_url \
+                else 'publicURL'
+            cls.storage_url = cls.a_resp.entity.regions[cls.region][url_type]
         cls.client = client.BaseDeuceClient(cls.config.base_url,
                                             cls.config.version,
                                             cls.auth_token,
-                                            cls.storage_url)
+                                            cls.storage_url,
+                                            cls.tenantid)
 
+        cls.vaults = []
         cls.blocks = []
         cls.api_version = cls.config.version
 
@@ -107,8 +116,9 @@ class TestBase(fixtures.BaseTestFixture):
             self.assertEqual(content_type,
                              'application/octet-stream')
 
-    def assertUrl(self, url, base=False, blockpath=False, files=False,
-                  filepath=False, fileblock=False, nextlist=False):
+    def assertUrl(self, url, base=False, vaults=False, vaultspath=True,
+                  blocks=False, files=False, filepath=False, fileblock=False,
+                  nextlist=False):
 
         msg = 'url: {0}'.format(url)
         u = urlparse.urlparse(url)
@@ -117,21 +127,30 @@ class TestBase(fixtures.BaseTestFixture):
         if base:
             self.assertEqual(u.path, '/{0}'.format(self.api_version), msg)
 
-        if blockpath:
-            self.assertEqual(u.path, '/{0}/{1}/blocks'
+        if vaults:
+            self.assertEqual(u.path, '/{0}/vaults/'.format(self.api_version,
+                                                          msg))
+
+        if vaultspath:
+            valid = re.compile('/{0}/vaults/[a-zA-Z0-9\-_]*'
+                               ''.format(self.api_version))
+            self.assertIsNotNone(valid.match(u.path), msg)
+
+        if blocks:
+            self.assertEqual(u.path, '/{0}/vaults/{1}/blocks'
                              ''.format(self.api_version, self.vaultname), msg)
 
         if files:
-            self.assertEqual(u.path, '/{0}/{1}/files'
+            self.assertEqual(u.path, '/{0}/vaults/{1}/files'
                              ''.format(self.api_version, self.vaultname), msg)
 
         if filepath:
-            valid = re.compile('/{0}/{1}/files/[a-zA-Z0-9\-_]*'
+            valid = re.compile('/{0}/vaults/{1}/files/[a-zA-Z0-9\-_]*'
                                ''.format(self.api_version, self.vaultname))
             self.assertIsNotNone(valid.match(u.path), msg)
 
         if fileblock:
-            valid = re.compile('/{0}/{1}/files/[a-zA-Z0-9\-_]*/blocks'
+            valid = re.compile('/{0}/vaults/{1}/files/[a-zA-Z0-9\-_]*/blocks'
                                ''.format(self.api_version, self.vaultname))
             self.assertIsNotNone(valid.match(u.path), msg)
 
@@ -164,6 +183,7 @@ class TestBase(fixtures.BaseTestFixture):
         """
         if not self._create_empty_vault(vaultname, size):
             raise Exception('Failed to create vault')
+        self.vaults.append(self.vaultname)
         self.blocks = []
         self.files = []
 
@@ -202,6 +222,28 @@ class TestBase(fixtures.BaseTestFixture):
         if not self._upload_block(block_data, size):
             raise Exception('Failed to upload block')
 
+    def _upload_multiple_blocks(self, nblocks, size=30720):
+        """
+        Test Setup Helper: Uploads multiple blocks using msgpack
+        """
+        prev_blocks = self.blocks[:]
+        [self.generate_block_data(size=size) for _ in range(nblocks)]
+        # uploaded new generated blocks
+        uploaded = list(set(self.blocks) - set(prev_blocks))
+        data = dict([(block.Id, block.Data) for block in uploaded])
+        msgpack_data = msgpack.packb(data)
+        resp = self.client.upload_multiple_blocks(self.vaultname, msgpack_data)
+        return 201 == resp.status_code
+
+    def upload_multiple_blocks(self, nblocks, size=30720):
+        """
+        Test Setup Helper: Uploads multiple blocks using msgpack
+
+        Exception is raised if the operation is not successful
+        """
+        if not self._upload_multiple_blocks(nblocks, size):
+            raise Exception('Failed to upload multiple blocks')
+
     def _create_new_file(self):
         """
         Test Setup Helper: Creates a file
@@ -210,7 +252,7 @@ class TestBase(fixtures.BaseTestFixture):
         resp = self.client.create_file(self.vaultname)
         self.fileurl = resp.headers['location']
         self.fileid = self.fileurl.split('/')[-1]
-        self.files.append(self.fileid)
+        self.files.append(File(Id=self.fileid, Url=self.fileurl))
         return 201 == resp.status_code
 
     def create_new_file(self):
@@ -223,24 +265,6 @@ class TestBase(fixtures.BaseTestFixture):
         if not self._create_new_file():
             raise Exception('Failed to create a file')
 
-    def _assign_all_blocks_to_file(self, offset_divisor=None):
-        """
-        Test Setup Helper: Assigns all blocks to the file
-        """
-        offset = 0
-        block_list = list()
-        for block_info in self.blocks:
-            block_list.append({'id': block_info.Id,
-                               'size': len(block_info.Data), 'offset': offset})
-            if offset_divisor:
-                offset += len(block_info.Data) / offset_divisor
-            else:
-                offset += len(block_info.Data)
-        block_dict = {'blocks': block_list}
-        resp = self.client.assign_to_file(json.dumps(block_dict),
-                                          alternate_url=self.fileurl)
-        return 200 == resp.status_code
-
     def assign_all_blocks_to_file(self, offset_divisor=None):
         """
         Test Setup Helper: Assigns all blocks to the file
@@ -248,23 +272,63 @@ class TestBase(fixtures.BaseTestFixture):
         Exception is raised if the operation is not successful
         """
 
-        if not self._assign_all_blocks_to_file(offset_divisor):
+        if not self._assign_blocks_to_file(offset_divisor=offset_divisor):
             raise Exception('Failed to assign blocks to file')
 
-    def _finalize_file(self):
+    def _assign_blocks_to_file(self, offset=0, blocks=[],
+                              offset_divisor=None, file_url=None):
+        """
+        Test Setup Helper: Assigns blocks to the file
+        """
+
+        block_list = list()
+        if len(blocks) == 0:
+            blocks = range(len(self.blocks))
+        if not file_url:
+            file_url = self.fileurl
+
+        for index in blocks:
+            block_info = self.blocks[index]
+            block_list.append({'id': block_info.Id,
+                               'size': len(block_info.Data), 'offset': offset})
+            if offset_divisor:
+                offset += len(block_info.Data) / offset_divisor
+            else:
+                offset += len(block_info.Data)
+
+        block_dict = {'blocks': block_list}
+        resp = self.client.assign_to_file(json.dumps(block_dict),
+                                          alternate_url=file_url)
+        return 200 == resp.status_code
+
+    def assign_blocks_to_file(self, offset=0, blocks=[],
+                              offset_divisor=None, file_url=None):
+        """
+        Test Setup Helper: Assigns blocks to the file
+
+        Exception is raised if the operation is not successful
+        """
+
+        if not self._assign_blocks_to_file(offset, blocks, offset_divisor,
+                                           file_url):
+            raise Exception('Failed to assign blocks to file')
+
+    def _finalize_file(self, file_url=None):
         """
         Test Setup Helper: Finalizes the file
         """
 
-        resp = self.client.finalize_file(alternate_url=self.fileurl)
+        if not file_url:
+            file_url = self.fileurl
+        resp = self.client.finalize_file(alternate_url=file_url)
         return 200 == resp.status_code
 
-    def finalize_file(self):
+    def finalize_file(self, file_url=None):
         """
         Test Setup Helper: Finalizes the file
 
         Exception is raised if the operation is not successful
         """
 
-        if not self._finalize_file():
+        if not self._finalize_file(file_url):
             raise Exception('Failed to finalize file')

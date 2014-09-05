@@ -189,9 +189,17 @@ def val_limit(value):
         raise ValidationFailed('Invalid limit {0}'.format(value))
 
 
+@validation_function
+def val_none_value(value):
+    if value is not None:  # pragma: no cover
+        msg = 'Value must be None'
+        raise ValidationFailed(msg)
+
+
 def _abort(status_code):
-    transaction = getattr(local.store, 'context')
-    abort(status_code, headers={"Transaction-ID": transaction.request_id})
+    import deuce
+    abort(status_code, headers={"Transaction-ID":
+        deuce.context.transaction.request_id})
 
 # parameter rules
 VaultGetRule = Rule(val_vault_id(), lambda: _abort(404))
@@ -201,8 +209,12 @@ BlockGetRule = Rule(val_block_id(), lambda: _abort(404))
 FileGetRule = Rule(val_file_id(), lambda: _abort(404))
 FilePostRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(400))
 BlockPutRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(400))
+ReqNoneRule = Rule(val_none_value(none_ok=True), lambda: _abort(404))
 
 # query string rules
+VaultMarkerRule = Rule(val_vault_id(none_ok=True),
+lambda: _abort(404), lambda v: request.params.get(v))
+
 FileMarkerRule = Rule(val_file_id(none_ok=True), lambda: _abort(404),
                       lambda v: request.params.get(v))
 

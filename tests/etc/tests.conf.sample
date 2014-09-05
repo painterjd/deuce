@@ -7,7 +7,7 @@ base_url=https://identity.api.rackspacecloud.com/v2.0
 base_url={deuce url}
 use_auth=False
 version=v1.0
-use_storage=False
 
 [storage]
-base_url={storage url}
+internal_url=True
+region={specific region}

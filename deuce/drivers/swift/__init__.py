@@ -1,3 +1,1 @@
-from deuce.drivers.swift import swiftstoragedriver
-
-SwiftStorageDriver = swiftstoragedriver.SwiftStorageDriver
+from deuce.drivers.swift.swiftstoragedriver import SwiftStorageDriver

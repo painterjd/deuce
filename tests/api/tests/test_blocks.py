@@ -1,6 +1,7 @@
 from tests.api import base
 
 import ddt
+import msgpack
 import os
 import sha
 
@@ -17,7 +18,7 @@ class TestNoBlocksUploaded(base.TestBase):
         resp = self.client.list_of_blocks(self.vaultname)
         self.assertEqual(resp.status_code, 200,
                          'Status code for listing all blocks is'
-                         ' {0}'.format(resp.status_code))
+                         ' {0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         self.assertListEqual(resp.json(), [],
                              'Response to List Blocks for an empty vault '
@@ -30,6 +31,7 @@ class TestNoBlocksUploaded(base.TestBase):
         self.assertEqual(resp.status_code, 404,
                          'Status code returned: {0} . '
                          'Expected 404'.format(resp.status_code))
+        self.assertHeaders(resp.headers)
 
     def tearDown(self):
         super(TestNoBlocksUploaded, self).tearDown()
@@ -47,13 +49,29 @@ class TestUploadBlocks(base.TestBase):
     def test_upload_block(self, value):
         """Upload a block to a vault"""
 
-        block_data = os.urandom(value)
-        self.blockid = sha.new(block_data).hexdigest()
+        self.generate_block_data(size=value)
         resp = self.client.upload_block(self.vaultname, self.blockid,
-                                        block_data)
+                                        self.block_data)
         self.assertEqual(resp.status_code, 201,
                          'Status code for uploading a block is '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 201'.format(resp.status_code))
+        self.assertHeaders(resp.headers)
+        self.assertEqual(len(resp.content), 0,
+                         'Response Content was not empty. Content: '
+                         '{0}'.format(resp.content))
+
+    @ddt.data(1, 3, 10, 32)
+    def test_upload_multiple_blocks(self, value):
+        """Upload multiple blocks in a single request"""
+
+        [self.generate_block_data() for _ in range(value)]
+        data = dict([(block.Id, block.Data) for block in self.blocks])
+        msgpacked_data = msgpack.packb(data)
+        resp = self.client.upload_multiple_blocks(self.vaultname,
+                                                  msgpacked_data)
+        self.assertEqual(resp.status_code, 201,
+                         'Status code for uploading multiple blocks is '
+                         '{0} . Expected 201'.format(resp.status_code))
         self.assertHeaders(resp.headers)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
@@ -61,8 +79,8 @@ class TestUploadBlocks(base.TestBase):
 
     def tearDown(self):
         super(TestUploadBlocks, self).tearDown()
-        if hasattr(self, 'blockid'):
-            self.client.delete_block(self.vaultname, self.blockid)
+        [self.client.delete_block(self.vaultname, block.Id) for block in
+            self.blocks]
         self.client.delete_vault(self.vaultname)
 
 
@@ -79,7 +97,7 @@ class TestBlockUploaded(base.TestBase):
         resp = self.client.list_of_blocks(self.vaultname)
         self.assertEqual(resp.status_code, 200,
                          'Status code for listing all blocks is '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         self.assertListEqual(resp.json(), [self.blockid],
                              'Response for List Blocks should have 1 item')
@@ -90,26 +108,28 @@ class TestBlockUploaded(base.TestBase):
         resp = self.client.get_block(self.vaultname, self.blockid)
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting data of a block is '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, binary=True)
+        self.assertIn('X-Block-Reference-Count', resp.headers)
+        self.assertEqual(resp.headers['X-Block-Reference-Count'], '0')
         self.assertEqual(resp.content, self.block_data,
                          'Block data returned does not match block uploaded')
 
     def test_delete_block(self):
         """Delete one block"""
 
-        # TODO
-        self.skipTest('Skipping. Functionality not implemented')
         resp = self.client.delete_block(self.vaultname, self.blockid)
         self.assertEqual(resp.status_code, 204,
                          'Status code for deleting a block is '
-                         '{0}'.format(resp.status_code))
-        self.assertEqual(len(resp.content), 0)
+                         '{0} . Expected 204'.format(resp.status_code))
+        self.assertHeaders(resp.headers)
+        self.assertEqual(len(resp.content), 0,
+                         'Response Content was not empty. Content: '
+                         '{0}'.format(resp.content))
 
     def tearDown(self):
         super(TestBlockUploaded, self).tearDown()
-        if hasattr(self, 'blockid'):
-            self.client.delete_block(self.vaultname, self.blockid)
+        self.client.delete_block(self.vaultname, self.blockid)
         self.client.delete_vault(self.vaultname)
 
 
@@ -119,7 +139,7 @@ class TestListBlocks(base.TestBase):
     def setUp(self):
         super(TestListBlocks, self).setUp()
         self.create_empty_vault()
-        [self.upload_block() for _ in range(20)]
+        self.upload_multiple_blocks(20)
         self.blockids = []
         for block in self.blocks:
             self.blockids.append(block.Id)
@@ -130,7 +150,7 @@ class TestListBlocks(base.TestBase):
         resp = self.client.list_of_blocks(self.vaultname)
         self.assertEqual(resp.status_code, 200,
                          'Status code for listing all blocks is '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         self.assertListEqual(sorted(resp.json()), sorted(self.blockids),
                              'Response for List Blocks'
@@ -145,7 +165,7 @@ class TestListBlocks(base.TestBase):
         resp = self.client.list_of_blocks(self.vaultname, marker=markerid)
         self.assertEqual(resp.status_code, 200,
                          'Status code for listing all blocks is '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         self.assertListEqual(sorted(resp.json()), sorted_block_list[value:],
                              'Response for List Blocks'
@@ -181,12 +201,12 @@ class TestListBlocks(base.TestBase):
 
             self.assertEqual(resp.status_code, 200,
                              'Status code for listing all blocks is '
-                             '{0}'.format(resp.status_code))
+                             '{0} . Expected 200'.format(resp.status_code))
             self.assertHeaders(resp.headers, json=True)
             if i < 20 / value - (1 + pages):
                 self.assertIn('x-next-batch', resp.headers)
                 url = resp.headers['x-next-batch']
-                self.assertUrl(url, blockpath=True, nextlist=True)
+                self.assertUrl(url, blocks=True, nextlist=True)
             else:
                 self.assertNotIn('x-next-batch', resp.headers)
             self.assertEqual(len(resp.json()), value,
@@ -201,6 +221,87 @@ class TestListBlocks(base.TestBase):
 
     def tearDown(self):
         super(TestListBlocks, self).tearDown()
+        [self.client.delete_block(self.vaultname, block.Id) for block in
+            self.blocks]
+        self.client.delete_vault(self.vaultname)
+
+
+class TestBlocksAssignedToFile(base.TestBase):
+
+    def setUp(self):
+        super(TestBlocksAssignedToFile, self).setUp()
+        self.create_empty_vault()
+        self.upload_multiple_blocks(3)
+        self.create_new_file()
+        self.assign_all_blocks_to_file()
+
+    def test_delete_assigned_block(self):
+        """Delete one block assigned to a file"""
+
+        resp = self.client.delete_block(self.vaultname, self.blockid)
+        self.assertEqual(resp.status_code, 412,
+                         'Status code returned: {0} . '
+                         'Expected 412'.format(resp.status_code))
+        self.assertEqual(len(resp.content), 0,
+                         'Response Content was not empty. Content: '
+                         '{0}'.format(resp.content))
+
+    def tearDown(self):
+        super(TestBlocksAssignedToFile, self).tearDown()
+        [self.client.delete_file(vaultname=self.vaultname,
+            fileid=file_info.Id) for file_info in self.files]
+        [self.client.delete_block(self.vaultname, block.Id) for block in
+            self.blocks]
+        self.client.delete_vault(self.vaultname)
+
+
+@ddt.ddt
+class TestBlocksReferenceCount(base.TestBase):
+
+    def setUp(self):
+        super(TestBlocksReferenceCount, self).setUp()
+        self.create_empty_vault()
+        self.upload_block()
+        # (not finalized) create two files and assign block
+        for _ in range(2):
+            self.create_new_file()
+            self.assign_all_blocks_to_file()
+        # (finalized) create two files and assign block
+        for _ in range(2):
+            self.create_new_file()
+            self.assign_all_blocks_to_file()
+            self.finalize_file()
+
+    @ddt.data('all', 'delete_finalized', 'delete_non_finalized')
+    def test_get_block_with_multiple_references(self, value):
+        """Get an individual block that has multiple references"""
+
+        expected = '3'
+        if value == 'delete_finalized':
+            # delete 1 reference; a finalized file
+            self.client.delete_file(vaultname=self.vaultname,
+                                    fileid=self.files[2].Id)
+        elif value == 'delete_non_finalized':
+            # delete 1 reference; a non-finalized file
+            self.client.delete_file(vaultname=self.vaultname,
+                                    fileid=self.files[0].Id)
+        elif value == 'all':
+            expected = '4'
+
+        resp = self.client.get_block(self.vaultname, self.blockid)
+        self.assertEqual(resp.status_code, 200,
+                         'Status code for getting data of a block is '
+                         '{0} . Expected 200'.format(resp.status_code))
+        self.assertHeaders(resp.headers, binary=True)
+        self.assertIn('X-Block-Reference-Count', resp.headers)
+        self.assertEqual(resp.headers['X-Block-Reference-Count'], expected)
+        self.assertEqual(resp.content, self.block_data,
+                         'Block data returned does not match block uploaded')
+
+    def tearDown(self):
+        super(TestBlocksReferenceCount, self).tearDown()
+        [self.client.delete_file(vaultname=self.vaultname,
+            fileid=file_info.Id) for file_info in self.files]
         [self.client.delete_block(self.vaultname, block.Id) for block in
             self.blocks]
         self.client.delete_vault(self.vaultname)

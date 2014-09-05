@@ -1,3 +1,4 @@
+import msgpack
 from deuce.util import log as logging
 
 from pecan import conf, expose, request, response, abort
@@ -29,8 +30,7 @@ class BlocksController(RestController):
     @expose('json')
     def get_all(self, vault_id):
 
-        vault = Vault.get(vault_id, request.auth_token)
-        response.headers["Transaction-ID"] = request.context.request_id
+        vault = Vault.get(vault_id)
         if not vault:
             logger.error('Vault [{0}] does not exist'.format(vault_id))
             response.status_code = 404
@@ -70,22 +70,24 @@ class BlocksController(RestController):
 
         # Step 1: Is the block in our vault store?  If not, return 404
         # Step 2: Stream the block back to the user
-        vault = Vault.get(vault_id, request.auth_token)
+        vault = Vault.get(vault_id)
 
         # Existence of the vault should have been confirmed
         # in the vault controller
         assert vault is not None
 
-        block = vault.get_block(block_id,
-            request.auth_token)
+        block = vault.get_block(block_id)
 
         if block is None:
             logger.error('block [{0}] does not exist'.format(block_id))
-            abort(404, headers={"Transaction-ID": request.context.request_id})
-        response.headers["Transaction-ID"] = request.context.request_id
+            abort(404, headers={"Transaction-ID":
+                deuce.context.transaction.request_id})
+
+        ref_cnt = block.get_ref_count()
+        response.headers.update({'X-Block-Reference-Count': str(ref_cnt)})
+
         response.body_file = block.get_obj()
-        response.content_length = vault.get_block_length(block_id,
-            request.auth_token)
+        response.content_length = vault.get_block_length(block_id)
         response.status_code = 200
 
     @validate(vault_id=VaultPutRule, block_id=BlockPutRuleNoneOk)
@@ -95,14 +97,40 @@ class BlocksController(RestController):
         is returned in the Location header
         """
 
-        response.headers["Transaction-ID"] = request.context.request_id
-        vault = Vault.get(vault_id, request.auth_token)
+        vault = Vault.get(vault_id)
 
         try:
             retval = vault.put_block(
-                block_id, request.body, request.headers['content-length'],
-                request.auth_token)
+                block_id, request.body, request.headers['content-length'])
             response.status_code = (201 if retval is True else 500)
             logger.info('block [{0}] added'.format(block_id))
         except ValueError as e:
             response.status_code = 412
+
+    @validate(vault_id=VaultGetRule, block_id=ReqNoneRule)
+    @expose()
+    def post(self, vault_id, block_id):
+        vault = Vault.get(vault_id)
+        try:
+            unpacked = msgpack.unpackb(request.body_file_seekable.read())
+
+            if not isinstance(unpacked, dict):
+                raise TypeError
+
+            else:
+                block_ids = list(unpacked.keys())
+                block_datas = list(unpacked.values())
+                try:
+                    retval = vault.put_async_block(
+                        block_ids,
+                        block_datas)
+                    response.status_code = 201 if retval else 500
+                    logger.info('blocks [{0}] added'.format(block_ids))
+                except ValueError:
+                    response.status_code = 412
+        except (TypeError, ValueError):
+            logger.error('Request Body not well formed '
+                         'for posting muliple blocks to {0}'.format(vault_id))
+            abort(400, headers={"Transaction-ID":
+                  deuce.context.transaction.request_id},
+                  comment="Request Body not well formed")

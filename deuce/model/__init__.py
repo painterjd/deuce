@@ -4,6 +4,7 @@ from pecan import conf
 from deuce.model.vault import Vault
 from deuce.model.block import Block
 from deuce.model.file import File
+from deuce.model.health import Health
 
 # Load the storage drivers manually into the model. Note:
 # This should change significantly.

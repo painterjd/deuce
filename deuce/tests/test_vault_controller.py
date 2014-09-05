@@ -3,6 +3,8 @@ from webtest import TestApp
 from deuce.tests import FunctionalTest
 import os
 import hashlib
+import random
+import string
 from random import randrange
 
 import json
@@ -13,18 +15,126 @@ class TestVaultController(FunctionalTest):
     def setUp(self):
         super(TestVaultController, self).setUp()
         self._hdrs = {"x-project-id": self.create_project_id(),
-            "x-auth-token": ''}
+            "x-auth-token": self.create_auth_token()}
+
+    def helper_create_vault(self, vault_name, hdrs):
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
+        response = self.app.put(vault_path, headers=hdrs)
+
+    def helper_delete_vault(self, vault_name, hdrs):
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
+        response = self.app.delete(vault_path, headers=hdrs)
 
     def test_vault_leaf(self):
-        response = self.app.get('/v1.0/', headers=self._hdrs,
-            expect_errors=True)
+        hdrs = {"x-project-id": self.create_project_id(),
+            "x-auth-token": self.create_auth_token()}
+        params = dict()
 
-        assert response.status_int == 404
+        # Create an empty root path in the storage.
+        self.helper_create_vault('vault_0', hdrs)
+        self.helper_delete_vault('vault_0', hdrs)
+
+        response = self.app.get('/v1.0/vaults/',
+            params=params,
+            headers=hdrs)
+        assert str(response.text) == str('[]')
+
+        # Prepare several vaults in the storage.
+        for cnt in range(5):
+            self.helper_create_vault('vault_{0}'.format(cnt), hdrs)
+
+        # No limit nor marker
+        response = self.app.get('/v1.0/vaults/',
+            params=params,
+            headers=hdrs)
+
+        assert json.loads(response.text) == json.loads(
+            str(
+                u'{"vault_4": {"url": "http://localhost/v1.0/vaults/vault_4"},'
+                u' "vault_2": {"url": "http://localhost/v1.0/vaults/vault_2"},'
+                u' "vault_3": {"url": "http://localhost/v1.0/vaults/vault_3"},'
+                u' "vault_0": {"url": "http://localhost/v1.0/vaults/vault_0"},'
+                u' "vault_1": {"url": "http://localhost/v1.0/vaults/vault_1"}}'
+            ))
+
+        # Only marker
+        params['marker'] = "vault_0"
+        response = self.app.get('/v1.0/vaults/',
+            params=params,
+            headers=hdrs)
+        assert json.loads(response.text) == json.loads(
+            str(
+                u'{"vault_4": {"url": "http://localhost/v1.0/vaults/vault_4"},'
+                u' "vault_2": {"url": "http://localhost/v1.0/vaults/vault_2"},'
+                u' "vault_3": {"url": "http://localhost/v1.0/vaults/vault_3"},'
+                u' "vault_0": {"url": "http://localhost/v1.0/vaults/vault_0"},'
+                u' "vault_1": {"url": "http://localhost/v1.0/vaults/vault_1"}}'
+            ))
+
+        # Only limit
+        params = dict()
+        params['limit'] = 99
+        response = self.app.get('/v1.0/vaults/',
+            params=params,
+            headers=hdrs)
+
+        assert json.loads(response.text) == json.loads(
+            str(
+                u'{"vault_4": {"url": "http://localhost/v1.0/vaults/vault_4"},'
+                u' "vault_2": {"url": "http://localhost/v1.0/vaults/vault_2"},'
+                u' "vault_3": {"url": "http://localhost/v1.0/vaults/vault_3"},'
+                u' "vault_0": {"url": "http://localhost/v1.0/vaults/vault_0"},'
+                u' "vault_1": {"url": "http://localhost/v1.0/vaults/vault_1"}}'
+            ))
+
+        params['limit'] = 1
+        response = self.app.get('/v1.0/vaults/',
+            params=params,
+            headers=hdrs)
+        assert json.loads(response.text) == json.loads(
+            str(
+                u'{"vault_0": {"url": "http://localhost/v1.0/vaults/vault_0"}}'
+            ))
+
+        next_url = response.headers["X-Next-Batch"]
+        params['limit'] = 99  # More than what left in the list.
+        response = self.app.get(next_url,
+            params=params,
+            headers=hdrs)
+        assert json.loads(response.text) == json.loads(
+            str(
+                u'{"vault_4": {"url": "http://localhost/v1.0/vaults/vault_4"},'
+                u' "vault_2": {"url": "http://localhost/v1.0/vaults/vault_2"},'
+                u' "vault_3": {"url": "http://localhost/v1.0/vaults/vault_3"},'
+                u' "vault_1": {"url": "http://localhost/v1.0/vaults/vault_1"}}'
+            ))
+
+        params['limit'] = 1
+        response = self.app.get(next_url,
+            params=params,
+            headers=hdrs)
+        assert json.loads(response.text) == json.loads(
+            str(
+                u'{"vault_1": {"url": "http://localhost/v1.0/vaults/vault_1"}}'
+            ))
+
+        params['marker'] = 'vault_not_exists'
+        params['limit'] = 99
+        response = self.app.get('/v1.0/vaults/',
+            params=params,
+            headers=hdrs,
+            expect_errors=True)
+        assert str(response.text) == str('[]')
+
+        # Cleanup
+        for cnt in range(5):
+            self.helper_delete_vault('vault_{0}'.format(cnt), hdrs)
 
     def test_invalid_vault_id(self):
         vault_name = '@#$@#$@$'
-        vault_path = '/v1.0/{0}'.format(vault_name)
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
 
+        # regex validation.
         response = self.app.put(vault_path, headers=self._hdrs,
                 expect_errors=True)
         self.assertEqual(response.status_int, 400)
@@ -37,14 +147,14 @@ class TestVaultController(FunctionalTest):
 
         # 1. Delete non-existent vault
         vault_name = self.create_vault_id()
-        vault_path = '/v1.0/{0}'.format(vault_name)
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
         response = self.app.delete(vault_path,
             headers=self._hdrs, expect_errors=True)
         self.assertEqual(response.status_code, 404)
 
         # 2. Create Vault and Delete it (Empty Vault)
         vault_name = self.create_vault_id()
-        vault_path = '/v1.0/{0}'.format(vault_name)
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
         response = self.app.put(vault_path,
             headers=self._hdrs)
         self.assertEqual(response.status_code, 201)
@@ -55,7 +165,7 @@ class TestVaultController(FunctionalTest):
 
         # 3. Create Vault, Add a Block, and Delete It (Non-Empty Vault)
         vault_name = self.create_vault_id()
-        vault_path = '/v1.0/{0}'.format(vault_name)
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
         response = self.app.put(vault_path,
             headers=self._hdrs)
         self.assertEqual(response.status_code, 201)
@@ -95,7 +205,7 @@ class TestVaultController(FunctionalTest):
 
     def test_vault_crud(self):
         vault_name = self.create_vault_id()
-        vault_path = '/v1.0/{0}'.format(vault_name)
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
 
         # If we try to head the vault before it exists, it should
         # return a 404
@@ -146,3 +256,24 @@ class TestVaultController(FunctionalTest):
             expect_errors=True)
 
         assert response.status_code == 404
+
+        # Delete a non-empty vault.
+        response = self.app.put(vault_path, headers=self._hdrs)
+        # # Add a real block to it.
+        block_data = os.urandom(2000)  # Data size : 2000.
+        sha1 = hashlib.sha1()
+        sha1.update(block_data)
+        blockid = sha1.hexdigest()
+        block_path = '{0}/blocks/{1}'.format(vault_path, blockid)
+        block_headers = {
+            "Content-Type": "application/binary",
+            "Content-Length": "2000",
+        }
+        block_headers.update(self._hdrs)
+        response = self.app.put(block_path, headers=block_headers,
+                                params=block_data)
+
+        # # Delete should fail.
+        response = self.app.delete(vault_path, headers=self._hdrs,
+            expect_errors=True)
+        assert response.status_code == 412

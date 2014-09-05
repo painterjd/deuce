@@ -25,12 +25,12 @@ class TestFilesController(FunctionalTest):
         self.total_file_num = 0
 
         self._hdrs = {"x-project-id": self.create_project_id(),
-            "x-auth-token": ''}
+            "x-auth-token": self.create_auth_token()}
         self.init_context(self._hdrs)
 
         # Create a vault and a file for us to work with
         self.vault_id = self.create_vault_id()
-        self._vault_path = '/v1.0/' + self.vault_id
+        self._vault_path = '/v1.0/vaults/' + self.vault_id
         self._files_path = self._vault_path + '/files'
         self._blocks_path = self._vault_path + '/blocks'
 
@@ -40,14 +40,14 @@ class TestFilesController(FunctionalTest):
         response = self.app.post(self._files_path, headers=self._hdrs)
         self._file_id = response.headers["Location"]
         self._file_id = urlparse(self._file_id).path
-        # Now, _file_id is '/v1.0/files_vault_test/files/SOME_FILE_ID'
+        # Now, _file_id is '/v1.0/vaults/files_vault_test/files/SOME_FILE_ID'
 
         # Create distractor File
         response = self.app.post(self._files_path, headers=self._hdrs)
         self._distractor_file_id = response.headers["Location"]
         self._distractor_file_id = urlparse(self._distractor_file_id).path
 
-        self._NOT_EXIST_files_path = '/v1.0/not_exists/files'
+        self._NOT_EXIST_files_path = '/v1.0/vaults/not_exists/files'
 
     def _create_file_id(self):
         return str(uuid.uuid4())
@@ -78,11 +78,13 @@ class TestFilesController(FunctionalTest):
 
     def helper_create_files(self, num):
         params = {}
+        hdrs = self._hdrs.copy()
+        hdrs['x-file-length'] = '0'
         for cnt in range(0, num):
             response = self.app.post(self._files_path, headers=self._hdrs)
             file_id = response.headers["Location"]
             response = self.app.post(file_id,
-                                     params=params, headers=self._hdrs)
+                                     params=params, headers=hdrs)
             file_id = urlparse(file_id).path.split('/')[-1]
             self.file_list.append(file_id)
         return num
@@ -316,14 +318,17 @@ class TestFilesController(FunctionalTest):
         # Failed Finalize file for block gap & overlap
         params = {}
         failhdrs = hdrs.copy()
-        failhdrs['Filesize'] = '100'
+        failhdrs['x-file-length'] = '100'
         response = self.app.post(self._file_id, params=params,
                 headers=failhdrs,
                 expect_errors=True)
         assert response.status_int == 413
 
         # Successfully finalize file
-        response = self.app.post(self._file_id, params=params, headers=hdrs)
+        good_hdrs = hdrs.copy()
+        good_hdrs['x-file-length'] = str(enough_num2 * 100)
+        response = self.app.post(self._file_id,
+            params=params, headers=good_hdrs)
         assert response.status_int == 200
 
         # Error on trying to change Finalized file.
@@ -340,10 +345,10 @@ class TestFilesController(FunctionalTest):
 
         # Delete the finalized file. delete returns 'ok'
         response = self.app.delete(self._file_id, headers=hdrs)
-        assert response.status_int == 200
+        assert response.status_int == 204
 
     def test_nonexistent_file_endpoints(self):
-        file_path_format = '/v1.0/{0}/files/{1}'
+        file_path_format = '/v1.0/vaults/{0}/files/{1}'
 
         incorrect_vault = file_path_format.format('bogus_vault',
                                                   self._create_file_id())

@@ -19,6 +19,7 @@ class TestNoFilesCreated(base.TestBase):
         self.assertEqual(resp.status_code, 404,
                          'Status code returned: {0} . '
                          'Expected 404'.format(resp.status_code))
+        self.assertHeaders(resp.headers)
 
     def tearDown(self):
         super(TestNoFilesCreated, self).tearDown()
@@ -37,7 +38,7 @@ class TestCreateFile(base.TestBase):
         resp = self.client.create_file(self.vaultname)
         self.assertEqual(resp.status_code, 201,
                          'Status code for creating a file is '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 201'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         self.assertIn('location', resp.headers)
         self.assertUrl(resp.headers['location'], filepath=True)
@@ -48,6 +49,9 @@ class TestCreateFile(base.TestBase):
 
     def tearDown(self):
         super(TestCreateFile, self).tearDown()
+        if hasattr(self, 'fileid'):
+            self.client.delete_file(vaultname=self.vaultname,
+                                    fileid=self.fileid)
         self.client.delete_vault(self.vaultname)
 
 
@@ -73,7 +77,7 @@ class TestFileBlockUploaded(base.TestBase):
 
         self.assertEqual(resp.status_code, 200,
                          'Status code for assigning blocks to files '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         resp_body = json.loads(resp.content)
         self.assertListEqual(resp_body, [])
@@ -93,7 +97,7 @@ class TestFileBlockUploaded(base.TestBase):
 
         self.assertEqual(resp.status_code, 200,
                          'Status code for assigning blocks to files '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         resp_body = json.loads(resp.content)
         self.assertListEqual(resp_body, [blockid])
@@ -101,7 +105,7 @@ class TestFileBlockUploaded(base.TestBase):
     def tearDown(self):
         super(TestFileBlockUploaded, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
-            fileid=fileid) for fileid in self.files]
+            fileid=file_info.Id) for file_info in self.files]
         [self.client.delete_block(self.vaultname, block.Id) for block in
             self.blocks]
         self.client.delete_vault(self.vaultname)
@@ -120,7 +124,7 @@ class TestEmptyFile(base.TestBase):
         resp = self.client.finalize_file(alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 200,
                          'Status code for finalizing file '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         # TODO
         if "null" == resp.content:
@@ -134,14 +138,14 @@ class TestEmptyFile(base.TestBase):
         resp = self.client.list_of_files(vaultname=self.vaultname)
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting the list of all files '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         self.assertListEqual(resp.json(), [])
 
     def tearDown(self):
         super(TestEmptyFile, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
-            fileid=fileid) for fileid in self.files]
+            fileid=file_info.Id) for file_info in self.files]
         self.client.delete_vault(self.vaultname)
 
 
@@ -150,7 +154,7 @@ class TestFileAssignedBlocks(base.TestBase):
     def setUp(self):
         super(TestFileAssignedBlocks, self).setUp()
         self.create_empty_vault()
-        [self.upload_block() for _ in range(3)]
+        self.upload_multiple_blocks(3)
         self.create_new_file()
         self.assign_all_blocks_to_file()
 
@@ -160,7 +164,7 @@ class TestFileAssignedBlocks(base.TestBase):
         resp = self.client.finalize_file(alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 200,
                          'Status code for finalizing file '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         # TODO
         if "null" == resp.content:
@@ -170,7 +174,7 @@ class TestFileAssignedBlocks(base.TestBase):
     def tearDown(self):
         super(TestFileAssignedBlocks, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
-            fileid=fileid) for fileid in self.files]
+            fileid=file_info.Id) for file_info in self.files]
         [self.client.delete_block(self.vaultname, block.Id) for block in
             self.blocks]
         self.client.delete_vault(self.vaultname)
@@ -196,7 +200,7 @@ class TestFileMissingBlock(base.TestBase):
         resp = self.client.finalize_file(alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 413,
                          'Status code for finalizing file '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 413'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         # The response will only list the first missing block
         resp_body = resp.content
@@ -208,7 +212,7 @@ class TestFileMissingBlock(base.TestBase):
     def tearDown(self):
         super(TestFileMissingBlock, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
-                                 fileid=fileid) for fileid in self.files]
+            fileid=file_info.Id) for file_info in self.files]
         [self.client.delete_block(self.vaultname, block.Id) for block in
             self.blocks]
         self.client.delete_vault(self.vaultname)
@@ -219,7 +223,7 @@ class TestFileOverlappingBlock(base.TestBase):
     def setUp(self):
         super(TestFileOverlappingBlock, self).setUp()
         self.create_empty_vault()
-        [self.upload_block() for _ in range(4)]
+        self.upload_multiple_blocks(4)
         self.create_new_file()
         # Assign the files but set the offset to half the size of the block
         self.assign_all_blocks_to_file(offset_divisor=2)
@@ -231,7 +235,7 @@ class TestFileOverlappingBlock(base.TestBase):
         resp = self.client.finalize_file(alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 413,
                          'Status code for finalizing file '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 413'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         # The response will only list the first overlapping block
         resp_body = resp.content
@@ -245,7 +249,7 @@ class TestFileOverlappingBlock(base.TestBase):
     def tearDown(self):
         super(TestFileOverlappingBlock, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
-                                 fileid=fileid) for fileid in self.files]
+            fileid=file_info.Id) for file_info in self.files]
         [self.client.delete_block(self.vaultname, block.Id) for block in
             self.blocks]
         self.client.delete_vault(self.vaultname)
@@ -257,7 +261,7 @@ class TestListBlocksOfFile(base.TestBase):
     def setUp(self):
         super(TestListBlocksOfFile, self).setUp()
         self.create_empty_vault()
-        [self.upload_block() for _ in range(20)]
+        self.upload_multiple_blocks(20)
         self.blockids = []
         self.blockids_offsets = []
         offset = 0
@@ -274,7 +278,7 @@ class TestListBlocksOfFile(base.TestBase):
         resp = self.client.list_of_blocks_in_file(self.vaultname, self.fileid)
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting the list of blocks of a '
-                         'file {0}'.format(resp.status_code))
+                         'file {0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         self.assertBlocksInResponse(resp)
         self.assertEqual(len(self.blockids_offsets), 0,
@@ -292,7 +296,7 @@ class TestListBlocksOfFile(base.TestBase):
                                                   marker=markerid)
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting the list of blocks of a '
-                         'file {0}'.format(resp.status_code))
+                         'file {0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         self.assertBlocksInResponse(resp)
         self.assertEqual(self.blockids_offsets, skipped_blockids_offsets,
@@ -331,7 +335,8 @@ class TestListBlocksOfFile(base.TestBase):
 
             self.assertEqual(resp.status_code, 200,
                              'Status code for getting the list of blocks of '
-                             'a file {0}'.format(resp.status_code))
+                             'a file {0} . '
+                             'Expected 200'.format(resp.status_code))
             self.assertHeaders(resp.headers, json=True)
             if i < 20 / value - (1 + pages):
                 self.assertIn('x-next-batch', resp.headers)
@@ -361,7 +366,7 @@ class TestListBlocksOfFile(base.TestBase):
     def tearDown(self):
         super(TestListBlocksOfFile, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
-            fileid=fileid) for fileid in self.files]
+            fileid=file_info.Id) for file_info in self.files]
         [self.client.delete_block(self.vaultname, block.Id) for block in
             self.blocks]
         self.client.delete_vault(self.vaultname)
@@ -372,7 +377,7 @@ class TestFinalizedFile(base.TestBase):
     def setUp(self):
         super(TestFinalizedFile, self).setUp()
         self.create_empty_vault()
-        [self.upload_block() for _ in range(3)]
+        self.upload_multiple_blocks(3)
         self.create_new_file()
         self.assign_all_blocks_to_file()
         self.finalize_file()
@@ -383,7 +388,7 @@ class TestFinalizedFile(base.TestBase):
         resp = self.client.get_file(self.vaultname, self.fileid)
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting a file is '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, binary=True)
         filedata = ''
         for block in self.blocks:
@@ -394,12 +399,10 @@ class TestFinalizedFile(base.TestBase):
     def test_delete_file(self):
         """Delete a (finalized) file"""
 
-        # TODO
-        self.skipTest('Skipping. Functionality not implemented')
         resp = self.client.delete_file(self.vaultname, self.fileid)
         self.assertEqual(resp.status_code, 204,
                          'Status code for deleting a file is '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 204'.format(resp.status_code))
         self.assertEqual(len(resp.content), 0)
 
     def test_list_finalized_file(self):
@@ -408,14 +411,14 @@ class TestFinalizedFile(base.TestBase):
         resp = self.client.list_of_files(vaultname=self.vaultname)
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting the list of all files '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         self.assertListEqual([self.fileid], resp.json())
 
     def tearDown(self):
         super(TestFinalizedFile, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
-            fileid=fileid) for fileid in self.files]
+            fileid=file_info.Id) for file_info in self.files]
         [self.client.delete_block(self.vaultname, block.Id) for block in
             self.blocks]
         self.client.delete_vault(self.vaultname)
@@ -435,7 +438,8 @@ class TestMultipleFinalizedFiles(base.TestBase):
             self.assign_all_blocks_to_file()
             self.blocks_file.append(self.blocks)
             self.finalize_file()
-        self.created_files = self.files[:]
+        self.created_files = [file_info.Id for file_info in self.files]
+        self.file_ids = self.created_files[:]
 
     def test_list_multiple_files(self):
         """List multiple files (20)"""
@@ -443,22 +447,22 @@ class TestMultipleFinalizedFiles(base.TestBase):
         resp = self.client.list_of_files(vaultname=self.vaultname)
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting the list of all files '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
-        self.assertListEqual(resp.json(), sorted(self.files))
+        self.assertListEqual(resp.json(), sorted(self.file_ids))
 
     @ddt.data(2, 4, 5, 10)
     def test_list_multiple_files_marker(self, value):
         """List multiple files (20) using a marker (value)"""
 
-        sorted_list_files = sorted(self.files)
+        sorted_list_files = sorted(self.file_ids)
         markerid = sorted_list_files[value]
         requested_list_files = sorted_list_files[value:]
         resp = self.client.list_of_files(vaultname=self.vaultname,
                                          marker=markerid)
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting the list of all files '
-                         '{0}'.format(resp.status_code))
+                         '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         self.assertListEqual(resp.json(), requested_list_files)
 
@@ -473,7 +477,7 @@ class TestMultipleFinalizedFiles(base.TestBase):
         """List multiple files, setting the limit to value and using a
         marker"""
 
-        markerid = sorted(self.files)[value]
+        markerid = sorted(self.file_ids)[value]
         self.assertFilesPerPage(value, marker=markerid, pages=1)
 
     def assertFilesPerPage(self, value, marker=None, pages=0):
@@ -492,7 +496,7 @@ class TestMultipleFinalizedFiles(base.TestBase):
 
             self.assertEqual(resp.status_code, 200,
                              'Status code for listing all files is '
-                             '{0}'.format(resp.status_code))
+                             '{0} . Expected 200'.format(resp.status_code))
             self.assertHeaders(resp.headers, json=True)
             if i < 20 / value - (1 + pages):
                 self.assertIn('x-next-batch', resp.headers)
@@ -504,9 +508,9 @@ class TestMultipleFinalizedFiles(base.TestBase):
                              'Number of file ids returned is not {0} . '
                              'Returned {1}'.format(value, len(resp.json())))
             for fileid in resp.json():
-                self.assertIn(fileid, self.files)
-                self.files.remove(fileid)
-        self.assertEqual(len(self.files), value * pages,
+                self.assertIn(fileid, self.file_ids)
+                self.file_ids.remove(fileid)
+        self.assertEqual(len(self.file_ids), value * pages,
                          'Discrepancy between the list of files returned '
                          'and the files created/finalilzed')
 

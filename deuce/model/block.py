@@ -19,5 +19,11 @@ class Block(object):
         """
         return self._fileobj
 
+    def get_ref_count(self):
+        """Returns the number of references to this block
+        """
+        return deuce.metadata_driver.get_block_ref_count(
+            self.vault_id, self.block_id)
+
     def __json__(self):
         return self.block_id

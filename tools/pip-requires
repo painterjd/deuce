@@ -1,6 +1,8 @@
+aiohttp
+asyncio
+msgpack-python
 pecan
 pymongo
 six
-python-keystoneclient
 python-swiftclient
 python-logstash

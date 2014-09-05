@@ -15,6 +15,10 @@ prod_conf = None
 conf_dict = {}
 
 
+class DummyContextObject(object):
+    pass
+
+
 def setUp():
     """
         Unit tests environment setup.
@@ -25,35 +29,36 @@ def setUp():
     if not os.path.exists('/tmp/block_storage'):
         os.mkdir('/tmp/block_storage')
 
-    # Copy the production configs to the test path.
-    if not os.path.exists('tests/public'):
-        os.symlink('../../public', 'tests/public')
-    if not os.path.exists('tests/deuce/templates'):
-        if not os.path.exists('tests/deuce'):
-            os.mkdir('tests/deuce')
-        os.symlink('../../../deuce/templates', 'tests/deuce/templates')
-
     # Cook config.py for unit tests.
     prod_conf = pecan.configuration.conf_from_file('../config.py')
     conf_dict = prod_conf.to_dict()
 
+    import logging
+    LOG = logging.getLogger(__name__)
+
     # To update existed items.
     # MongoDB
-    conf_dict['metadata_driver']['mongodb']['db_module'] = \
-        'deuce.tests.db_mocking.mongodb_mocking'
-    conf_dict['metadata_driver']['mongodb']['FileBlockReadSegNum'] = 10
-    conf_dict['metadata_driver']['mongodb']['maxFileBlockSegNum'] = 30
+    LOG.info('MongoDB - Mocking: {0:}'.format(
+        conf_dict['metadata_driver']['mongodb']['testing']['is_mocking']))
+    if conf_dict['metadata_driver']['mongodb']['testing']['is_mocking']:
+        conf_dict['metadata_driver']['mongodb']['db_module'] = \
+            'deuce.tests.db_mocking.mongodb_mocking'
+        conf_dict['metadata_driver']['mongodb']['FileBlockReadSegNum'] = 10
+        conf_dict['metadata_driver']['mongodb']['maxFileBlockSegNum'] = 30
+
     # Cassandra
-    conf_dict['metadata_driver']['cassandra']['db_module'] = \
-        'deuce.tests.mock_cassandra'
-    conf_dict['metadata_driver']['cassandra']['is_mocking'] = True
+    LOG.info('Cassandra - Mocking: {0:}'.format(
+        conf_dict['metadata_driver']['cassandra']['testing']['is_mocking']))
+    if conf_dict['metadata_driver']['cassandra']['testing']['is_mocking']:
+        conf_dict['metadata_driver']['cassandra']['db_module'] = \
+            'deuce.tests.mock_cassandra'
+
     # Swift
-    conf_dict['block_storage_driver']['swift']['swift_module'] = \
-        'deuce.tests.db_mocking.swift_mocking'
-    conf_dict['block_storage_driver']['swift']['is_mocking'] = True
-    # conf_dict['block_storage_driver']['swift']['swift_module'] = \
-    #     'swiftclient'
-    # conf_dict['block_storage_driver']['swift']['is_mocking'] = False
+    LOG.info('Swift - Mocking: {0:}'.format(
+        conf_dict['block_storage_driver']['swift']['testing']['is_mocking']))
+    if conf_dict['block_storage_driver']['swift']['testing']['is_mocking']:
+        conf_dict['block_storage_driver']['swift']['swift_module'] = \
+            'deuce.tests.db_mocking.swift_mocking'
 
     # To add for-test-only items.
     # conf_dict['metadata_driver']['mongodb']['foo'] = 'bar'
@@ -72,19 +77,19 @@ def tearDown():
     if os.path.exists('/tmp/deuce_sqlite_unittest_vaultmeta.db'):
         os.remove('/tmp/deuce_sqlite_unittest_vaultmeta.db')
 
-    # Cleanup the test configs.
-    if os.path.exists('tests/public'):
-        os.remove('tests/public')
-    if os.path.exists('tests/deuce/templates'):
-        shutil.rmtree('tests/deuce')
-
 
 class FunctionalTest(TestCase):
+
     """
     Used for functional tests where you need to test your
     literal application and its integration with the framework.
     """
+
     def setUp(self):
+        import deuce
+        deuce.context = DummyContextObject
+        deuce.context.project_id = self.create_project_id()
+
         global conf_dict
         self.app = load_test_app(config=conf_dict)
 
@@ -124,12 +129,13 @@ class FunctionalTest(TestCase):
         return sha1.hexdigest()
 
     def init_context(self, headers):
-        class DummyObject(object):
-            pass
+        """Create a Deuce Context based on the headers
+        using the hooks; required for testing the controllers"""
 
-        state = DummyObject()
-        state.response = DummyObject()
-        state.request = DummyObject()
+        state = DummyContextObject()
+        state.response = DummyContextObject()
+        state.response.headers = {}
+        state.request = DummyContextObject()
         state.request.headers = headers
 
         # initialize all hooks with the 'state' object from above

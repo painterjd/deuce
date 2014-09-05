@@ -5,151 +5,195 @@ import uuid
 
 from deuce.drivers.metadatadriver import MetadataStorageDriver
 from deuce.drivers.metadatadriver import GapError, OverlapError
+from deuce.drivers.metadatadriver import ConstraintError
 from pecan import conf
 
 import deuce
 
+
+CQL_CREATE_VAULT = '''
+    INSERT INTO vaults (projectid, vaultid)
+    VALUES (%(projectid)s, %(vaultid)s)
+'''
+
+CQL_DELETE_VAULT = '''
+    DELETE FROM vaults
+    where projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+'''
+
+CQL_GET_ALL_VAULTS = '''
+    SELECT vaultid
+    FROM vaults
+    WHERE projectid = %(projectid)s
+    AND vaultid >= %(vaultid)s
+    ORDER BY vaultid
+    LIMIT %(limit)s
+'''
+
 CQL_CREATE_FILE = '''
     INSERT INTO files (projectid, vaultid, fileid, finalized, size)
-    VALUES (%s, %s, %s, false, %s)
+    VALUES (%(projectid)s, %(vaultid)s, %(fileid)s, false, %(size)s)
 '''
 
 CQL_GET_FILE = '''
     SELECT finalized
     FROM files
-    WHERE projectid = %s
-    AND vaultid = %s
-    AND fileid = %s
+    WHERE projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND fileid = %(fileid)s
 '''
 
 CQL_GET_FILE_SIZE = '''
     SELECT size
     FROM files
-    WHERE projectid = %s
-    AND vaultid = %s
-    AND fileid = %s
+    WHERE projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND fileid = %(fileid)s
 '''
 
 CQL_DELETE_FILE = '''
     DELETE FROM files
-    where projectid = %s
-    AND vaultid = %s
-    AND fileid = %s
+    where projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND fileid = %(fileid)s
 '''
 
 CQL_GET_ALL_FILE_BLOCKS = '''
     SELECT blockid, offset
     FROM fileblocks
-    WHERE projectid = %s
-    AND vaultid = %s
-    AND fileid = %s
+    WHERE projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND fileid = %(fileid)s
     ORDER BY offset
-'''
-
-CQL_GET_COUNT_ALL_FILE_BLOCKS = '''
-    SELECT COUNT(DISTINCT(blockid))
-    FROM fileblocks
-    WHERE projectid = %s
-    AND vaultid = %s
 '''
 
 CQL_GET_FILE_BLOCKS = '''
     SELECT blockid, offset
     FROM fileblocks
-    WHERE projectid = %s
-    AND vaultid = %s
-    AND fileid = %s
-    AND offset >= %s
+    WHERE projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND fileid = %(fileid)s
+    AND offset >= %(marker)s
     ORDER BY offset
-    LIMIT %s
+    LIMIT %(limit)s
 '''
 
 CQL_GET_ALL_FILE_BLOCKS_W_SIZE = '''
     SELECT blockid, offset, blocksize
     FROM fileblocks
-    WHERE projectid = %s
-    AND vaultid = %s
-    AND fileid = %s
+    WHERE projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND fileid = %(fileid)s
     ORDER by offset
 '''
 
 CQL_GET_ALL_BLOCKS = '''
     SELECT blockid
     FROM blocks
-    WHERE projectid = %s
-    AND vaultid = %s
-    AND blockid >= %s
+    WHERE projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND blockid >= %(marker)s
     order by blockid
-    LIMIT %s
+    LIMIT %(limit)s
 '''
 
 CQL_GET_COUNT_ALL_BLOCKS = '''
-    SELECT COUNT(DISTINCT(blockid))
+    SELECT COUNT(*)
     FROM blocks
-    WHERE projectid = %s
-    AND vaultid = %s
+    WHERE projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
 '''
 
 CQL_GET_ALL_FILES_MARKER = '''
     SELECT fileid
     FROM files
-    WHERE projectid=%s
-    AND vaultid = %s
-    AND fileid >= %s
-    AND finalized = %s
-    LIMIT %s
+    WHERE projectid=%(projectid)s
+    AND vaultid = %(vaultid)s
+    AND fileid >= %(marker)s
+    AND finalized = %(finalized)s
+    LIMIT %(limit)s
 '''
 
 CQL_GET_ALL_FILES = '''
     SELECT fileid
     FROM files
-    WHERE projectid=%s
-    AND vaultid = %s
-    AND finalized = %s
-    LIMIT %s
+    WHERE projectid=%(projectid)s
+    AND vaultid = %(vaultid)s
+    AND finalized = %(finalized)s
+    LIMIT %(limit)s
 '''
 
 CQL_GET_COUNT_ALL_FILES = '''
-    SELECT COUNT(DISTINCT(fileid))
+    SELECT COUNT(*)
     FROM files
-    WHERE projectid=%s
-    AND vaultid = %s
+    WHERE projectid=%(projectid)s
+    AND vaultid = %(vaultid)s
 '''
 
 CQL_FINALIZE_FILE = '''
     UPDATE files
     SET finalized=true,
-    size=%s
-    WHERE projectid=%s
-    AND vaultid=%s
-    AND fileid=%s
+    size=%(size)s
+    WHERE projectid=%(projectid)s
+    AND vaultid=%(vaultid)s
+    AND fileid=%(fileid)s
 '''
 
 CQL_ASSIGN_BLOCK_TO_FILE = '''
     INSERT INTO fileblocks
     (projectid, vaultid, fileid, blockid, blocksize, offset)
-    VALUES (%s, %s, %s, %s, %s, %s)
+    VALUES (%(projectid)s, %(vaultid)s, %(fileid)s, %(blockid)s,
+      %(blocksize)s, %(offset)s)
 '''
 
 CQL_REGISTER_BLOCK = '''
     INSERT INTO blocks
     (projectid, vaultid, blockid, blocksize)
-    values (%s, %s, %s, %s)
+    values (%(projectid)s, %(vaultid)s, %(blockid)s, %(blocksize)s)
 '''
 
 CQL_UNREGISTER_BLOCK = '''
     DELETE FROM blocks
-    where projectid=%s
-    AND vaultid=%s
-    AND blockid=%s
+    where projectid=%(projectid)s
+    AND vaultid=%(vaultid)s
+    AND blockid=%(blockid)s
 '''
 
 CQL_GET_BLOCK_SIZE = '''
     SELECT blocksize FROM blocks
     WHERE
-    projectid = %s
-    AND vaultid = %s
-    AND blockid = %s
+    projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND blockid = %(blockid)s
+'''
+
+CQL_GET_BLOCK_REF_COUNT = '''
+    SELECT refcount
+    FROM blockreferences
+    WHERE
+    projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND blockid = %(blockid)s
+'''
+
+# Note: negative numbers for decrementing works
+# fine here.
+CQL_INC_BLOCK_REF_COUNT = '''
+    UPDATE blockreferences
+    SET refcount = refcount + %(delta)s
+    WHERE
+    projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND blockid = %(blockid)s
+'''
+
+CQL_DEL_BLOCK_REF_COUNT = '''
+    DELETE FROM blockreferences
+    WHERE
+    projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND blockid = %(blockid)s
 '''
 
 # TODO: Optimize this. Now need to
@@ -159,9 +203,14 @@ CQL_GET_BLOCK_SIZE = '''
 CQL_HAS_BLOCK = '''
     SELECT count(*)
     FROM blocks
-    WHERE projectid = %s
-    AND vaultid = %s
-    AND blockid = %s
+    WHERE projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND blockid = %(blockid)s
+'''
+
+CQL_HEALTH_CHECK = '''
+    SELECT now()
+    FROM system.local
 '''
 
 
@@ -195,16 +244,42 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
         return res
 
+    def create_vault(self, vault_id):
+        """Creates a vault"""
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id
+        )
+        res = self._session.execute(CQL_CREATE_VAULT, args)
+        return
+
+    def delete_vault(self, vault_id):
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id
+        )
+        self._session.execute(CQL_DELETE_VAULT, args)
+        return
+
+    def create_vaults_generator(self, marker=None, limit=None):
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=marker or '0',
+            limit=self._determine_limit(limit)
+        )
+        res = self._session.execute(CQL_GET_ALL_VAULTS, args)
+        return [row[0] for row in res]
+
     def get_vault_statistics(self, vault_id):
         """Return the statistics on the vault.
 
         "param vault_id: The ID of the vault to gather statistics for"""
         res = {}
 
-        args = {
-            'projectid': deuce.context.project_id,
-            'vaultid': vault_id
-        }
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id
+        )
 
         def __stats_query(cql_statement, default_value):
             result = self._session.execute(cql_statement, args)
@@ -214,17 +289,11 @@ class CassandraStorageDriver(MetadataStorageDriver):
             except IndexError:  # pragma: no cover
                 return default_value
 
-        def __stats_get_vault_file_block_count():
-            return __stats_query(CQL_GET_COUNT_ALL_FILE_BLOCKS, 0)
-
         def __stats_get_vault_file_count():
             return __stats_query(CQL_GET_COUNT_ALL_FILES, 0)
 
         def __stats_get_vault_block_count():
             return __stats_query(CQL_GET_COUNT_ALL_BLOCKS, 0)
-
-        res['file-blocks'] = {}
-        res['file-blocks']['count'] = __stats_get_vault_file_block_count()
 
         # Add any statistics regarding files
         res['files'] = {}
@@ -241,14 +310,25 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
     def create_file(self, vault_id, file_id):
         """Creates a new file with no blocks and no files"""
-        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id), 0)
+
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            fileid=uuid.UUID(file_id),
+            size=0
+        )
+
         res = self._session.execute(CQL_CREATE_FILE, args)
 
         return file_id
 
     def file_length(self, vault_id, file_id):
         """Retrieve the length of the file."""
-        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            fileid=uuid.UUID(file_id)
+        )
 
         res = self._session.execute(CQL_GET_FILE_SIZE, args)
 
@@ -258,14 +338,24 @@ class CassandraStorageDriver(MetadataStorageDriver):
             return 0
 
     def has_file(self, vault_id, file_id):
-        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            fileid=uuid.UUID(file_id)
+        )
 
         res = self._session.execute(CQL_GET_FILE, args)
 
         return len(res) > 0
 
     def is_finalized(self, vault_id, file_id):
-        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
+
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            fileid=uuid.UUID(file_id)
+        )
+
         res = self._session.execute(CQL_GET_FILE, args)
 
         try:
@@ -275,9 +365,20 @@ class CassandraStorageDriver(MetadataStorageDriver):
             return False
 
     def delete_file(self, vault_id, file_id):
-        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
+
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            fileid=uuid.UUID(file_id)
+        )
 
         self._session.execute(CQL_DELETE_FILE, args)
+
+        # now list the file blocks and decrement the block reference count
+        res = self._session.execute(CQL_GET_ALL_FILE_BLOCKS_W_SIZE, args)
+
+        for block_id, offset, block_size in res:
+            self._inc_block_ref_count(vault_id, block_id, -1)
 
     def finalize_file(self, vault_id, file_id, file_size=None):
         """Updates the files table to set a file to finalized. This function
@@ -287,7 +388,11 @@ class CassandraStorageDriver(MetadataStorageDriver):
         # Check for gaps and overlaps.
         expected_offset = 0
 
-        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            fileid=uuid.UUID(file_id)
+        )
 
         res = self._session.execute(CQL_GET_ALL_FILE_BLOCKS_W_SIZE, args)
 
@@ -333,12 +438,23 @@ class CassandraStorageDriver(MetadataStorageDriver):
         if self.has_file(vault_id, file_id):
             if file_size is None:
                 file_size = 0
-            args = (file_size, deuce.context.project_id, vault_id,
-                uuid.UUID(file_id))
+
+            args = dict(
+                size=file_size,
+                projectid=deuce.context.project_id,
+                vaultid=vault_id,
+                fileid=uuid.UUID(file_id)
+            )
+
             res = self._session.execute(CQL_FINALIZE_FILE, args)
 
     def get_block_data(self, vault_id, block_id):
-        args = (deuce.context.project_id, vault_id, block_id)
+
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            blockid=block_id
+        )
 
         res = self._session.execute(CQL_GET_BLOCK_SIZE, args)
 
@@ -351,7 +467,11 @@ class CassandraStorageDriver(MetadataStorageDriver):
         """Returns the size of the specified block. If the block
         is not found, None is returned"""
 
-        args = (deuce.context.project_id, vault_id, block_id)
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            blockid=block_id
+        )
 
         res = self._session.execute(CQL_GET_BLOCK_SIZE, args)
 
@@ -362,7 +482,11 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
     def get_file_data(self, vault_id, file_id):
         """Returns a tuple representing data for this file"""
-        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            fileid=uuid.UUID(file_id)
+        )
 
         res = self._session.execute(CQL_GET_FILE, args)
 
@@ -376,7 +500,12 @@ class CassandraStorageDriver(MetadataStorageDriver):
     def has_block(self, vault_id, block_id):
         retval = False
 
-        args = (deuce.context.project_id, vault_id, block_id)
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            blockid=block_id
+        )
+
         res = self._session.execute(CQL_HAS_BLOCK, args)
         cnt = res[0]
         return cnt[0] > 0
@@ -384,8 +513,12 @@ class CassandraStorageDriver(MetadataStorageDriver):
     def create_block_generator(self, vault_id, marker=None,
             limit=None):
 
-        args = (deuce.context.project_id, vault_id, marker or '0',
-                self._determine_limit(limit))
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            marker=marker or '0',
+            limit=self._determine_limit(limit)
+        )
 
         res = self._session.execute(CQL_GET_ALL_BLOCKS, args)
 
@@ -394,14 +527,19 @@ class CassandraStorageDriver(MetadataStorageDriver):
     def create_file_generator(self, vault_id, marker=None, limit=None,
             finalized=True):
 
-        if marker is None:
-            args = (deuce.context.project_id, vault_id, finalized,
-                    self._determine_limit(limit))
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            finalized=finalized,
+            limit=self._determine_limit(limit)
+        )
 
+        if marker is None:
             query = CQL_GET_ALL_FILES
         else:
-            args = (deuce.context.project_id, vault_id, uuid.UUID(marker),
-                    finalized, self._determine_limit(limit))
+            args.update(dict(
+                marker=uuid.UUID(marker)
+            ))
 
             query = CQL_GET_ALL_FILES_MARKER
 
@@ -412,13 +550,20 @@ class CassandraStorageDriver(MetadataStorageDriver):
     def create_file_block_generator(self, vault_id, file_id,
                                     offset=None, limit=None):
 
-        if limit is None:
-            args = (deuce.context.project_id, vault_id, uuid.UUID(file_id))
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            fileid=uuid.UUID(file_id),
+        )
 
+        if limit is None:
             query = CQL_GET_ALL_FILE_BLOCKS
         else:
-            args = (deuce.context.project_id, vault_id, uuid.UUID(file_id),
-                    offset or 0, self._determine_limit(limit))
+
+            args.update(dict(
+                marker=offset or 0,
+                limit=self._determine_limit(limit)
+            ))
 
             query = CQL_GET_FILE_BLOCKS
 
@@ -433,18 +578,83 @@ class CassandraStorageDriver(MetadataStorageDriver):
         # Note: blocksize can be None if the block does not yet exist. This
         # will probably not be allowed in the future, but for now we allow
         # this to be compatible with the other drivers.
-
-        args = (deuce.context.project_id, vault_id, uuid.UUID(file_id),
-                block_id, blocksize, offset)
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            fileid=uuid.UUID(file_id),
+            blockid=block_id,
+            blocksize=blocksize,
+            offset=offset
+        )
 
         self._session.execute(CQL_ASSIGN_BLOCK_TO_FILE, args)
+        self._inc_block_ref_count(vault_id, block_id)
 
     def register_block(self, vault_id, block_id, blocksize):
         if not self.has_block(vault_id, block_id):
-            args = (deuce.context.project_id, vault_id, block_id, blocksize)
+
+            args = dict(
+                projectid=deuce.context.project_id,
+                vaultid=vault_id,
+                blockid=block_id,
+                blocksize=blocksize
+            )
+
             res = self._session.execute(CQL_REGISTER_BLOCK, args)
 
     def unregister_block(self, vault_id, block_id):
-        args = (deuce.context.project_id, vault_id, block_id)
+
+        self._require_no_block_refs(vault_id, block_id)
+
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            blockid=block_id
+        )
 
         res = self._session.execute(CQL_UNREGISTER_BLOCK, args)
+
+        self._del_block_ref_count(vault_id, block_id)
+
+    def get_block_ref_count(self, vault_id, block_id):
+
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            blockid=block_id
+        )
+
+        res = self._session.execute(CQL_GET_BLOCK_REF_COUNT, args)
+
+        try:
+            return res[0][0]
+        except IndexError:
+            return 0
+
+    def _inc_block_ref_count(self, vault_id, block_id, cnt=1):
+
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            blockid=block_id,
+            delta=cnt
+        )
+
+        self._session.execute(CQL_INC_BLOCK_REF_COUNT, args)
+
+    def _del_block_ref_count(self, vault_id, block_id):
+
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            blockid=block_id
+        )
+
+        self._session.execute(CQL_DEL_BLOCK_REF_COUNT, args)
+
+    def get_health(self):
+        try:
+            args = ()
+            return self._session.execute(CQL_HEALTH_CHECK, args)
+        except:  # pragma: no cover
+            return ["cassandra is not active."]
