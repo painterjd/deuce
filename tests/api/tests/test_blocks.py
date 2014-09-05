@@ -55,7 +55,7 @@ class TestUploadBlocks(base.TestBase):
         self.assertEqual(resp.status_code, 201,
                          'Status code for uploading a block is '
                          '{0} . Expected 201'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -72,7 +72,7 @@ class TestUploadBlocks(base.TestBase):
         self.assertEqual(resp.status_code, 201,
                          'Status code for uploading multiple blocks is '
                          '{0} . Expected 201'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -109,7 +109,8 @@ class TestBlockUploaded(base.TestBase):
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting data of a block is '
                          '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, binary=True)
+        self.assertHeaders(resp.headers, binary=True,
+                           contentlength=len(self.block_data))
         self.assertEqual(resp.content, self.block_data,
                          'Block data returned does not match block uploaded')
 
@@ -122,7 +123,7 @@ class TestBlockUploaded(base.TestBase):
         self.assertEqual(resp.status_code, 204,
                          'Status code for deleting a block is '
                          '{0} . Expected 204'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -244,6 +245,7 @@ class TestBlocksAssignedToFile(base.TestBase):
         self.assertEqual(resp.status_code, 412,
                          'Status code returned: {0} . '
                          'Expected 412'.format(resp.status_code))
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
