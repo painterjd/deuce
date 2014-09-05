@@ -212,7 +212,7 @@ class BaseDeuceClient(client.AutoMarshallingHTTPClient):
         new_header = {}
         # skip file length if filesize is negative. Negative testing
         if filesize > -1:
-            new_header['X-File-Length'] = filesize 
+            new_header['X-File-Length'] = filesize
         resp = self.request('POST', url, headers=new_header)
         return resp
 
