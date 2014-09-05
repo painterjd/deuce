@@ -7,7 +7,6 @@ from deuce.model.file import File
 import deuce
 import uuid
 import hashlib
-import six
 
 
 class Vault(object):
@@ -68,8 +67,7 @@ class Vault(object):
         return retval
 
     def put_async_block(self, block_ids, blockdatas):
-        if six.PY3:  # pragma: no cover
-            block_ids = [block_id.decode() for block_id in block_ids]
+        block_ids = [block_id.decode() for block_id in block_ids]
         # Validate the hash of the block data against block_id
         for block_id, blockdata in zip(block_ids, blockdatas):
 
