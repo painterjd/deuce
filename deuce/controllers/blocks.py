@@ -81,6 +81,10 @@ class BlocksController(RestController):
             logger.error('block [{0}] does not exist'.format(block_id))
             abort(404, headers={"Transaction-ID":
                 deuce.context.transaction.request_id})
+
+        ref_cnt = block.get_ref_count()
+        response.headers.update({'X-Block-Reference-Count': str(ref_cnt)})
+
         response.body_file = block.get_obj()
         response.content_length = vault.get_block_length(block_id)
         response.status_code = 200

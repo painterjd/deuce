@@ -78,11 +78,13 @@ class TestFilesController(FunctionalTest):
 
     def helper_create_files(self, num):
         params = {}
+        hdrs = self._hdrs.copy()
+        hdrs['x-file-length'] = '0'
         for cnt in range(0, num):
             response = self.app.post(self._files_path, headers=self._hdrs)
             file_id = response.headers["Location"]
             response = self.app.post(file_id,
-                                     params=params, headers=self._hdrs)
+                                     params=params, headers=hdrs)
             file_id = urlparse(file_id).path.split('/')[-1]
             self.file_list.append(file_id)
         return num
@@ -316,14 +318,17 @@ class TestFilesController(FunctionalTest):
         # Failed Finalize file for block gap & overlap
         params = {}
         failhdrs = hdrs.copy()
-        failhdrs['Filesize'] = '100'
+        failhdrs['x-file-length'] = '100'
         response = self.app.post(self._file_id, params=params,
                 headers=failhdrs,
                 expect_errors=True)
         assert response.status_int == 413
 
         # Successfully finalize file
-        response = self.app.post(self._file_id, params=params, headers=hdrs)
+        good_hdrs = hdrs.copy()
+        good_hdrs['x-file-length'] = str(enough_num2 * 100)
+        response = self.app.post(self._file_id,
+            params=params, headers=good_hdrs)
         assert response.status_int == 200
 
         # Error on trying to change Finalized file.
