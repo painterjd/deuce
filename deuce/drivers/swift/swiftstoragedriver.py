@@ -78,11 +78,16 @@ class SwiftStorageDriver(BlockStorageDriver):
                 url=deuce.context.openstack.swift.storage_url,
                 token=deuce.context.openstack.auth_token,
                 container=vault_id)
-
-            statistics['total-size'] = \
-                int(container_metadata['x-container-bytes-used'])
-            statistics['block-count'] = \
-                int(container_metadata['x-container-object-count'])
+            try:
+                statistics['total-size'] = \
+                    int(container_metadata['x-container-bytes-used'])
+            except KeyError:  # pragma: no cover
+                pass
+            try:
+                statistics['block-count'] = \
+                    int(container_metadata['x-container-object-count'])
+            except KeyError:  # pragma: no cover
+                pass
             try:
                 statistics['internal']['last-modification-time'] = \
                     container_metadata['x-timestamp']
