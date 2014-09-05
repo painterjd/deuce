@@ -209,9 +209,11 @@ class BaseDeuceClient(client.AutoMarshallingHTTPClient):
         """
 
         url = self._file_url(vaultname, fileid, alternate_url)
-        parameters = {}
-        parameters['Filesize'] = filesize
-        resp = self.request('POST', url, params=parameters)
+        new_header = {}
+        # skip file length if filesize is negative. Negative testing
+        if filesize > -1:
+            new_header['X-File-Length'] = filesize 
+        resp = self.request('POST', url, headers=new_header)
         return resp
 
     def list_of_blocks_in_file(self, vaultname=None, fileid=None, marker=None,
