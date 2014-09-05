@@ -52,9 +52,9 @@ class Session(object):
 
             insert_query = """
                 INSERT or IGNORE into blockreferences
-                (projectid, vaultid, blockid, refcount)
+                (projectid, vaultid, blockid, refcount, reftime)
                 VALUES
-                (:projectid, :vaultid, :blockid, :refcount)
+                (:projectid, :vaultid, :blockid, :refcount, strftime('%s', 'now'))
             """
 
             insert_args = queryargs.copy()

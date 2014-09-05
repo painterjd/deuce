@@ -177,11 +177,21 @@ CQL_GET_BLOCK_REF_COUNT = '''
     AND blockid = %(blockid)s
 '''
 
+CQL_GET_BLOCK_REF_TIME = '''
+    SELECT reftime
+    FROM blockreferences
+    WHERE
+    projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND blockid = %(blockid)s
+'''
+
 # Note: negative numbers for decrementing works
 # fine here.
 CQL_INC_BLOCK_REF_COUNT = '''
     UPDATE blockreferences
-    SET refcount = refcount + %(delta)s
+    SET refcount = refcount + %(delta)s,
+    reftime = unixTimeStampOf(now())
     WHERE
     projectid = %(projectid)s
     AND vaultid = %(vaultid)s
@@ -651,6 +661,21 @@ class CassandraStorageDriver(MetadataStorageDriver):
         )
 
         self._session.execute(CQL_DEL_BLOCK_REF_COUNT, args)
+
+    def get_block_ref_modified(self, vault_id, block_id):
+        
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            blockid=block_id
+        )
+
+        res = self._session.execute(CQL_GET_BLOCK_REF_TIME, args)
+
+        try:
+            return res[0][0]
+        except IndexError:
+            return 0
 
     def get_health(self):
         try:

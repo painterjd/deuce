@@ -235,6 +235,15 @@ class MetadataStorageDriver(object):
         raise NotImplementedError
 
     @abstractmethod
+    def get_block_ref_modified(self, vault_id, block_id):
+        """Returns the UNIX epoch in UTC indicating the time that the
+        block reference data was last modified.
+
+        :param vault_id: The ID of the vault containing the block
+        :param block_id: The ID the block to check references on
+        """
+
+    @abstractmethod
     def get_health(self):
         """Check the meta driver health status"""
         raise NotImplementedError

@@ -44,6 +44,7 @@ schemas.append([
         vaultid TEXT NOT NULL,
         blockid TEXT NOT NULL,
         size INTEGER NOT NULL,
+        reftime DATETIME NOT NULL,
         PRIMARY KEY(projectid, vaultid, blockid)
     )
     """,
@@ -55,7 +56,7 @@ schemas.append([
         PRIMARY KEY(projectid, vaultid)
     )
     """
-])  # Version 1
+])  # Version 2
 
 CURRENT_DB_VERSION = len(schemas)
 
@@ -212,8 +213,8 @@ SQL_ASSIGN_BLOCK_TO_FILE = '''
 
 SQL_REGISTER_BLOCK = '''
     INSERT INTO blocks
-    (projectid, vaultid, blockid, size)
-    VALUES (:projectid, :vaultid, :blockid, :blocksize)
+    (projectid, vaultid, blockid, size, reftime)
+    VALUES (:projectid, :vaultid, :blockid, :blocksize, strftime('%s', 'now'))
 '''
 
 SQL_UNREGISTER_BLOCK = '''
@@ -232,6 +233,22 @@ SQL_HAS_BLOCK = '''
 SQL_GET_BLOCK_REF_COUNT = '''
     SELECT count(*)
     FROM fileblocks
+    WHERE projectid = :projectid
+    AND vaultid = :vaultid
+    AND blockid = :blockid
+'''
+
+SQL_UPDATE_REF_TIME = '''
+    UPDATE blocks
+    SET reftime = strftime('%s', 'now')
+    WHERE projectid = :projectid
+    AND vaultid = :vaultid
+    AND blockid = :blockid
+'''
+
+SQL_GET_REF_TIME = '''
+    SELECT reftime
+    FROM blocks
     WHERE projectid = :projectid
     AND vaultid = :vaultid
     AND blockid = :blockid
@@ -604,6 +621,11 @@ class SqliteStorageDriver(MetadataStorageDriver):
         }
 
         self._conn.execute(SQL_ASSIGN_BLOCK_TO_FILE, args)
+
+        del args['fileid']
+        del args['offset']
+        self._conn.execute(SQL_UPDATE_REF_TIME, args)
+
         self._conn.commit()
 
     def register_block(self, vault_id, block_id, blocksize):
@@ -640,6 +662,18 @@ class SqliteStorageDriver(MetadataStorageDriver):
         }
 
         query_res = self._conn.execute(SQL_GET_BLOCK_REF_COUNT, args)
+
+        return next(query_res)[0]
+
+    def get_block_ref_modified(self, vault_id, block_id):
+        
+        args = {
+            'projectid': deuce.context.project_id,
+            'vaultid': vault_id,
+            'blockid': block_id
+        }
+
+        query_res = self._conn.execute(SQL_GET_REF_TIME, args)
 
         return next(query_res)[0]
 
