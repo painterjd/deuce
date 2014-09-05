@@ -110,6 +110,8 @@ class TestBlockUploaded(base.TestBase):
                          'Status code for getting data of a block is '
                          '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, binary=True)
+        self.assertIn('X-Block-Reference-Count', resp.headers)
+        self.assertEqual(resp.headers['X-Block-Reference-Count'], '0')
         self.assertEqual(resp.content, self.block_data,
                          'Block data returned does not match block uploaded')
 
@@ -250,6 +252,58 @@ class TestBlocksAssignedToFile(base.TestBase):
 
     def tearDown(self):
         super(TestBlocksAssignedToFile, self).tearDown()
+        [self.client.delete_file(vaultname=self.vaultname,
+            fileid=file_info.Id) for file_info in self.files]
+        [self.client.delete_block(self.vaultname, block.Id) for block in
+            self.blocks]
+        self.client.delete_vault(self.vaultname)
+
+
+@ddt.ddt
+class TestBlocksReferenceCount(base.TestBase):
+
+    def setUp(self):
+        super(TestBlocksReferenceCount, self).setUp()
+        self.create_empty_vault()
+        self.upload_block()
+        # (not finalized) create two files and assign block
+        for _ in range(2):
+            self.create_new_file()
+            self.assign_all_blocks_to_file()
+        # (finalized) create two files and assign block
+        for _ in range(2):
+            self.create_new_file()
+            self.assign_all_blocks_to_file()
+            self.finalize_file()
+
+    @ddt.data('all', 'delete_finalized', 'delete_non_finalized')
+    def test_get_block_with_multiple_references(self, value):
+        """Get an individual block that has multiple references"""
+
+        expected = '3'
+        if value == 'delete_finalized':
+            # delete 1 reference; a finalized file
+            self.client.delete_file(vaultname=self.vaultname,
+                                    fileid=self.files[2].Id)
+        elif value == 'delete_non_finalized':
+            # delete 1 reference; a non-finalized file
+            self.client.delete_file(vaultname=self.vaultname,
+                                    fileid=self.files[0].Id)
+        elif value == 'all':
+            expected = '4'
+
+        resp = self.client.get_block(self.vaultname, self.blockid)
+        self.assertEqual(resp.status_code, 200,
+                         'Status code for getting data of a block is '
+                         '{0} . Expected 200'.format(resp.status_code))
+        self.assertHeaders(resp.headers, binary=True)
+        self.assertIn('X-Block-Reference-Count', resp.headers)
+        self.assertEqual(resp.headers['X-Block-Reference-Count'], expected)
+        self.assertEqual(resp.content, self.block_data,
+                         'Block data returned does not match block uploaded')
+
+    def tearDown(self):
+        super(TestBlocksReferenceCount, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
             fileid=file_info.Id) for file_info in self.files]
         [self.client.delete_block(self.vaultname, block.Id) for block in
