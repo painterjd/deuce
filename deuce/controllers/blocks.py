@@ -7,7 +7,6 @@ from deuce.model import Vault, Block
 from deuce.util import set_qs
 from six.moves.urllib.parse import urlparse
 from deuce.controllers.validation import *
-from deuce.drivers.metadatadriver import ConstraintError
 import deuce
 
 logger = logging.getLogger(__name__)
@@ -135,31 +134,29 @@ class BlocksController(RestController):
     @expose()
     def delete(self, vault_id, block_id):
         """Unregisters a block_id from a given vault_id in
-        the metadata store. A worker process would run in the
-        background and actually delete blocks when their reference
-        counts are zero
+        the storage and metadata
         """
-
         vault = Vault.get(vault_id)
+
         if not vault:
             logger.error('Vault [{0}] does not exist'.format(vault_id))
             response.status_code = 404
             return
-        block = vault.get_block(block_id)
 
-        if block is None:
-            logger.error('block [{0}] does not exist'.format(block_id))
-            abort(404, headers={"Transaction-ID":
-                deuce.context.transaction.request_id})
         try:
+            resp = vault.delete_block(vault_id, block_id)
 
-            vault.delete_block(vault_id, block_id)
-
-        except ConstraintError as ex:
+        except Exception as ex:
             logger.error(ex)
             response.status_code = 412
 
         else:
-            logger.info('block [{0}] deleted from vault {1}'
-                        .format(block_id, vault_id))
-            response.status_code = 204
+
+            if resp:
+                logger.info('block [{0}] deleted from vault {1}'
+                            .format(block_id, vault_id))
+                response.status_code = 204
+            else:
+                logger.error('block [{0}] does not exist'.format(block_id))
+                abort(404, headers={"Transaction-ID":
+                    deuce.context.transaction.request_id})
