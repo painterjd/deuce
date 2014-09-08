@@ -7,6 +7,7 @@ from deuce.model import Vault, Block
 from deuce.util import set_qs
 from six.moves.urllib.parse import urlparse
 from deuce.controllers.validation import *
+from deuce.drivers.metadatadriver import ConstraintError
 import deuce
 
 logger = logging.getLogger(__name__)
@@ -150,16 +151,20 @@ class BlocksController(RestController):
         try:
             resp = vault.delete_block(vault_id, block_id)
 
-        except Exception as ex:
+        except Exception as ex:  # pragma: no cover
             logger.error(ex)
-            response.status_code = 412
+            response.status_code = 500
 
         else:
 
-            if resp:
+            if resp is None:
+                response.status_code = 412
+
+            elif resp:
                 logger.info('block [{0}] deleted from vault {1}'
                             .format(block_id, vault_id))
                 response.status_code = 204
+
             else:
                 logger.error('block [{0}] does not exist'.format(block_id))
                 abort(404, headers={"Transaction-ID":

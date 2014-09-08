@@ -3,10 +3,13 @@ from pecan import conf, response
 
 from deuce.model.block import Block
 from deuce.model.file import File
-
+from deuce.util import log as logging
 import deuce
 import uuid
 import hashlib
+from deuce.drivers.metadatadriver import ConstraintError
+
+logger = logging.getLogger(__name__)
 
 
 class Vault(object):
@@ -113,10 +116,17 @@ class Vault(object):
             self.id, block_ids)
 
     def delete_block(self, vault_id, block_id):
-        succ = deuce.storage_driver.delete_block(vault_id, block_id)
-        if succ:
+
+        try:
             deuce.metadata_driver.unregister_block(vault_id, block_id)
-        return succ
+        except ConstraintError as ex:
+            logger.error(ex)
+            return None
+        else:
+            succ_storage = deuce.storage_driver.delete_block(vault_id,
+                                                             block_id)
+
+        return succ_storage
 
     def create_file(self):
         file_id = str(uuid.uuid4())
