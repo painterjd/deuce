@@ -9,8 +9,6 @@ import six
 from six.moves.urllib.parse import urlparse, parse_qs
 from unittest import TestCase
 from deuce.tests import FunctionalTest
-from deuce.drivers.metadatadriver import ConstraintError
-# from deuce.tests.test_files_controller
 import json
 
 
