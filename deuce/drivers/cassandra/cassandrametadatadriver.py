@@ -612,6 +612,9 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
             res = self._session.execute(CQL_REGISTER_BLOCK, args)
 
+            # Ensure that we set the reftime even though there are zero references
+            self._inc_block_ref_count(vault_id, block_id, cnt=0)
+
     def unregister_block(self, vault_id, block_id):
 
         self._require_no_block_refs(vault_id, block_id)
