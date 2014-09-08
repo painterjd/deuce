@@ -54,19 +54,19 @@ class Session(object):
                 INSERT or IGNORE into blockreferences
                 (projectid, vaultid, blockid, refcount, reftime)
                 VALUES
-                (:projectid, :vaultid, :blockid, :refcount, strftime('%s', 'now'))
+                (:projectid, :vaultid, :blockid, :refcount,
+                 strftime('%s', 'now'))
             """
 
             insert_args = queryargs.copy()
             insert_args.update({'refcount': 0})
             del insert_args["delta"]
-        
+
             # unixTimeStampOf() and now() are not part of SQLite
-            query = query.replace('unixTimeStampOf(now())', "strftime('%s', 'now')")
+            query = query.replace('unixTimeStampOf(now())',
+                                  "strftime('%s', 'now')")
 
             self.conn.execute(insert_query, insert_args)
-
-
 
         res = self.conn.execute(query, queryargs)
         res = list(res)

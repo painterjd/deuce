@@ -612,7 +612,8 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
             res = self._session.execute(CQL_REGISTER_BLOCK, args)
 
-            # Ensure that we set the reftime even though there are zero references
+            # Ensure that we set the reftime even though there are zero
+            # references
             self._inc_block_ref_count(vault_id, block_id, cnt=0)
 
     def unregister_block(self, vault_id, block_id):
@@ -666,7 +667,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
         self._session.execute(CQL_DEL_BLOCK_REF_COUNT, args)
 
     def get_block_ref_modified(self, vault_id, block_id):
-        
+
         args = dict(
             projectid=deuce.context.project_id,
             vaultid=vault_id,

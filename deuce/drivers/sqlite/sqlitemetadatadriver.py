@@ -666,7 +666,7 @@ class SqliteStorageDriver(MetadataStorageDriver):
         return next(query_res)[0]
 
     def get_block_ref_modified(self, vault_id, block_id):
-        
+
         args = {
             'projectid': deuce.context.project_id,
             'vaultid': vault_id,

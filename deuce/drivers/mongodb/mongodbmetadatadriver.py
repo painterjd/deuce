@@ -540,7 +540,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         return files_cnt + fileblocks_cnt
 
     def get_block_ref_modified(self, vault_id, block_id):
-        
+
         blockdata = self.get_block_data(vault_id, block_id)
         return blockdata['reftime']
 
