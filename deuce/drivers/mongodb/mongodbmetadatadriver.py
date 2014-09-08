@@ -478,11 +478,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             ('fileid', 1),
             ('blockid', 1)])
 
-        # Below causes an issue with line 237, not sure why...
-        # Otherwise, tests pass unchanged
-        # update the block reference time
-        del args['fileid']
-        del args['offset']
+        # Update the reftime
         args['reftime'] = int(datetime.datetime.utcnow().timestamp())
         self._blocks.update(args, args, upsert=False)
 
