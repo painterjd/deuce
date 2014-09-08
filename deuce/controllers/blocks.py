@@ -86,6 +86,9 @@ class BlocksController(RestController):
         ref_cnt = block.get_ref_count()
         response.headers.update({'X-Block-Reference-Count': str(ref_cnt)})
 
+        ref_mod = block.get_ref_modified()
+        response.headers.update({'X-Ref-Modified': str(ref_mod)})
+
         response.body_file = block.get_obj()
         response.content_length = vault.get_block_length(block_id)
         response.status_code = 200
