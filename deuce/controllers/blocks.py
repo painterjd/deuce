@@ -151,16 +151,17 @@ class BlocksController(RestController):
         try:
             resp = vault.delete_block(vault_id, block_id)
 
+        except ConstraintError as ex:
+            logger.error(ex)
+            response.status_code = 412
+
         except Exception as ex:  # pragma: no cover
             logger.error(ex)
             response.status_code = 500
 
         else:
 
-            if resp is None:
-                response.status_code = 412
-
-            elif resp:
+            if resp:
                 logger.info('block [{0}] deleted from vault {1}'
                             .format(block_id, vault_id))
                 response.status_code = 204

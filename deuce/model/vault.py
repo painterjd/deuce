@@ -7,7 +7,7 @@ from deuce.util import log as logging
 import deuce
 import uuid
 import hashlib
-from deuce.drivers.metadatadriver import ConstraintError
+
 
 logger = logging.getLogger(__name__)
 
@@ -117,15 +117,10 @@ class Vault(object):
 
     def delete_block(self, vault_id, block_id):
 
-        try:
-            deuce.metadata_driver.unregister_block(vault_id, block_id)
-        except ConstraintError as ex:
-            logger.error(ex)
-            return None
-        else:
-            succ_storage = deuce.storage_driver.delete_block(vault_id,
-                                                             block_id)
+        deuce.metadata_driver.unregister_block(vault_id, block_id)
 
+        succ_storage = deuce.storage_driver.delete_block(vault_id,
+                                                         block_id)
         return succ_storage
 
     def create_file(self):
