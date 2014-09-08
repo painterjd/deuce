@@ -143,6 +143,13 @@ class SqliteStorageDriverTest(FunctionalTest):
         reftime = 0
 
         self.assertFalse(driver.has_block(vault_id, block_id))
+
+        try:
+            reftime = driver.get_block_ref_modified(vault_id, block_id)
+        except:
+            self.assertTrue(True)
+        self.assertEqual(reftime, 0)
+
         try:
             block_data = driver.get_block_data(vault_id, block_id)
             size = block_data['blocksize']

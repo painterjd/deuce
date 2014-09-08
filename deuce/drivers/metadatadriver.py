@@ -242,6 +242,7 @@ class MetadataStorageDriver(object):
         :param vault_id: The ID of the vault containing the block
         :param block_id: The ID the block to check references on
         """
+        raise NotImplementedError
 
     @abstractmethod
     def get_health(self):
