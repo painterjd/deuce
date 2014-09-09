@@ -134,7 +134,7 @@ class TestBlocksController(FunctionalTest):
             }
             headers.update(self._hdrs)
             data = [os.urandom(x) for x in range(3)]
-            block_list = [self._calc_sha1(d) for d in data]
+            block_list = [self.calc_sha1(d) for d in data]
 
             contents = dict(zip(block_list, data))
 
