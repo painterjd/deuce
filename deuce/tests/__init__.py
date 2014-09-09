@@ -1,15 +1,16 @@
-import os
+from abc import ABCMeta, abstractmethod
 import hashlib
-import uuid
+import os
+import shutil
 from unittest import TestCase
+import uuid
+
 from pecan import set_config
 import pecan
 from pecan.testing import load_test_app
+import six
 
-__all__ = ['FunctionalTest']
-
-import shutil
-
+__all__ = ['FunctionalTest', 'DriverTest']
 
 prod_conf = None
 conf_dict = {}
@@ -141,3 +142,20 @@ class FunctionalTest(TestCase):
         # initialize all hooks with the 'state' object from above
         for hook in prod_conf.get_hooks():
             hook.on_route(state)
+
+
+@six.add_metaclass(ABCMeta)
+class DriverTest(FunctionalTest):
+    """
+    Used for testing Deuce Drivers
+    """
+
+    def setUp(self):
+        super(DriverTest, self).setUp()
+
+    def tearDown(self):
+        super(DriverTest, self).tearDown()
+
+    @abstractmethod
+    def create_driver(self):
+        raise NotImplementedError()

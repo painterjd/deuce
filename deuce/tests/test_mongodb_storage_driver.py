@@ -11,13 +11,5 @@ from deuce.tests.test_sqlite_storage_driver import SqliteStorageDriverTest
 # interface.
 class MongoDbStorageDriverTest(SqliteStorageDriverTest):
 
-    def test_basic_construction(self):
-        driver = MongoDbStorageDriver()
-
-    def test_geneology(self):
-        driver = MongoDbStorageDriver()
-        assert isinstance(driver, MetadataStorageDriver)
-        assert isinstance(driver, object)
-
     def create_driver(self):
         return MongoDbStorageDriver()

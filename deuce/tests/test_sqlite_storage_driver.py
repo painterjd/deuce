@@ -1,5 +1,5 @@
 import os
-from deuce.tests import FunctionalTest
+from deuce.tests import DriverTest
 from deuce.drivers.metadatadriver import MetadataStorageDriver, GapError,\
     OverlapError, ConstraintError
 from deuce.drivers.sqlite import SqliteStorageDriver
@@ -8,16 +8,16 @@ import random
 from mock import MagicMock
 
 
-class SqliteStorageDriverTest(FunctionalTest):
+class SqliteStorageDriverTest(DriverTest):
 
     def create_driver(self):
         return SqliteStorageDriver()
 
     def test_basic_construction(self):
-        driver = SqliteStorageDriver()
+        driver = self.create_driver()
 
     def test_geneology(self):
-        driver = SqliteStorageDriver()
+        driver = self.create_driver()
         assert isinstance(driver, MetadataStorageDriver)
         assert isinstance(driver, object)
 

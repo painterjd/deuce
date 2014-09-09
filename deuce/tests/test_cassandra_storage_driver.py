@@ -11,13 +11,5 @@ from deuce.tests.test_sqlite_storage_driver import SqliteStorageDriverTest
 # interface.
 class CassandraStorageDriverTest(SqliteStorageDriverTest):
 
-    def test_basic_construction(self):
-        driver = CassandraStorageDriver()
-
-    def test_geneology(self):
-        driver = CassandraStorageDriver()
-        assert isinstance(driver, MetadataStorageDriver)
-        assert isinstance(driver, object)
-
     def create_driver(self):
         return CassandraStorageDriver()
