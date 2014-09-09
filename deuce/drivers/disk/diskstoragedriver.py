@@ -116,6 +116,9 @@ class DiskStorageDriver(BlockStorageDriver):
 
         if os.path.exists(path):
             os.remove(path)
+            return True
+        else:
+            return False
 
     def get_block_obj(self, vault_id, block_id):
         """Returns a file-like object capable or streaming the

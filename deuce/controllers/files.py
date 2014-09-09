@@ -20,7 +20,7 @@ class FilesController(RestController):
     blocks = FileBlocksController()
 
     @validate(vault_id=VaultGetRule, file_id=FileGetRule)
-    @expose('json')
+    @expose()
     def delete(self, vault_id, file_id):
 
         vault = Vault.get(vault_id)
@@ -143,8 +143,7 @@ class FilesController(RestController):
         if not request.body:
             try:
                 # Fileid with an empty body will finalize the file.
-                filesize = request.headers['Filesize'] if 'Filesize' \
-                    in request.headers.keys() else 0
+                filesize = int(request.headers['x-file-length'])
                 res = deuce.metadata_driver.finalize_file(vault_id, file_id,
                     filesize)
                 return res

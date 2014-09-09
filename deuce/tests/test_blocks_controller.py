@@ -9,7 +9,6 @@ import six
 from six.moves.urllib.parse import urlparse, parse_qs
 from unittest import TestCase
 from deuce.tests import FunctionalTest
-
 import json
 
 
@@ -25,6 +24,7 @@ class TestBlocksController(FunctionalTest):
         self._vault_path = '/v1.0/vaults/{0}'.format(vault_name)
         self._blocks_path = '{0}/blocks'.format(self._vault_path)
 
+        self._files_path = self._vault_path + '/files'
         self._hdrs = {"x-project-id": self.create_project_id()}
 
         response = self.app.put(self._vault_path,
@@ -136,7 +136,7 @@ class TestBlocksController(FunctionalTest):
                                  params='non-msgpack', expect_errors=True)
         self.assertEqual(response.status_int, 400)
 
-    def test_post_invalid_enpoint(self):
+    def test_post_invalid_endpoint(self):
             path = self._get_block_path(self._blocks_path)
 
             headers = {
@@ -262,10 +262,71 @@ class TestBlocksController(FunctionalTest):
 
             self.assertEqual(response.status_int, 404)
 
-    def helper_create_blocks(self, num_blocks, async=False):
+    def test_delete_blocks_validation(self):
+        # delete non existent block
+        response = self.app.delete(self._get_block_path(
+                                   self._create_block_id()),
+                                   headers=self._hdrs,
+                                   expect_errors=True)
+        self.assertEqual(response.status_int, 404)
+
+        # delete block from non existent vault
+        response = self.app.delete('/v1.0/vaults/blah/blocks/' +
+                                   self._create_block_id(),
+                                   headers=self._hdrs,
+                                   expect_errors=True)
+        self.assertEqual(response.status_int, 404)
+
+    def test_delete_blocks_no_references(self):
+        # Just create and delete blocks
+        blocklist = self.helper_create_blocks(10)
+        for block in blocklist:
+            response = self.app.delete(self._get_block_path(block),
+                                       headers=self._hdrs)
+            self.assertEqual(response.status_int, 204)
+
+    @ddt.data(True, False)
+    def test_delete_blocks_with_references(self, finalize_status):
+
+        # Create two files each consisting of 3 blocks of size 100 bytes
+
+        responses = [self.app.post(self._files_path, headers=self._hdrs)
+                     for _ in range(2)]
+        file_ids = [urlparse(response.headers["Location"]).path
+                    for response in responses]
+        block_list = self.helper_create_blocks(3, singleblocksize=True)
+
+        offsets = [x * 100 for x in range(3)]
+        meta_info = [{'id': block, 'size': 100, 'offset': offset}
+                     for block, offset in zip(block_list, offsets)]
+        data = {"blocks": meta_info}
+
+        hdrs = {'content-type': 'application/x-deuce-block-list'}
+        hdrs.update(self._hdrs)
+
+        for file_id in file_ids:
+            # assign blocks to file
+            response = self.app.post(file_id,
+                params=json.dumps(data), headers=hdrs)
+            if finalize_status:
+                # finalize file
+                filelength = {'x-file-length': '300'}
+                hdrs.update(filelength)
+                response = self.app.post(file_id, headers=hdrs)
+
+        for block in block_list:
+            response = self.app.delete(self._get_block_path(block),
+                                headers=self._hdrs, expect_errors=True)
+            self.assertEqual(response.status_int, 412)
+
+    def helper_create_blocks(self, num_blocks, async=False,
+                             singleblocksize=False, blocksize=100):
         min_size = 1
         max_size = 2000
-        block_sizes = [randrange(min_size, max_size) for x in
+        if singleblocksize:
+            block_sizes = [blocksize for _ in range(num_blocks)]
+        else:
+            block_sizes = [randrange(min_size, max_size) for x in
                        range(0, num_blocks)]
 
         data = [os.urandom(x) for x in block_sizes]
@@ -354,7 +415,8 @@ class TestBlocksController(FunctionalTest):
         for sha1 in block_list:
             path = self._get_block_path(sha1)
             response = self.app.get(path, headers=self._hdrs)
-            assert response.status_int == 200
+            self.assertEqual(response.status_int, 200)
+            self.assertIn('x-block-reference-count', response.headers)
 
             bindata = response.body
 

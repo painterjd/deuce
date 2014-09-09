@@ -1,6 +1,16 @@
 # Server Specific Configurations
+import os
 from configobj import ConfigObj
-config = ConfigObj('config.ini', interpolation=False)
+
+# NOTE(TheSriram): Please reset path_to_ini to a
+# fully qualified path pointing to config.ini
+
+path_to_ini = '/random_path/config.ini'
+if not os.path.exists(os.path.abspath(path_to_ini)) or \
+        'config.ini' not in path_to_ini:
+    raise OSError("Please set absolute path to correct ini file")
+config = ConfigObj(os.path.abspath(path_to_ini), interpolation=False)
+
 server = {
     'port': config['server']['port'],
     'host': config['server']['host']
@@ -28,7 +38,6 @@ app = {
 }
 
 log_directory = config['logging']['log_directory']
-import os
 if not os.path.exists(log_directory):  # pragma: no cover
     os.makedirs(log_directory)
 
@@ -103,7 +112,7 @@ block_storage_driver = {
 
         'testing': {
             'is_mocking': bool(config['block_storage_driver']['swift']
-                              ['testing']['is_mocking']),
+                               ['testing']['is_mocking']),
             'username': config['block_storage_driver']['swift']['testing']
                               ['username'],
             'password': config['block_storage_driver']['swift']['testing']

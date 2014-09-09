@@ -8,7 +8,7 @@ except ImportError:
     use_setuptools()
     from setuptools import setup, find_packages
 else:
-    REQUIRES = ['six', 'pecan', 'setuptools >= 1.1.6',
+    REQUIRES = ['configobj', 'six', 'pecan', 'setuptools >= 1.1.6',
                 'cassandra-driver', 'pymongo', 'msgpack-python',
                 'python-swiftclient', 'asyncio', 'aiohttp']
     setup(

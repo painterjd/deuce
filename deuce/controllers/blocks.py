@@ -7,7 +7,7 @@ from deuce.model import Vault, Block
 from deuce.util import set_qs
 from six.moves.urllib.parse import urlparse
 from deuce.controllers.validation import *
-
+from deuce.drivers.metadatadriver import ConstraintError
 import deuce
 
 logger = logging.getLogger(__name__)
@@ -82,6 +82,10 @@ class BlocksController(RestController):
             logger.error('block [{0}] does not exist'.format(block_id))
             abort(404, headers={"Transaction-ID":
                 deuce.context.transaction.request_id})
+
+        ref_cnt = block.get_ref_count()
+        response.headers.update({'X-Block-Reference-Count': str(ref_cnt)})
+
         response.body_file = block.get_obj()
         response.content_length = vault.get_block_length(block_id)
         response.status_code = 200
@@ -130,3 +134,39 @@ class BlocksController(RestController):
             abort(400, headers={"Transaction-ID":
                   deuce.context.transaction.request_id},
                   comment="Request Body not well formed")
+
+    @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
+    @expose()
+    def delete(self, vault_id, block_id):
+        """Unregisters a block_id from a given vault_id in
+        the storage and metadata
+        """
+        vault = Vault.get(vault_id)
+
+        if not vault:
+            logger.error('Vault [{0}] does not exist'.format(vault_id))
+            response.status_code = 404
+            return
+
+        try:
+            resp = vault.delete_block(vault_id, block_id)
+
+        except ConstraintError as ex:
+            logger.error(ex)
+            response.status_code = 412
+
+        except Exception as ex:  # pragma: no cover
+            logger.error(ex)
+            response.status_code = 500
+
+        else:
+
+            if resp:
+                logger.info('block [{0}] deleted from vault {1}'
+                            .format(block_id, vault_id))
+                response.status_code = 204
+
+            else:
+                logger.error('block [{0}] does not exist'.format(block_id))
+                abort(404, headers={"Transaction-ID":
+                    deuce.context.transaction.request_id})
