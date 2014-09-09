@@ -1,5 +1,5 @@
 import os
-from deuce.tests import DriverTest, DummyContextObject
+from deuce.tests import DriverTest
 from deuce.drivers.blockstoragedriver import BlockStorageDriver
 from deuce.drivers.disk import DiskStorageDriver
 from deuce.tests.util import MockFile
