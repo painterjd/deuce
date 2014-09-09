@@ -1,6 +1,6 @@
 from unittest import TestCase
 from webtest import TestApp
-from deuce.tests import FunctionalTest
+from deuce.tests import HookTest
 
 import deuce
 from deuce.hooks import OpenStackSwiftHook
@@ -17,7 +17,10 @@ class DummyClassObject(object):
     pass
 
 
-class TestOpenStackSwiftHook(FunctionalTest):
+class TestOpenStackSwiftHook(HookTest):
+
+    def create_hook(self):
+        return OpenStackSwiftHook()
 
     def setUp(self):
         super(TestOpenStackSwiftHook, self).setUp()
@@ -36,54 +39,26 @@ class TestOpenStackSwiftHook(FunctionalTest):
         deuce.context.transaction.request_id = 'openstack-hook-test'
         deuce.context.openstack = DummyClassObject()
 
-    def create_service_catalog(self, objectStoreType='object-store',
-                               endpoints=True, region='test',
-                               url='url-data'):
-        catalog = {
-            'access': {
-                'serviceCatalog': []
-            }
-        }
-
-        if len(objectStoreType):
-            service = {
-                'name': 'test-service',
-                'type': objectStoreType,
-                'endpoints': [
-                ]
-            }
-            if endpoints:
-                endpoint = {
-                    'internalURL': url,
-                    'publicURL': url,
-                    'tenantId': '9876543210',
-                    'region': region,
-                }
-                service['endpoints'].append(endpoint)
-            catalog['access']['serviceCatalog'].append(service)
-
-        return catalog
-
     def tearDown(self):
         super(TestOpenStackSwiftHook, self).tearDown()
 
     def test_hook_health(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.path = '/v1.0/health'
         hook.on_route(self.state)
 
     def test_hook_ping(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.path = '/v1.0/ping'
         hook.on_route(self.state)
 
     def test_is_not_swift_driver(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         with mock.patch('deuce.storage_driver', object) as swift_driver:
             hook.on_route(self.state)
 
     def test_is_swift_driver(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
 
@@ -95,7 +70,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                 hook.on_route(self.state)
 
     def test_missing_service_catalog(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
             with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
@@ -103,7 +78,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                 hook.on_route(self.state)
 
     def test_has_service_catalog(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
@@ -128,7 +103,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                                     'test_url')
 
     def test_failed_base64_decode_service_catalog(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
@@ -141,7 +116,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                     hook.on_route(self.state)
 
     def test_failed_json_decode_service_catalog(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
@@ -154,7 +129,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                     hook.on_route(self.state)
 
     def test_json_decode_service_catalog(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
@@ -177,7 +152,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                                     'test_url')
 
     def test_find_storage_url_invalid_service_catalog(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
@@ -190,7 +165,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                     hook.on_route(self.state)
 
     def test_find_storage_url_invalid_service_catalog_with_access(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
@@ -204,7 +179,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                     hook.on_route(self.state)
 
     def test_find_storage_url_no_object_store(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
@@ -218,7 +193,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                     hook.on_route(self.state)
 
     def test_find_storage_url_no_object_store(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
@@ -232,7 +207,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                     hook.on_route(self.state)
 
     def test_find_storage_url_no_endpoints(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
@@ -246,7 +221,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                     hook.on_route(self.state)
 
     def test_find_storage_url_no_region(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
@@ -260,7 +235,7 @@ class TestOpenStackSwiftHook(FunctionalTest):
                     hook.on_route(self.state)
 
     def test_find_storage_url_final(self):
-        hook = OpenStackSwiftHook()
+        hook = self.create_hook()
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:

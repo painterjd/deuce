@@ -1,6 +1,6 @@
 from unittest import TestCase
 from webtest import TestApp
-from deuce.tests import FunctionalTest
+from deuce.tests import HookTest
 
 import deuce
 from deuce.hooks import OpenStackHook
@@ -12,7 +12,10 @@ class DummyClassObject(object):
     pass
 
 
-class TestOpenStackHook(FunctionalTest):
+class TestOpenStackHook(HookTest):
+
+    def create_hook(self):
+        return OpenStackHook()
 
     def setUp(self):
         super(TestOpenStackHook, self).setUp()
@@ -26,8 +29,18 @@ class TestOpenStackHook(FunctionalTest):
         deuce.context.transaction = DummyClassObject()
         deuce.context.transaction.request_id = 'openstack-hook-test'
 
+    def test_hook_health(self):
+        hook = self.create_hook()
+        self.state.request.path = '/v1.0/health'
+        hook.on_route(self.state)
+
+    def test_hook_ping(self):
+        hook = self.create_hook()
+        self.state.request.path = '/v1.0/ping'
+        hook.on_route(self.state)
+
     def test_token_present(self):
-        hook = OpenStackHook()
+        hook = self.create_hook()
         self.state.request.headers['x-auth-token'] = 'good'
 
         self.assertFalse(hasattr(deuce.context, 'openstack'))
@@ -37,17 +50,7 @@ class TestOpenStackHook(FunctionalTest):
         self.assertTrue(hasattr(deuce.context, 'openstack'))
 
     def test_hook_not_present(self):
-        hook = OpenStackHook()
+        hook = self.create_hook()
         with self.assertRaises(webob.exc.HTTPUnauthorized) \
                 as expected_exception:
             hook.on_route(self.state)
-
-    def test_hook_health(self):
-        hook = OpenStackHook()
-        self.state.request.path = '/v1.0/health'
-        hook.on_route(self.state)
-
-    def test_hook_ping(self):
-        hook = OpenStackHook()
-        self.state.request.path = '/v1.0/ping'
-        hook.on_route(self.state)

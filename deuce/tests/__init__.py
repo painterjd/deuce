@@ -223,3 +223,48 @@ class ControllerTest(FunctionalTest):
             response = self.app.put(path, headers=headers,
                 params=data)
             cnt += 1
+
+
+@six.add_metaclass(ABCMeta)
+class HookTest(FunctionalTest):
+    """
+    Used for testing Deuce Controllers
+    """
+
+    def setUp(self):
+        super(HookTest, self).setUp()
+
+    def tearDown(self):
+        super(HookTest, self).tearDown()
+
+    @abstractmethod
+    def create_hook(self):
+        raise NotImplementedError()
+
+    def create_service_catalog(self, objectStoreType='object-store',
+                               endpoints=True, region='test',
+                               url='url-data'):
+        catalog = {
+            'access': {
+                'serviceCatalog': []
+            }
+        }
+
+        if len(objectStoreType):
+            service = {
+                'name': 'test-service',
+                'type': objectStoreType,
+                'endpoints': [
+                ]
+            }
+            if endpoints:
+                endpoint = {
+                    'internalURL': url,
+                    'publicURL': url,
+                    'tenantId': '9876543210',
+                    'region': region,
+                }
+                service['endpoints'].append(endpoint)
+            catalog['access']['serviceCatalog'].append(service)
+
+        return catalog
