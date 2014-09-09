@@ -133,6 +133,7 @@ class FunctionalTest(TestCase):
         sha1.update(data)
         return sha1.hexdigest()
 
+
 @six.add_metaclass(ABCMeta)
 class DriverTest(FunctionalTest):
     """

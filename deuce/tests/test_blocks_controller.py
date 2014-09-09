@@ -254,14 +254,14 @@ class TestBlocksController(FunctionalTest):
     def test_delete_blocks_validation(self):
         # delete non existent block
         response = self.app.delete(self._get_block_path(
-                                   self._create_block_id()),
+                                   self.create_block_id()),
                                    headers=self._hdrs,
                                    expect_errors=True)
         self.assertEqual(response.status_int, 404)
 
         # delete block from non existent vault
         response = self.app.delete('/v1.0/vaults/blah/blocks/' +
-                                   self._create_block_id(),
+                                   self.create_block_id(),
                                    headers=self._hdrs,
                                    expect_errors=True)
         self.assertEqual(response.status_int, 404)
