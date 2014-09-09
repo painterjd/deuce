@@ -4,6 +4,13 @@ from deuce.hooks import HealthHook
 from pecan.core import abort
 
 
+class OpenStackObject(object):
+    """
+    Dummy object for the Deuce Context structure
+    """
+    pass
+
+
 class OpenStackHook(HealthHook):
     """Every request that hits Deuce must have a header specifying the
     auth_token for the user the request is for.
@@ -14,9 +21,6 @@ class OpenStackHook(HealthHook):
     def on_route(self, state):
         if super(OpenStackHook, self).health(state):
             return
-
-        class OpenStackObject(object):
-            pass
 
         deuce.context.openstack = OpenStackObject()
 

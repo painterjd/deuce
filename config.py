@@ -9,10 +9,15 @@ def get_hooks():
     from deuce.hooks import DeuceContextHook
     from deuce.hooks import ProjectIDHook
     from deuce.hooks import TransactionIDHook
-    from deuce.hooks import OpenStackHook
-    from deuce.hooks import OpenstackSwiftHook
-    return [DeuceContextHook(), TransactionIDHook(), ProjectIDHook(),
-            OpenStackHook(), OpenstackSwiftHook()]
+
+    # Default: SQLite + Disk Driver
+    return [DeuceContextHook(), TransactionIDHook(), ProjectIDHook()]
+
+    # With OpenStack Swift Storage Driver:
+    # from deuce.hooks import OpenStackHook
+    # from deuce.hooks import OpenStackSwiftHook
+    # return [DeuceContextHook(), TransactionIDHook(), ProjectIDHook(),
+    #        OpenStackHook(), OpenStackSwiftHook()]
 
 # Pecan Application Configurations
 app = {
@@ -25,6 +30,8 @@ app = {
         '__force_dict__': True
     }
 }
+
+datacenter = 'my datacenter'
 
 log_directory = 'log'
 import os
