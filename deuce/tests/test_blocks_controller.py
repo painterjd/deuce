@@ -1,19 +1,21 @@
-from pecan import conf
-import os
-import msgpack
 import ddt
-import uuid
 import hashlib
+import json
+import msgpack
+import os
 from random import randrange
+import uuid
+
+from pecan import conf
 import six
 from six.moves.urllib.parse import urlparse, parse_qs
 from unittest import TestCase
-from deuce.tests import FunctionalTest
-import json
+
+from deuce.tests import ControllerTest
 
 
 @ddt.ddt
-class TestBlocksController(FunctionalTest):
+class TestBlocksController(ControllerTest):
 
     def setUp(self):
         super(TestBlocksController, self).setUp()
@@ -43,11 +45,8 @@ class TestBlocksController(FunctionalTest):
             "X-Password": "failing_auth_hook"},
             expect_errors=True)
 
-    def _get_block_path(self, blockid):
-        return '{0}/{1}'.format(self._blocks_path, blockid)
-
     def test_get_all_with_trailing_slash(self):
-        path = self._get_block_path('')
+        path = self.get_block_path('')
 
         response = self.app.get(path, headers=self._hdrs,
                                 expect_errors=True)
@@ -62,7 +61,7 @@ class TestBlocksController(FunctionalTest):
         self.assertEqual(response.status_int, 404)
 
     def test_put_invalid_block_id(self):
-        path = self._get_block_path('invalid_block_id')
+        path = self.get_block_path('invalid_block_id')
 
         response = self.app.put(path, headers=self._hdrs,
                                 expect_errors=True)
@@ -70,7 +69,7 @@ class TestBlocksController(FunctionalTest):
         self.assertEqual(response.status_int, 400)
 
         # Put a block with the invalid blockid/hash.
-        path = self._get_block_path('1234567890123456789012345678901234567890')
+        path = self.get_block_path('1234567890123456789012345678901234567890')
         headers = {
             "Content-Type": "application/octet-stream",
             "Content-Length": str(10),
@@ -82,7 +81,7 @@ class TestBlocksController(FunctionalTest):
         self.assertEqual(response.status_int, 412)
 
     def test_post_invalid_block_id(self):
-        path = self._get_block_path(self._blocks_path)
+        path = self.get_block_path(self._blocks_path)
 
         response = self.app.post(path, headers=self._hdrs,
                                  expect_errors=True)
@@ -104,7 +103,7 @@ class TestBlocksController(FunctionalTest):
         self.assertEqual(response.status_int, 412)
 
     def test_post_invalid_request_body(self):
-        path = self._get_block_path(self._blocks_path)
+        path = self.get_block_path(self._blocks_path)
 
         # Post several blocks with invalid request body
         headers = {
@@ -126,7 +125,7 @@ class TestBlocksController(FunctionalTest):
         self.assertEqual(response.status_int, 400)
 
     def test_post_invalid_endpoint(self):
-            path = self._get_block_path(self._blocks_path)
+            path = self.get_block_path(self._blocks_path)
 
             headers = {
                 "Content-Type": "application/msgpack",
@@ -244,7 +243,7 @@ class TestBlocksController(FunctionalTest):
         bad_block_ids = [self.create_block_id() for _ in range(0, 5)]
 
         for bad_id in bad_block_ids:
-            path = self._get_block_path(bad_id)
+            path = self.get_block_path(bad_id)
 
             response = self.app.get(path, headers=self._hdrs,
                                     expect_errors=True)
@@ -253,7 +252,7 @@ class TestBlocksController(FunctionalTest):
 
     def test_delete_blocks_validation(self):
         # delete non existent block
-        response = self.app.delete(self._get_block_path(
+        response = self.app.delete(self.get_block_path(
                                    self.create_block_id()),
                                    headers=self._hdrs,
                                    expect_errors=True)
@@ -270,7 +269,7 @@ class TestBlocksController(FunctionalTest):
         # Just create and delete blocks
         blocklist = self.helper_create_blocks(10)
         for block in blocklist:
-            response = self.app.delete(self._get_block_path(block),
+            response = self.app.delete(self.get_block_path(block),
                                        headers=self._hdrs)
             self.assertEqual(response.status_int, 204)
 
@@ -304,7 +303,7 @@ class TestBlocksController(FunctionalTest):
                 response = self.app.post(file_id, headers=hdrs)
 
         for block in block_list:
-            response = self.app.delete(self._get_block_path(block),
+            response = self.app.delete(self.get_block_path(block),
                                 headers=self._hdrs, expect_errors=True)
             self.assertEqual(response.status_int, 412)
 
@@ -336,7 +335,7 @@ class TestBlocksController(FunctionalTest):
             # Put each one of the generated blocks on the
             # size
             for size, data, sha1 in block_data:
-                path = self._get_block_path(sha1)
+                path = self.get_block_path(sha1)
 
                 # NOTE: Very important to set the content-type
                 # header. Otherwise pecan tries to do a UTF-8 test.
@@ -402,7 +401,7 @@ class TestBlocksController(FunctionalTest):
         # Now try to fetch each block, and compare against
         # the original block data
         for sha1 in block_list:
-            path = self._get_block_path(sha1)
+            path = self.get_block_path(sha1)
             response = self.app.get(path, headers=self._hdrs)
             self.assertEqual(response.status_int, 200)
             self.assertIn('x-block-reference-count', response.headers)

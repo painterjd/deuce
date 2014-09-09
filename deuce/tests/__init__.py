@@ -9,6 +9,7 @@ from pecan import set_config
 import pecan
 from pecan.testing import load_test_app
 import six
+from six.moves.urllib.parse import urlparse, parse_qs
 
 __all__ = ['FunctionalTest', 'DriverTest']
 
@@ -149,3 +150,76 @@ class DriverTest(FunctionalTest):
     @abstractmethod
     def create_driver(self):
         raise NotImplementedError()
+
+
+@six.add_metaclass(ABCMeta)
+class ControllerTest(FunctionalTest):
+    """
+    Used for testing Deuce Controllers
+    """
+
+    def setUp(self):
+        super(ControllerTest, self).setUp()
+
+    def tearDown(self):
+        super(ControllerTest, self).tearDown()
+
+    def get_block_path(self, blockid):
+        return '{0}/{1}'.format(self._blocks_path, blockid)
+
+    def helper_create_vault(self, vault_name, hdrs):
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
+        response = self.app.put(vault_path, headers=hdrs)
+
+    def helper_delete_vault(self, vault_name, hdrs):
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
+        response = self.app.delete(vault_path, headers=hdrs)
+
+    def _get_block_path(self, blockid):
+        return '{0}/{1}'.format(self._blocks_path, blockid)
+
+    def helper_create_files(self, num):
+        params = {}
+        hdrs = self._hdrs.copy()
+        hdrs['x-file-length'] = '0'
+        for cnt in range(0, num):
+            response = self.app.post(self._files_path, headers=self._hdrs)
+            file_id = response.headers["Location"]
+            response = self.app.post(file_id,
+                                     params=params, headers=hdrs)
+            file_id = urlparse(file_id).path.split('/')[-1]
+            self.file_list.append(file_id)
+        return num
+
+    def helper_create_blocks(self, num_blocks):
+
+        block_sizes = [100 for x in
+            range(0, num_blocks)]
+
+        data = [os.urandom(x) for x in block_sizes]
+        block_list = [self.calc_sha1(d) for d in data]
+
+        block_data = zip(block_sizes, data, block_list)
+
+        return block_list, block_data
+
+    def helper_store_blocks(self, block_data):
+
+        # Put each one of the generated blocks on the
+        # size
+        cnt = 0
+        for size, data, sha1 in block_data:
+            path = self._get_block_path(sha1)
+
+            # NOTE: Very important to set the content-type
+            # header. Otherwise pecan tries to do a UTF-8 test.
+            headers = {
+                "Content-Type": "application/octet-stream",
+                "Content-Length": str(size),
+            }
+
+            headers.update(self._hdrs)
+
+            response = self.app.put(path, headers=headers,
+                params=data)
+            cnt += 1
