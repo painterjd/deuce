@@ -13,6 +13,7 @@ import random
 import re
 import sha
 import string
+import time
 import urlparse
 
 Block = namedtuple('Block', 'Id Data')
@@ -104,7 +105,7 @@ class TestBase(fixtures.BaseTestFixture):
         return testMethodName == name
 
     def assertHeaders(self, headers, json=False, binary=False,
-                      contentlength=None):
+                      lastmodified=False, contentlength=None):
         """Basic http header validation"""
 
         self.assertIsNotNone(headers['transaction-id'])
@@ -116,6 +117,14 @@ class TestBase(fixtures.BaseTestFixture):
             content_type = headers['content-type'].split(';')[0]
             self.assertEqual(content_type,
                              'application/octet-stream')
+        if lastmodified:
+            self.assertIn('X-Ref-Modified', headers)
+            try:
+                time.ctime(int(headers['X-Ref-Modified']))
+            except:
+                self.fail('Unable to process X-Ref-Modified {0}'.format(
+                    headers['X-Ref-Modified']))
+
         if contentlength is not None:
             self.assertEqual(int(headers['content-length']), contentlength)
 
