@@ -3,10 +3,13 @@ from pecan import conf, response
 
 from deuce.model.block import Block
 from deuce.model.file import File
-
+from deuce.util import log as logging
 import deuce
 import uuid
 import hashlib
+
+
+logger = logging.getLogger(__name__)
 
 
 class Vault(object):
@@ -111,6 +114,14 @@ class Vault(object):
     def get_blocks_generator(self, block_ids):
         return deuce.storage_driver.create_blocks_generator(
             self.id, block_ids)
+
+    def delete_block(self, vault_id, block_id):
+
+        deuce.metadata_driver.unregister_block(vault_id, block_id)
+
+        succ_storage = deuce.storage_driver.delete_block(vault_id,
+                                                         block_id)
+        return succ_storage
 
     def create_file(self):
         file_id = str(uuid.uuid4())
