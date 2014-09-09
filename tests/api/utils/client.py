@@ -202,17 +202,18 @@ class BaseDeuceClient(client.AutoMarshallingHTTPClient):
         resp = self.request('POST', url, data=blocklist_json)
         return resp
 
-    def finalize_file(self, filesize=None, vaultname=None, fileid=None,
+    def finalize_file(self, filesize=0, vaultname=None, fileid=None,
                       alternate_url=None):
         """
         Finalizes a file
         """
 
         url = self._file_url(vaultname, fileid, alternate_url)
-        parameters = {}
-        if filesize is not None:
-            parameters['Filesize'] = filesize
-        resp = self.request('POST', url, params=parameters)
+        new_header = {}
+        # skip file length if filesize is negative. Negative testing
+        if filesize > -1:
+            new_header['X-File-Length'] = filesize
+        resp = self.request('POST', url, headers=new_header)
         return resp
 
     def list_of_blocks_in_file(self, vaultname=None, fileid=None, marker=None,

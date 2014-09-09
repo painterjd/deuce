@@ -103,7 +103,8 @@ class TestBase(fixtures.BaseTestFixture):
             return False
         return testMethodName == name
 
-    def assertHeaders(self, headers, json=False, binary=False):
+    def assertHeaders(self, headers, json=False, binary=False,
+                      contentlength=None):
         """Basic http header validation"""
 
         self.assertIsNotNone(headers['transaction-id'])
@@ -115,10 +116,15 @@ class TestBase(fixtures.BaseTestFixture):
             content_type = headers['content-type'].split(';')[0]
             self.assertEqual(content_type,
                              'application/octet-stream')
+        if contentlength is not None:
+            self.assertEqual(int(headers['content-length']), contentlength)
 
     def assertUrl(self, url, base=False, vaults=False, vaultspath=True,
                   blocks=False, files=False, filepath=False, fileblock=False,
                   nextlist=False):
+        """Check that the url provided has information according to the flags
+        passed
+        """
 
         msg = 'url: {0}'.format(url)
         u = urlparse.urlparse(url)
@@ -158,6 +164,20 @@ class TestBase(fixtures.BaseTestFixture):
             query = urlparse.parse_qs(u.query)
             self.assertIn('marker', query, msg)
             self.assertIn('limit', query, msg)
+
+    def assert_404_response(self, resp):
+        """Basic validation of a 404 response"""
+
+        self.assertEqual(resp.status_code, 404,
+                         'Status code returned: {0} . '
+                         'Expected 404'.format(resp.status_code))
+        self.assertHeaders(resp.headers, json=True)
+        resp_body = resp.json()
+        self.assertIn('message', resp_body)
+        self.assertEqual(resp_body['message'],
+                         'The resource could not be found.')
+        self.assertIn('status', resp_body)
+        self.assertEqual(resp_body['status'], 404)
 
     def _create_empty_vault(self, vaultname=None, size=50):
         """
@@ -249,11 +269,8 @@ class TestBase(fixtures.BaseTestFixture):
         Test Setup Helper: Creates a file
         """
 
-        resp = self.client.create_file(self.vaultname)
-        self.fileurl = resp.headers['location']
-        self.fileid = self.fileurl.split('/')[-1]
-        self.files.append(File(Id=self.fileid, Url=self.fileurl))
-        return 201 == resp.status_code
+        self.resp = self.client.create_file(self.vaultname)
+        return 201 == self.resp.status_code
 
     def create_new_file(self):
         """
@@ -264,6 +281,10 @@ class TestBase(fixtures.BaseTestFixture):
 
         if not self._create_new_file():
             raise Exception('Failed to create a file')
+        self.fileurl = self.resp.headers['location']
+        self.fileid = self.fileurl.split('/')[-1]
+        self.files.append(File(Id=self.fileid, Url=self.fileurl))
+        self.filesize = 0
 
     def assign_all_blocks_to_file(self, offset_divisor=None):
         """
@@ -274,6 +295,7 @@ class TestBase(fixtures.BaseTestFixture):
 
         if not self._assign_blocks_to_file(offset_divisor=offset_divisor):
             raise Exception('Failed to assign blocks to file')
+        self.filesize += self.blocks_size
 
     def _assign_blocks_to_file(self, offset=0, blocks=[],
                               offset_divisor=None, file_url=None):
@@ -282,6 +304,7 @@ class TestBase(fixtures.BaseTestFixture):
         """
 
         block_list = list()
+        self.blocks_size = 0
         if len(blocks) == 0:
             blocks = range(len(self.blocks))
         if not file_url:
@@ -295,6 +318,7 @@ class TestBase(fixtures.BaseTestFixture):
                 offset += len(block_info.Data) / offset_divisor
             else:
                 offset += len(block_info.Data)
+            self.blocks_size += len(block_info.Data)
 
         block_dict = {'blocks': block_list}
         resp = self.client.assign_to_file(json.dumps(block_dict),
@@ -312,6 +336,7 @@ class TestBase(fixtures.BaseTestFixture):
         if not self._assign_blocks_to_file(offset, blocks, offset_divisor,
                                            file_url):
             raise Exception('Failed to assign blocks to file')
+        self.filesize += self.blocks_size
 
     def _finalize_file(self, file_url=None):
         """
@@ -320,7 +345,8 @@ class TestBase(fixtures.BaseTestFixture):
 
         if not file_url:
             file_url = self.fileurl
-        resp = self.client.finalize_file(alternate_url=file_url)
+        resp = self.client.finalize_file(filesize=self.filesize,
+                                         alternate_url=file_url)
         return 200 == resp.status_code
 
     def finalize_file(self, file_url=None):

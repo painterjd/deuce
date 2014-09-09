@@ -28,10 +28,14 @@ class TestNoBlocksUploaded(base.TestBase):
         """Get a block that has not been uploaded"""
 
         resp = self.client.get_block(self.vaultname, self.id_generator(50))
-        self.assertEqual(resp.status_code, 404,
-                         'Status code returned: {0} . '
-                         'Expected 404'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assert_404_response(resp)
+
+    def test_delete_missing_block(self):
+        """Delete one missing block"""
+
+        self.generate_block_data()
+        resp = self.client.delete_block(self.vaultname, self.blockid)
+        self.assert_404_response(resp)
 
     def tearDown(self):
         super(TestNoBlocksUploaded, self).tearDown()
@@ -55,7 +59,7 @@ class TestUploadBlocks(base.TestBase):
         self.assertEqual(resp.status_code, 201,
                          'Status code for uploading a block is '
                          '{0} . Expected 201'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -72,7 +76,7 @@ class TestUploadBlocks(base.TestBase):
         self.assertEqual(resp.status_code, 201,
                          'Status code for uploading multiple blocks is '
                          '{0} . Expected 201'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -109,7 +113,8 @@ class TestBlockUploaded(base.TestBase):
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting data of a block is '
                          '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, binary=True)
+        self.assertHeaders(resp.headers, binary=True,
+                           contentlength=len(self.block_data))
         self.assertIn('X-Block-Reference-Count', resp.headers)
         self.assertEqual(resp.headers['X-Block-Reference-Count'], '0')
         self.assertEqual(resp.content, self.block_data,
@@ -122,7 +127,7 @@ class TestBlockUploaded(base.TestBase):
         self.assertEqual(resp.status_code, 204,
                          'Status code for deleting a block is '
                          '{0} . Expected 204'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -242,6 +247,7 @@ class TestBlocksAssignedToFile(base.TestBase):
         self.assertEqual(resp.status_code, 412,
                          'Status code returned: {0} . '
                          'Expected 412'.format(resp.status_code))
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))

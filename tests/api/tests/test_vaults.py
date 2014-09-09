@@ -16,7 +16,7 @@ class TestNoVaultsCreated(base.TestBase):
         self.assertEqual(resp.status_code, 404,
                          'Status code returned: {0} . '
                          'Expected 404'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -25,10 +25,13 @@ class TestNoVaultsCreated(base.TestBase):
         """Get a vault that has not been created"""
 
         resp = self.client.get_vault(self.id_generator(50))
-        self.assertEqual(resp.status_code, 404,
-                         'Status code returned: {0} . '
-                         'Expected 404'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assert_404_response(resp)
+
+    def test_delete_missing_vault(self):
+        """Delete a missing Vault"""
+
+        resp = self.client.delete_vault(self.id_generator(55))
+        self.assert_404_response(resp)
 
     def tearDown(self):
         super(TestNoVaultsCreated, self).tearDown()
@@ -49,7 +52,7 @@ class TestCreateVaults(base.TestBase):
         self.assertEqual(resp.status_code, 201,
                          'Status code returned for Create Vault: {0} . '
                          'Expected 201'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -112,7 +115,7 @@ class TestEmptyVault(base.TestBase):
         self.assertEqual(resp.status_code, 204,
                          'Status code returned for Delete Vault: {0} . '
                          'Expected 204'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -124,7 +127,7 @@ class TestEmptyVault(base.TestBase):
         self.assertEqual(resp.status_code, 204,
                          'Status code returned for Vault HEAD: {0} . '
                          'Expected 204'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))
@@ -147,10 +150,12 @@ class TestVaultWithBlocksFiles(base.TestBase):
                                    file_url=self.files[0].Url)
 
         # Assign 5 blocks to file 2, sharing 2 blocks with file 1
+        self.filesize = 0
         self.assign_blocks_to_file(blocks=[4, 5, 0, 6, 2],
                                    file_url=self.files[1].Url)
 
         # Assign 8 unique blocks to file 3 and finalize it
+        self.filesize = 0
         self.assign_blocks_to_file(blocks=range(10, 18),
                                    file_url=self.files[2].Url)
         self.finalize_file(file_url=self.files[2].Url)
@@ -211,7 +216,7 @@ class TestPopulatedVault(base.TestBase):
         self.assertEqual(resp.status_code, 412,
                          'Status code returned for Delete Vault: {0} . '
                          'Expected 412'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0,
                          'Response Content was not empty. Content: '
                          '{0}'.format(resp.content))

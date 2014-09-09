@@ -16,10 +16,13 @@ class TestNoFilesCreated(base.TestBase):
         """Get a file that has not been created"""
 
         resp = self.client.get_file(self.vaultname, self.id_generator(50))
-        self.assertEqual(resp.status_code, 404,
-                         'Status code returned: {0} . '
-                         'Expected 404'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
+        self.assert_404_response(resp)
+
+    def test_delete_missing_file(self):
+        """Delete a missing file"""
+
+        resp = self.client.delete_file(self.vaultname, self.id_generator(50))
+        self.assert_404_response(resp)
 
     def tearDown(self):
         super(TestNoFilesCreated, self).tearDown()
@@ -39,7 +42,7 @@ class TestCreateFile(base.TestBase):
         self.assertEqual(resp.status_code, 201,
                          'Status code for creating a file is '
                          '{0} . Expected 201'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
+        self.assertHeaders(resp.headers, json=True, contentlength=0)
         self.assertIn('location', resp.headers)
         self.assertUrl(resp.headers['location'], filepath=True)
         # TODO
@@ -121,11 +124,12 @@ class TestEmptyFile(base.TestBase):
     def test_finalize_empty_file(self):
         """Finalize an empty file"""
 
-        resp = self.client.finalize_file(alternate_url=self.fileurl)
+        resp = self.client.finalize_file(filesize=0,
+                                         alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 200,
                          'Status code for finalizing file '
                          '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
+        self.assertHeaders(resp.headers, json=True, contentlength=0)
         # TODO
         if "null" == resp.content:
             self.skipTest("Skipping because the response is null")
@@ -161,11 +165,12 @@ class TestFileAssignedBlocks(base.TestBase):
     def test_finalize_file(self):
         """Finalize a file with some blocks assigned"""
 
-        resp = self.client.finalize_file(alternate_url=self.fileurl)
+        resp = self.client.finalize_file(filesize=self.filesize,
+                                         alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 200,
                          'Status code for finalizing file '
                          '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
+        self.assertHeaders(resp.headers, json=True, contentlength=0)
         # TODO
         if "null" == resp.content:
             self.skipTest("Skipping because the response is null")
@@ -197,7 +202,8 @@ class TestFileMissingBlock(base.TestBase):
         """Finalize a file with some blocks missing"""
 
         # TODO: Revisit once issue 65 is resolved
-        resp = self.client.finalize_file(alternate_url=self.fileurl)
+        resp = self.client.finalize_file(filesize=self.filesize,
+                                         alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 413,
                          'Status code for finalizing file '
                          '{0} . Expected 413'.format(resp.status_code))
@@ -232,7 +238,8 @@ class TestFileOverlappingBlock(base.TestBase):
         """Finalize a file with some blocks overlapping"""
 
         # TODO: Revisit once issue 65 is resolved
-        resp = self.client.finalize_file(alternate_url=self.fileurl)
+        resp = self.client.finalize_file(filesize=self.filesize,
+                                         alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 413,
                          'Status code for finalizing file '
                          '{0} . Expected 413'.format(resp.status_code))
@@ -389,7 +396,8 @@ class TestFinalizedFile(base.TestBase):
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting a file is '
                          '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, binary=True)
+        self.assertHeaders(resp.headers, binary=True,
+                           contentlength=self.filesize)
         filedata = ''
         for block in self.blocks:
             filedata += block.Data
@@ -403,6 +411,7 @@ class TestFinalizedFile(base.TestBase):
         self.assertEqual(resp.status_code, 204,
                          'Status code for deleting a file is '
                          '{0} . Expected 204'.format(resp.status_code))
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0)
 
     def test_list_finalized_file(self):
