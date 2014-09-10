@@ -15,6 +15,7 @@ CREATE TABLE blocks (
   vaultid TEXT,
   blockid TEXT,
   blocksize INT,
+  reftime DATETIME,
   PRIMARY KEY(projectid, vaultid, blockid)
 );
 """, """
@@ -46,7 +47,6 @@ CREATE TABLE blockreferences (
   vaultid TEXT,
   blockid TEXT,
   refcount INTEGER,
-  reftime DATETIME,
   PRIMARY KEY(projectid, vaultid, blockid)
 );
 """]
