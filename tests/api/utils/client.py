@@ -35,7 +35,7 @@ class BaseDeuceClient(client.AutoMarshallingHTTPClient):
     Client Objects for Deuce
     """
 
-    def __init__(self, url, version, auth_token=None, storage_url=None,
+    def __init__(self, url, version, auth_token=None, service_catalog=None,
                  tenantid=None, serialize_format='json',
                  deserialize_format='json'):
         super(BaseDeuceClient, self).__init__(serialize_format,
@@ -45,7 +45,7 @@ class BaseDeuceClient(client.AutoMarshallingHTTPClient):
         self.auth_token = ''
         if auth_token:
             self.auth_token = auth_token
-        self.default_headers['X-Storage-Url'] = storage_url
+        self.default_headers['X-Service-Catalog'] = service_catalog
         self.default_headers['X-Auth-Token'] = self.auth_token
         if tenantid:
             self.default_headers['X-Project-Id'] = tenantid
