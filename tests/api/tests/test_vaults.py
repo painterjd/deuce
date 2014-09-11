@@ -300,6 +300,16 @@ class TestListVaults(base.TestBase):
                          'Discrepancy between the list of vaults returned '
                          'and the vaults uploaded {0}'.format(self.vaultids))
 
+    def test_list_vault_bad_marker(self):
+        """Request a Vault List with a bad marker"""
+
+        while True:
+            bad_marker = self.id_generator(50)
+            if bad_marker not in self.vaults:
+                break
+        resp = self.client.list_of_vaults(marker=bad_marker)
+        self.assert_404_response(resp)
+
     def tearDown(self):
         super(TestListVaults, self).tearDown()
         [self.client.delete_vault(vault) for vault in self.vaults]
