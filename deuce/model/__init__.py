@@ -1,10 +1,10 @@
-from pecan import conf
-
 # Hoist up stuff into the model namespace
 from deuce.model.vault import Vault
 from deuce.model.block import Block
 from deuce.model.file import File
 from deuce.model.health import Health
+
+from deuce import conf
 
 # Load the storage drivers manually into the model. Note:
 # This should change significantly.

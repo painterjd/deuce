@@ -112,6 +112,14 @@ class Vault(object):
         return deuce.storage_driver.create_blocks_generator(
             self.id, block_ids)
 
+    def delete_block(self, vault_id, block_id):
+
+        deuce.metadata_driver.unregister_block(vault_id, block_id)
+
+        succ_storage = deuce.storage_driver.delete_block(vault_id,
+                                                         block_id)
+        return succ_storage
+
     def create_file(self):
         file_id = str(uuid.uuid4())
         file_id = deuce.metadata_driver.create_file(self.id, file_id)

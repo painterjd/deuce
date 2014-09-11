@@ -24,5 +24,10 @@ else:
         test_suite='deuce',
         zip_safe=False,
         data_files=[('bin', ['config.py'])],
+        entry_points={
+            'console_scripts': [
+                'deuce-server = deuce.cmd.server:run',
+            ]
+        },
         packages=find_packages(exclude=['tests*', 'deuce/tests*'])
     )
