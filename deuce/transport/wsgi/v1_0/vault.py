@@ -98,4 +98,4 @@ class CollectionResource(object):
         p = urlparse(req.url)
         resp.body = json.dumps(dict(six.moves.map(lambda vaultname:
             (vaultname, {"url": p.scheme +
-                '://' + p.netloc + p.path + '/' + vaultname}), resp)))
+                '://' + p.netloc + p.path + '/' + vaultname}), response)))
