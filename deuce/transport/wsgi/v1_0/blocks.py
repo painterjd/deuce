@@ -40,6 +40,7 @@ class ItemResource(object):
         resp.stream = block.get_obj()
         resp.stream_len = vault.get_block_length(block_id)
         resp.status = falcon.HTTP_200
+        resp.content_type = 'application/octet-stream'
 
     @validate(vault_id=VaultPutRule, block_id=BlockPutRuleNoneOk)
     def on_put(self, req, resp, vault_id, block_id):

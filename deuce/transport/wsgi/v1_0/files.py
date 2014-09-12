@@ -65,8 +65,7 @@ class CollectionResource(object):
             raise errors.HTTPNotFound
 
         file = vault.create_file()
-
-        resp.set_header("Location", "files/{0}".format(file.file_id))
+        resp.set_header("Location", "{0}/{1}".format(req.url, file.file_id))
         resp.status = falcon.HTTP_201  # Created
         logger.info('File [{0}] created'.format(file.file_id))
 
