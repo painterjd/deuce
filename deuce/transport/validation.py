@@ -55,7 +55,7 @@ def Rule(vfunc, on_error, getter=None):
 
 
 def validate(**rules):
-    """Pecan validation endpoint decorator
+    """Falcon validation endpoint decorator
 
     This decorator allows validation of input from user
     API endpoints. This allows separation of business logic
