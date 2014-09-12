@@ -89,6 +89,10 @@ class FunctionalTest(TestCase):
         import deuce
         deuce.context = DummyContextObject
         deuce.context.project_id = self.create_project_id()
+        deuce.context.openstack = DummyContextObject()
+        deuce.context.openstack.auth_token = self.create_auth_token()
+        deuce.context.openstack.swift = DummyContextObject()
+        deuce.context.openstack.swift.storage_url = 'storage.url'
 
         global conf_dict
         self.app = load_test_app(config=conf_dict)
@@ -122,17 +126,3 @@ class FunctionalTest(TestCase):
 
     def create_file_id(self):
         return str(uuid.uuid4())
-
-    def init_context(self, headers):
-        """Create a Deuce Context based on the headers
-        using the hooks; required for testing the controllers"""
-
-        state = DummyContextObject()
-        state.response = DummyContextObject()
-        state.response.headers = {}
-        state.request = DummyContextObject()
-        state.request.headers = headers
-
-        # initialize all hooks with the 'state' object from above
-        for hook in prod_conf.get_hooks():
-            hook.on_route(state)

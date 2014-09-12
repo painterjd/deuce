@@ -3,10 +3,13 @@ from pecan import conf, response
 
 from deuce.model.block import Block
 from deuce.model.file import File
-
+from deuce.util import log as logging
 import deuce
 import uuid
 import hashlib
+
+
+logger = logging.getLogger(__name__)
 
 
 class Vault(object):

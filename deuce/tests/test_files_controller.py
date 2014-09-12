@@ -24,9 +24,7 @@ class TestFilesController(FunctionalTest):
         self.max_ret_num = conf.api_configuration.max_returned_num
         self.total_file_num = 0
 
-        self._hdrs = {"x-project-id": self.create_project_id(),
-            "x-auth-token": self.create_auth_token()}
-        self.init_context(self._hdrs)
+        self._hdrs = {"x-project-id": self.create_project_id()}
 
         # Create a vault and a file for us to work with
         self.vault_id = self.create_vault_id()
