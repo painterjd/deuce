@@ -1,11 +1,3 @@
-import hashlib
-import json
-import os
-from random import randrange
-from unittest import TestCase
-
-from webtest import TestApp
-
 from deuce.tests import ControllerTest
 
 

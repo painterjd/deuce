@@ -4,12 +4,9 @@ import json
 import msgpack
 import os
 from random import randrange
-import uuid
 
 from pecan import conf
-import six
 from six.moves.urllib.parse import urlparse, parse_qs
-from unittest import TestCase
 
 from deuce.tests import ControllerTest
 

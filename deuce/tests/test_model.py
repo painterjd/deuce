@@ -1,10 +1,6 @@
-import os.path
-
-from unittest import TestCase
-from webtest import TestApp
 from deuce.tests import FunctionalTest
 
-from deuce.model import Vault, Block, File
+from deuce.model import Vault, File
 
 
 class TestModel(FunctionalTest):

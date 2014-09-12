@@ -1,12 +1,3 @@
-import hashlib
-import json
-import os
-from random import randrange
-import six
-import string
-from unittest import TestCase
-import uuid
-
 from pecan import conf
 from six.moves.urllib.parse import urlparse, parse_qs
 

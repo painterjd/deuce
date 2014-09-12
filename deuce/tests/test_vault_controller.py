@@ -1,12 +1,7 @@
 import hashlib
 import json
 import os
-import random
 from random import randrange
-import string
-from unittest import TestCase
-
-from webtest import TestApp
 
 from deuce.tests import ControllerTest
 

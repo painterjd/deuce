@@ -1,5 +1,3 @@
-from unittest import TestCase
-from webtest import TestApp
 from deuce.tests import HookTest
 
 import deuce
@@ -121,7 +119,8 @@ class TestOpenStackSwiftHook(HookTest):
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
             with mock.patch('base64.b64decode') as b64_decoder:
-                b64_decoder.return_value = str('test-data')
+                b64_decoder.return_value = str('test-data').encode(
+                    encoding='utf-8', errors='strict')
 
                 with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
                         as expected_exception:
@@ -134,7 +133,9 @@ class TestOpenStackSwiftHook(HookTest):
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
             with mock.patch('base64.b64decode') as b64_decoder:
-                b64_decoder.return_value = json.dumps({'hello': 'test'})
+                b64_decoder.return_value = json.dumps(
+                    {'hello': 'test'}).encode(encoding='utf-8',
+                                              errors='strict')
 
                 with mock.patch('deuce.hooks.openstackswifthook.'
                                 'OpenStackSwiftHook.find_storage_url'
@@ -156,9 +157,10 @@ class TestOpenStackSwiftHook(HookTest):
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
+            json_data = json.dumps({'hello': 'test'})
+            byte_data = json_data.encode(encoding='utf-8', errors='strict')
             with mock.patch('base64.b64decode') as b64_decoder:
-                b64_decoder.return_value = json.dumps({'hello': 'test'})
-
+                b64_decoder.return_value = byte_data
                 with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
                         as expected_exception:
 
@@ -171,7 +173,8 @@ class TestOpenStackSwiftHook(HookTest):
                         spec=swift.SwiftStorageDriver) as swift_driver:
             with mock.patch('base64.b64decode') as b64_decoder:
                 test_dict = {'access': {'hello': 'test'}}
-                b64_decoder.return_value = json.dumps(test_dict)
+                b64_decoder.return_value = json.dumps(test_dict).encode(
+                    encoding='utf-8', errors='strict')
 
                 with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
                         as expected_exception:
@@ -197,9 +200,11 @@ class TestOpenStackSwiftHook(HookTest):
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
+            catalog = self.create_service_catalog(objectStoreType='other')
+            json_data = json.dumps(catalog)
+            byte_data = json_data.encode(encoding='utf-8', errors='strict')
             with mock.patch('base64.b64decode') as b64_decoder:
-                b64_decoder.return_value = json.dumps(
-                    self.create_service_catalog(objectStoreType='other'))
+                b64_decoder.return_value = byte_data
 
                 with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
                         as expected_exception:
@@ -211,10 +216,11 @@ class TestOpenStackSwiftHook(HookTest):
         self.state.request.headers['x-service-catalog'] = True
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
+            catalog = self.create_service_catalog(endpoints=False)
+            json_data = json.dumps(catalog)
+            byte_data = json_data.encode(encoding='utf-8', errors='strict')
             with mock.patch('base64.b64decode') as b64_decoder:
-                b64_decoder.return_value = json.dumps(
-                    self.create_service_catalog(endpoints=False))
-
+                b64_decoder.return_value = byte_data
                 with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
                         as expected_exception:
 
@@ -227,7 +233,8 @@ class TestOpenStackSwiftHook(HookTest):
                         spec=swift.SwiftStorageDriver) as swift_driver:
             with mock.patch('base64.b64decode') as b64_decoder:
                 b64_decoder.return_value = json.dumps(
-                    self.create_service_catalog(region='other'))
+                    self.create_service_catalog(region='other')).encode(
+                        encoding='utf-8', errors='strict')
 
                 with self.assertRaises(webob.exc.HTTPPreconditionFailed) \
                         as expected_exception:
@@ -236,20 +243,23 @@ class TestOpenStackSwiftHook(HookTest):
 
     def test_find_storage_url_final(self):
         hook = self.create_hook()
-        self.state.request.headers['x-service-catalog'] = True
+
+        catalog = self.create_service_catalog(region=self.datacenter,
+                                              url='test_url')
+        json_data = json.dumps(catalog)
+        utf8_data = json_data.encode(encoding='utf-8', errors='strict')
+        b64_data = base64.b64encode(utf8_data)
+        self.state.request.headers['x-service-catalog'] = b64_data
+
         with mock.patch('deuce.storage_driver',
                         spec=swift.SwiftStorageDriver) as swift_driver:
-            with mock.patch('base64.b64decode') as b64_decoder:
-                b64_decoder.return_value = json.dumps(
-                    self.create_service_catalog(region=self.datacenter,
-                                                url='test_url'))
 
-                self.assertFalse(hasattr(deuce.context.openstack, 'swift'))
+            self.assertFalse(hasattr(deuce.context.openstack, 'swift'))
 
-                hook.on_route(self.state)
+            hook.on_route(self.state)
 
-                self.assertTrue(hasattr(deuce.context.openstack, 'swift'))
-                self.assertTrue(hasattr(deuce.context.openstack.swift,
-                                        'storage_url'))
-                self.assertEqual(deuce.context.openstack.swift.storage_url,
-                                'test_url')
+            self.assertTrue(hasattr(deuce.context.openstack, 'swift'))
+            self.assertTrue(hasattr(deuce.context.openstack.swift,
+                                    'storage_url'))
+            self.assertEqual(deuce.context.openstack.swift.storage_url,
+                            'test_url')

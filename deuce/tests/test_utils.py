@@ -1,9 +1,9 @@
+from hashlib import md5
+from random import randrange
 from unittest import TestCase
+
 from deuce.util import FileCat, set_qs
 from deuce.tests.util import MockFile
-import os
-from random import randrange
-from hashlib import md5
 
 try:  # pragma: no cover
     import six.moves.urllib.parse as parse

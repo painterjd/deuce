@@ -1,12 +1,11 @@
-import os
+import random
+from mock import MagicMock
+
+import deuce
 from deuce.tests import DriverTest
 from deuce.drivers.metadatadriver import MetadataStorageDriver, GapError,\
     OverlapError, ConstraintError
 from deuce.drivers.sqlite import SqliteStorageDriver
-import random
-
-import deuce
-from mock import MagicMock
 
 
 class SqliteStorageDriverTest(DriverTest):

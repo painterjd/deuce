@@ -1,14 +1,11 @@
-import json
 import mock
 import os
-import six
 import sys
 
 from pecan import conf
 from swiftclient import client as Conn
 from swiftclient.exceptions import ClientException
 
-from deuce.drivers.blockstoragedriver import BlockStorageDriver
 from deuce.drivers.swift import SwiftStorageDriver
 from deuce.tests.test_disk_storage_driver import DiskStorageDriverTest
 
