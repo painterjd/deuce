@@ -95,7 +95,7 @@ class ItemResource(object):
 
 class CollectionResource(object):
 
-    @validate(vault_id=VaultGetRule, block_id=ReqNoneRule)
+    @validate(vault_id=VaultGetRule)
     def on_post(self, req, resp, vault_id):
         vault = Vault.get(vault_id)
         try:
