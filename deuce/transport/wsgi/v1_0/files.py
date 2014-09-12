@@ -104,6 +104,7 @@ class ItemResource(object):
         # object instead of an iterator.
         resp.stream = (obj.read() for obj in objs)
         resp.status = falcon.HTTP_200
+        resp.set_header('Content-Length', str(vault.get_file_length(file_id)))
 
     @validate(vault_id=VaultPutRule, file_id=FilePostRuleNoneOk)
     def on_post(self, req, resp, vault_id, file_id):
@@ -118,7 +119,7 @@ class ItemResource(object):
             raise errors.HTTPBadRequestAPI('Vault does not exist')
 
         if file_id is not None:
-            return self._assign(resp, req, vault, vault_id, file_id)
+            self._assign(resp, req, vault, vault_id, file_id)
 
     def _assign(self, resp, req, vault, vault_id, file_id):
         f = vault.get_file(file_id)
@@ -134,7 +135,6 @@ class ItemResource(object):
                 filesize = int(req.get_header('x-file-length', required=True))
                 res = deuce.metadata_driver.finalize_file(vault_id, file_id,
                                                           filesize)
-                return res
             except Exception as e:
                 # There are gaps or overlaps in blocks of the file
                 # The list of errors returns
@@ -143,7 +143,11 @@ class ItemResource(object):
                 resp.status = falcon.HTTP_413
                 logger.error('File [{0}] finalization '
                              'failed; [{1}]'.format(file_id, details))
-                return details
+                resp.body = json.dumps(details)
+                return
+            else:
+                resp.status = falcon.HTTP_200
+                return
 
         if f.finalized:
             # A finalized file cannot be
@@ -174,7 +178,7 @@ class ItemResource(object):
                                                mapping['id'],
                                                mapping['offset'])
 
-        return missing_blocks
+        resp.body = json.dumps(missing_blocks)
 
     @validate(vault_id=VaultGetRule, file_id=FileGetRule)
     def on_delete(self, req, resp, vault_id, file_id):
@@ -188,3 +192,4 @@ class ItemResource(object):
             raise errors.HTTPNotFound
 
         vault.delete_file(file_id)
+        resp.status = falcon.HTTP_204

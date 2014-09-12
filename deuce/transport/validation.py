@@ -127,7 +127,7 @@ def validate(**rules):
                     rule.errfunc()
                     return
 
-            return f(*args, **outargs)
+            return f(*args, **kwargs)
         return wrapper
     return _validate
 

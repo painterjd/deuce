@@ -75,8 +75,8 @@ class ItemResource(object):
             response = vault.delete_block(vault_id, block_id)
 
         except ConstraintError as ex:
-            logger.error(ex)
-            raise errors.HTTPPreconditionFailed(ex)
+            logger.error(json.dumps(ex.args))
+            raise errors.HTTPPreconditionFailed(json.dumps(ex.args))
 
         except Exception as ex:  # pragma: no cover
             logger.error(ex)
