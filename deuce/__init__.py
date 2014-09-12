@@ -5,6 +5,7 @@ context = None
 
 import os
 from configobj import ConfigObj
+from validate import Validator
 
 
 class Config(object):
@@ -23,10 +24,22 @@ class Config(object):
 
 
 path_to_ini = '/etc/deuce/config.ini'
+configspecfilename = '/etc/deuce/configspec.ini'
+
+configspec = ConfigObj(
+    configspecfilename,
+    interpolation=False,
+    list_values=False,
+    _inspec=True)
 if not os.path.exists(os.path.abspath(path_to_ini)) or \
         'config.ini' not in path_to_ini:
     raise OSError("Please set absolute path to correct ini file")
 
-config = ConfigObj(os.path.abspath(path_to_ini), interpolation=False)
+config = ConfigObj(
+    os.path.abspath(path_to_ini),
+    configspec=configspec,
+    interpolation=False)
+if not config.validate(Validator()):
+    raise ValueError('Validation of config failed wrt to configspec')
 
 conf = Config(config.dict())

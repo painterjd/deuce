@@ -6,10 +6,8 @@ import falcon
 
 from deuce.transport.wsgi import v1_0
 from deuce.transport.wsgi import hooks
-import deuce.util.log as logging
-from deuce import model
 
-logger = logging.getLogger(__name__)
+from deuce import model
 
 
 class Driver(object):
@@ -46,8 +44,10 @@ class Driver(object):
 
     def listen(self):
         """Self-host using 'bind' and 'port' from deuce conf"""
-
+        import deuce.util.log as logging
         msgtmpl = (u'Serving on host %(bind)s:%(port)s')
+        logging.setup()
+        logger = logging.getLogger(__name__)
         logger.info(msgtmpl,
                     {'bind': conf.server.host, 'port': int(conf.server.port)})
 
