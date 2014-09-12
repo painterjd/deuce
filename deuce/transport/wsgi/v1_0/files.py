@@ -105,6 +105,7 @@ class ItemResource(object):
         resp.stream = (obj.read() for obj in objs)
         resp.status = falcon.HTTP_200
         resp.set_header('Content-Length', str(vault.get_file_length(file_id)))
+        resp.content_type = 'application/octet-stream'
 
     @validate(vault_id=VaultPutRule, file_id=FilePostRuleNoneOk)
     def on_post(self, req, resp, vault_id, file_id):

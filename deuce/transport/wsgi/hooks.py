@@ -65,7 +65,8 @@ def openstackswifthook(req, resp, params):
         """Decode a JSON-based Base64 encoded Service Catalog
         """
         try:
-            utf8_data = base64.b64decode(catalog)
+            data = base64.b64decode(catalog)
+            utf8_data = data.decode(encoding='utf-8', errors='strict')
 
         except binascii.Error:
             raise errors.HTTPPreconditionFailed(
