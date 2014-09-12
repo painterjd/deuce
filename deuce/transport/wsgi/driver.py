@@ -8,6 +8,7 @@ from deuce.transport.wsgi import v1_0
 from deuce.transport.wsgi import hooks
 
 from deuce import model
+import deuce.util.log as logging
 
 
 class Driver(object):
@@ -20,13 +21,23 @@ class Driver(object):
 
     def before_hooks(self, req, resp, params):
 
+        # Disk + Sqlite
+
         return [
             hooks.deucecontexthook(req, resp, params),
             hooks.transactionidhook(req, resp, params),
-            hooks.projectidhook(req, resp, params),
-            hooks.openstackhook(req, resp, params),
-            hooks.openstackswifthook(req, resp, params)
+            hooks.projectidhook(req, resp, params)
         ]
+
+        # Swift
+
+        # return [
+        #     hooks.deucecontexthook(req, resp, params),
+        #     hooks.transactionidhook(req, resp, params),
+        #     hooks.projectidhook(req, resp, params),
+        #     hooks.openstackhook(req, resp, params),
+        #     hooks.openstackswifthook(req, resp, params)
+        # ]
 
     def _init_routes(self):
         """Initialize hooks and URI routes to resources."""
@@ -44,9 +55,7 @@ class Driver(object):
 
     def listen(self):
         """Self-host using 'bind' and 'port' from deuce conf"""
-        import deuce.util.log as logging
         msgtmpl = (u'Serving on host %(bind)s:%(port)s')
-        logging.setup()
         logger = logging.getLogger(__name__)
         logger.info(msgtmpl,
                     {'bind': conf.server.host, 'port': conf.server.port})

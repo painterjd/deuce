@@ -108,9 +108,7 @@ class ItemResource(object):
 
     @validate(vault_id=VaultPutRule, file_id=FilePostRuleNoneOk)
     def on_post(self, req, resp, vault_id, file_id):
-        """Initializes a new file. The location of
-        the new file is returned in the Location
-        header
+        """This endpoint Assigns blocks to files
         """
         vault = Vault.get(vault_id)
 
@@ -120,8 +118,6 @@ class ItemResource(object):
             logger.error('Vault [{0}] does not exist'.format(vault_id))
             raise errors.HTTPBadRequestAPI('Vault does not exist')
 
-        # overload to use the same end-point for creating a new file
-        # and assigning blocks to a file that is in progress
         if file_id is not None:
             return self._assign(resp, req, vault, vault_id, file_id)
 

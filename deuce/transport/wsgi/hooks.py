@@ -14,6 +14,13 @@ from deuce.transport.wsgi import errors
 import deuce
 
 
+class OpenStackObject(object):
+    """
+    Dummy object for the Deuce Context structure
+    """
+    pass
+
+
 def healthpingcheck(func):
     @wraps(func)
     def wrap(*args, **kwargs):
@@ -47,25 +54,13 @@ def transactionidhook(req, resp, params):
 
 @healthpingcheck
 def openstackhook(req, resp, params):
-    class OpenStackObject(object):
-
-        """
-        Dummy object for the Deuce Context structure
-        """
-        pass
     deuce.context.openstack = OpenStackObject()
-    deuce.context.project_id = req.get_header('x-auth-token', required=True)
+    deuce.context.openstack.auth_token = req.get_header('x-auth-token',
+                                                        required=True)
 
 
 @healthpingcheck
 def openstackswifthook(req, resp, params):
-    class OpenStackObject(object):
-
-        """
-        Dummy object for the Deuce Context structure
-        """
-        pass
-
     def decode_service_catalog(catalog):
         """Decode a JSON-based Base64 encoded Service Catalog
         """

@@ -31,7 +31,7 @@ def runnable(func):
     @functools.wraps(func)
     def _wrapper():
         try:
-            # logging.setup('zaqar')
+            logging.setup()
             func()
         except KeyboardInterrupt:
             LOG.info(u'Terminating')

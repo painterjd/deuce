@@ -23,10 +23,19 @@ class Config(object):
         return self.__dict__[k]
 
 
-config_files = {
+config_files_root = {
     'config': '/etc/deuce/config.ini',
     'configspec': '/etc/deuce/configspec.ini'
 }
+config_files_user = {
+    'config': '{0:}/.deuce/config.ini'.format(os.environ['HOME']),
+    'configspec': '{0:}/.deuce/configspec.ini'.format(os.environ['HOME'])
+}
+
+# NOTE(TheSriram): The location of the config files can be specified here
+# as of now they can be in /etc/deuce or in ~/.deuce
+
+config_files = config_files_root
 
 conf_ini = Config(config_files)
 
