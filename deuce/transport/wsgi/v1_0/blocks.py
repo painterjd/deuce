@@ -135,7 +135,7 @@ class CollectionResource(object):
 
         inmarker = req.get_param('marker') if req.get_param('marker') else 0
         limit = req.get_param_as_int('limit') if req.get_param_as_int('limit') else \
-            int(conf.api_configuration.max_returned_num)
+            conf.api_configuration.max_returned_num
 
         # We actually fetch the user's requested
         # limit +1 to detect if the list is being

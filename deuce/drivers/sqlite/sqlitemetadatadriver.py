@@ -281,9 +281,9 @@ class SqliteStorageDriver(MetadataStorageDriver):
         # the user to fetch one beyond to see if they
         # are at the end of the list
         if not limit:
-            res = int(conf.api_configuration.max_returned_num) + 1
+            res = conf.api_configuration.max_returned_num + 1
         else:
-            res = min(int(conf.api_configuration.max_returned_num) + 1, limit)
+            res = min(conf.api_configuration.max_returned_num + 1, limit)
 
         return res
 

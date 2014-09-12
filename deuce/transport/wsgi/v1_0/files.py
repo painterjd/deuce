@@ -25,7 +25,7 @@ class CollectionResource(object):
 
         inmarker = req.get_param('marker') if req.get_param('marker') else 0
         limit = req.get_param_as_int('limit') if req.get_param_as_int('limit') \
-            else int(conf.api_configuration.max_returned_num)
+            else conf.api_configuration.max_returned_num
 
         # The +1 is to fetch one past the user's
         # requested limit so that we can determine

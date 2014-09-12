@@ -73,7 +73,7 @@ class CollectionResource(object):
     def on_get(self, req, resp):
         inmarker = req.get_param('marker') if req.get_param('marker') else 0
         limit = req.get_param_as_int('limit') if req.get_param_as_int('limit') else \
-            int(conf.api_configuration.max_returned_num)
+            conf.api_configuration.max_returned_num
 
         vaultlist = Vault.get_vaults_generator(
             inmarker, limit + 1)

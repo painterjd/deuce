@@ -49,9 +49,9 @@ class Driver(object):
         logging.setup()
         logger = logging.getLogger(__name__)
         logger.info(msgtmpl,
-                    {'bind': conf.server.host, 'port': int(conf.server.port)})
+                    {'bind': conf.server.host, 'port': conf.server.port})
 
         httpd = simple_server.make_server(conf.server.host,
-                                          int(conf.server.port),
+                                          conf.server.port,
                                           self.app)
         httpd.serve_forever()
