@@ -204,7 +204,6 @@ class ControllerTest(FunctionalTest):
 
         # Put each one of the generated blocks on the
         # size
-        cnt = 0
         for size, data, sha1 in block_data:
             path = self.get_block_path(sha1)
 
@@ -219,7 +218,6 @@ class ControllerTest(FunctionalTest):
 
             response = self.app.put(path, headers=headers,
                 params=data)
-            cnt += 1
 
 
 @six.add_metaclass(ABCMeta)
