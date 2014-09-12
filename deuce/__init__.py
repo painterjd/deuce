@@ -23,20 +23,27 @@ class Config(object):
         return self.__dict__[k]
 
 
-path_to_ini = '/etc/deuce/config.ini'
-configspecfilename = '/etc/deuce/configspec.ini'
+config_files = {
+    'config': '/etc/deuce/config.ini',
+    'configspec': '/etc/deuce/configspec.ini'
+}
+
+conf_ini = Config(config_files)
+
+for k, v in config_files.items():
+    if not os.path.exists(os.path.abspath(getattr(conf_ini, k))) or \
+            (k + '.ini' not in getattr(conf_ini, k)):
+        raise OSError("Please set absolute path to "
+                      "correct {0} ini file".format(k))
 
 configspec = ConfigObj(
-    configspecfilename,
+    conf_ini.configspec,
     interpolation=False,
     list_values=False,
     _inspec=True)
-if not os.path.exists(os.path.abspath(path_to_ini)) or \
-        'config.ini' not in path_to_ini:
-    raise OSError("Please set absolute path to correct ini file")
 
 config = ConfigObj(
-    os.path.abspath(path_to_ini),
+    os.path.abspath(conf_ini.config),
     configspec=configspec,
     interpolation=False)
 if not config.validate(Validator()):
