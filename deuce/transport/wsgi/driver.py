@@ -24,19 +24,19 @@ class Driver(object):
         # Disk + Sqlite
 
         return [
-            hooks.deucecontexthook(req, resp, params),
-            hooks.transactionidhook(req, resp, params),
-            hooks.projectidhook(req, resp, params)
+            hooks.DeuceContextHook(req, resp, params),
+            hooks.TransactionidHook(req, resp, params),
+            hooks.ProjectidHook(req, resp, params)
         ]
 
         # Swift
 
         # return [
-        #     hooks.deucecontexthook(req, resp, params),
-        #     hooks.transactionidhook(req, resp, params),
-        #     hooks.projectidhook(req, resp, params),
-        #     hooks.openstackhook(req, resp, params),
-        #     hooks.openstackswifthook(req, resp, params)
+        #     hooks.DeuceContextHook(req, resp, params),
+        #     hooks.TransactionidHook(req, resp, params),
+        #     hooks.ProjectidHook(req, resp, params),
+        #     hooks.OpenstackHook(req, resp, params),
+        #     hooks.OpenstackSwiftHook(req, resp, params)
         # ]
 
     def _init_routes(self):
