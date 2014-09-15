@@ -1,5 +1,6 @@
 import deuce
 
+
 def DeuceContextHook(req, resp, params):
     """
     Deuce Context Hook

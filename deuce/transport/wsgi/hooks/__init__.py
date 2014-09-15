@@ -1,8 +1,8 @@
 from functools import wraps
 
 
-
 class OpenStackObject(object):
+
     """
     Dummy object for the Deuce Context structure
     """
