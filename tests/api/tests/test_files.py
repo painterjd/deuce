@@ -42,12 +42,9 @@ class TestCreateFile(base.TestBase):
         self.assertEqual(resp.status_code, 201,
                          'Status code for creating a file is '
                          '{0} . Expected 201'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True, contentlength=0)
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertIn('location', resp.headers)
         self.assertUrl(resp.headers['location'], filepath=True)
-        # TODO
-        if "null" == resp.content:
-            self.skipTest("Skipping because the response is null")
         self.assertEqual(len(resp.content), 0)
 
     def tearDown(self):
@@ -129,10 +126,7 @@ class TestEmptyFile(base.TestBase):
         self.assertEqual(resp.status_code, 200,
                          'Status code for finalizing file '
                          '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True, contentlength=0)
-        # TODO
-        if "null" == resp.content:
-            self.skipTest("Skipping because the response is null")
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0)
 
     def test_list_empty_file(self):
@@ -170,10 +164,7 @@ class TestFileAssignedBlocks(base.TestBase):
         self.assertEqual(resp.status_code, 200,
                          'Status code for finalizing file '
                          '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True, contentlength=0)
-        # TODO
-        if "null" == resp.content:
-            self.skipTest("Skipping because the response is null")
+        self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0)
 
     def tearDown(self):
@@ -247,8 +238,6 @@ class TestFileOverlappingBlock(base.TestBase):
         # The response will only list the first overlapping block
         resp_body = resp.content
         expected = '"[{0}/{1}] Overlap at block {2} file {3} at [{4}-{5}]"'
-        # TODO
-        self.skipTest("Skipping. The Overlap response needs updating/fixing")
         self.assertEqual(resp_body, expected.format(
             self.client.default_headers['X-Project-Id'], self.vaultname,
             self.blocks[1].Id, self.fileid, 30720 / 2, 30720))
