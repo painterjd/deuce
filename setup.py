@@ -8,7 +8,7 @@ except ImportError:
     use_setuptools()
     from setuptools import setup, find_packages
 else:
-    REQUIRES = ['configobj', 'six', 'pecan', 'setuptools >= 1.1.6',
+    REQUIRES = ['configobj', 'falcon', 'six', 'setuptools >= 1.1.6',
                 'cassandra-driver', 'pymongo', 'msgpack-python',
                 'python-swiftclient', 'asyncio', 'aiohttp']
     setup(
@@ -24,5 +24,10 @@ else:
         test_suite='deuce',
         zip_safe=False,
         data_files=[('bin', ['config.py'])],
+        entry_points={
+            'console_scripts': [
+                'deuce-server = deuce.cmd.server:run',
+            ]
+        },
         packages=find_packages(exclude=['tests*', 'deuce/tests*'])
     )
