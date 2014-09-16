@@ -6,7 +6,7 @@ from deuce.model import Vault
 from deuce import conf
 import deuce.util.log as logging
 from deuce.transport.validation import *
-from deuce.transport.wsgi import errors
+import deuce.transport.wsgi.errors as errors
 logger = logging.getLogger(__name__)
 import json
 

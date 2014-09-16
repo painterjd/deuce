@@ -39,7 +39,14 @@ config_files_user = {
     'priority': 1
 }
 
-conf_list = [config_files_root, config_files_user]
+config_files_deuce = {
+    'config': os.path.abspath('../ini/config.ini'),
+    'configspec': os.path.abspath('../ini/configspec.ini'),
+    'status': False,
+    'priority': 3
+}
+
+conf_list = [config_files_root, config_files_user, config_files_deuce]
 
 
 def get_correct_conf(conf_list):
@@ -83,4 +90,20 @@ config = ConfigObj(
 if not config.validate(Validator()):
     raise ValueError('Validation of config failed wrt to configspec')
 
-conf = Config(config.dict())
+conf_dict = config.dict()
+if conf_dict['metadata_driver']['mongodb']['testing']['is_mocking']:
+    conf_dict['metadata_driver']['mongodb']['db_module'] = \
+        'deuce.tests.db_mocking.mongodb_mocking'
+    conf_dict['metadata_driver']['mongodb']['FileBlockReadSegNum'] = 10
+    conf_dict['metadata_driver']['mongodb']['maxFileBlockSegNum'] = 30
+
+
+if conf_dict['metadata_driver']['cassandra']['testing']['is_mocking']:
+    conf_dict['metadata_driver']['cassandra']['db_module'] = \
+        'deuce.tests.mock_cassandra'
+
+if conf_dict['block_storage_driver']['swift']['testing']['is_mocking']:
+    conf_dict['block_storage_driver']['swift']['swift_module'] = \
+        'deuce.tests.db_mocking.swift_mocking'
+
+conf = Config(conf_dict)

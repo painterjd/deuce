@@ -1,13 +1,9 @@
-import os.path
-
-from unittest import TestCase
-from webtest import TestApp
-from deuce.tests import FunctionalTest
+from deuce.tests import V1Base
 
 from deuce.model import Vault, Block, File
 
 
-class TestModel(FunctionalTest):
+class TestModel(V1Base):
 
     def setUp(self):
         super(TestModel, self).setUp()

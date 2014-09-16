@@ -1,8 +1,6 @@
-import json
-
 import falcon
 
-from deuce.tests.falcon_tests import V1Base
+from deuce.tests import V1Base
 
 
 class TestPing(V1Base):

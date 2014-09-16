@@ -1,5 +1,5 @@
 import os
-from deuce.tests import FunctionalTest
+from deuce.tests import V1Base
 from deuce.drivers.blockstoragedriver import BlockStorageDriver
 from deuce.drivers.disk import DiskStorageDriver
 from deuce.tests.util import MockFile
@@ -10,7 +10,7 @@ from hashlib import md5
 # which particular driver it is testing.
 
 
-class DiskStorageDriverTest(FunctionalTest):
+class DiskStorageDriverTest(V1Base):
 
     def create_driver(self):
         return DiskStorageDriver()

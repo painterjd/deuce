@@ -1,6 +1,6 @@
 import six
 from deuce.drivers.blockstoragedriver import BlockStorageDriver
-from pecan import conf
+from deuce import conf
 
 from deuce.drivers.swift import SwiftStorageDriver
 
