@@ -1,7 +1,6 @@
 from deuce.util import client as p3k_swiftclient
 from deuce.tests.util.mockfile import MockFile
 from deuce.tests import FunctionalTest
-from unittest import TestCase
 from swiftclient.exceptions import ClientException
 import mock
 import asyncio

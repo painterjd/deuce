@@ -1,14 +1,7 @@
-from unittest import TestCase
-from webtest import TestApp
-from deuce.tests import FunctionalTest
-import os
-import hashlib
-from random import randrange
-
-import json
+from deuce.tests import ControllerTest
 
 
-class TestHomeController(FunctionalTest):
+class TestHomeController(ControllerTest):
 
     def setUp(self):
         super(TestHomeController, self).setUp()

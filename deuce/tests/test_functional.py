@@ -1,5 +1,3 @@
-from unittest import TestCase
-from webtest import TestApp
 from deuce.tests import FunctionalTest
 
 
@@ -18,8 +16,7 @@ class TestRootController(FunctionalTest):
 
     def test_get_10(self):
         response = self.app.get('/v1.0', headers={'x-project-id':
-                                                  self.create_project_id(),
-            'x-auth-token': self.create_auth_token()})
+                                                  self.create_project_id()})
         self.assertEqual(response.status_int, 302)
 
     def test_get_not_found(self):

@@ -1,15 +1,17 @@
-import os
+from abc import ABCMeta, abstractmethod
 import hashlib
-import uuid
+import os
+import shutil
 from unittest import TestCase
+import uuid
+
 from pecan import set_config
 import pecan
 from pecan.testing import load_test_app
+import six
+from six.moves.urllib.parse import urlparse, parse_qs
 
-__all__ = ['FunctionalTest']
-
-import shutil
-
+__all__ = ['FunctionalTest', 'DriverTest']
 
 prod_conf = None
 conf_dict = {}
@@ -126,3 +128,138 @@ class FunctionalTest(TestCase):
 
     def create_file_id(self):
         return str(uuid.uuid4())
+
+    def calc_sha1(self, data):
+        sha1 = hashlib.sha1()
+        sha1.update(data)
+        return sha1.hexdigest()
+
+
+@six.add_metaclass(ABCMeta)
+class DriverTest(FunctionalTest):
+    """
+    Used for testing Deuce Drivers
+    """
+
+    def setUp(self):
+        super(DriverTest, self).setUp()
+
+    def tearDown(self):
+        super(DriverTest, self).tearDown()
+
+    @abstractmethod
+    def create_driver(self):
+        raise NotImplementedError()
+
+
+@six.add_metaclass(ABCMeta)
+class ControllerTest(FunctionalTest):
+    """
+    Used for testing Deuce Controllers
+    """
+
+    def setUp(self):
+        super(ControllerTest, self).setUp()
+
+    def tearDown(self):
+        super(ControllerTest, self).tearDown()
+
+    def get_block_path(self, blockid):
+        return '{0}/{1}'.format(self._blocks_path, blockid)
+
+    def helper_create_vault(self, vault_name, hdrs):
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
+        response = self.app.put(vault_path, headers=hdrs)
+
+    def helper_delete_vault(self, vault_name, hdrs):
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
+        response = self.app.delete(vault_path, headers=hdrs)
+
+    def helper_create_files(self, num):
+        params = {}
+        hdrs = self._hdrs.copy()
+        hdrs['x-file-length'] = '0'
+        for cnt in range(0, num):
+            response = self.app.post(self._files_path, headers=self._hdrs)
+            file_id = response.headers["Location"]
+            response = self.app.post(file_id,
+                                     params=params, headers=hdrs)
+            file_id = urlparse(file_id).path.split('/')[-1]
+            self.file_list.append(file_id)
+        return num
+
+    def helper_create_blocks(self, num_blocks):
+
+        block_sizes = [100 for x in
+            range(0, num_blocks)]
+
+        data = [os.urandom(x) for x in block_sizes]
+        block_list = [self.calc_sha1(d) for d in data]
+
+        block_data = zip(block_sizes, data, block_list)
+
+        return block_list, block_data
+
+    def helper_store_blocks(self, block_data):
+
+        # Put each one of the generated blocks on the
+        # size
+        for size, data, sha1 in block_data:
+            path = self.get_block_path(sha1)
+
+            # NOTE: Very important to set the content-type
+            # header. Otherwise pecan tries to do a UTF-8 test.
+            headers = {
+                "Content-Type": "application/octet-stream",
+                "Content-Length": str(size),
+            }
+
+            headers.update(self._hdrs)
+
+            response = self.app.put(path, headers=headers,
+                params=data)
+
+
+@six.add_metaclass(ABCMeta)
+class HookTest(FunctionalTest):
+    """
+    Used for testing Deuce Controllers
+    """
+
+    def setUp(self):
+        super(HookTest, self).setUp()
+
+    def tearDown(self):
+        super(HookTest, self).tearDown()
+
+    @abstractmethod
+    def create_hook(self):
+        raise NotImplementedError()
+
+    def create_service_catalog(self, objectStoreType='object-store',
+                               endpoints=True, region='test',
+                               url='url-data'):
+        catalog = {
+            'access': {
+                'serviceCatalog': []
+            }
+        }
+
+        if len(objectStoreType):
+            service = {
+                'name': 'test-service',
+                'type': objectStoreType,
+                'endpoints': [
+                ]
+            }
+            if endpoints:
+                endpoint = {
+                    'internalURL': url,
+                    'publicURL': url,
+                    'tenantId': '9876543210',
+                    'region': region,
+                }
+                service['endpoints'].append(endpoint)
+            catalog['access']['serviceCatalog'].append(service)
+
+        return catalog

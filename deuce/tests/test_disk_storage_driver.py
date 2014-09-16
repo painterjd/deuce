@@ -1,5 +1,5 @@
 import os
-from deuce.tests import FunctionalTest
+from deuce.tests import DriverTest
 from deuce.drivers.blockstoragedriver import BlockStorageDriver
 from deuce.drivers.disk import DiskStorageDriver
 from deuce.tests.util import MockFile
@@ -10,13 +10,10 @@ from hashlib import md5
 # which particular driver it is testing.
 
 
-class DiskStorageDriverTest(FunctionalTest):
+class DiskStorageDriverTest(DriverTest):
 
     def create_driver(self):
         return DiskStorageDriver()
-
-    def get_Auth_Token(self):
-        return None, None
 
     def test_ancestry(self):
         driver = self.create_driver()
@@ -125,8 +122,6 @@ class DiskStorageDriverTest(FunctionalTest):
         assert driver.delete_vault(vault_id)
 
     def test_multi_block_crud(self):
-        storage_url, token = self.get_Auth_Token()
-
         driver = self.create_driver()
 
         block_size = 3000
