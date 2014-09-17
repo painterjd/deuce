@@ -45,7 +45,7 @@ class ItemResource(object):
         if vault:
             resp.status = falcon.HTTP_201
         else:
-            raise errors.HTTPServiceUnavailable
+            raise errors.HTTPInternalServerError('Vault Creation Failed')
 
     @validate(vault_id=VaultPutRule)
     def on_delete(self, req, resp, vault_id):
@@ -71,7 +71,7 @@ class CollectionResource(object):
     @VaultMarkerRule
     @LimitRule
     def on_get(self, req, resp):
-        inmarker = req.get_param('marker') if req.get_param('marker') else 0
+        inmarker = req.get_param('marker')
         limit = req.get_param_as_int('limit') if req.get_param_as_int('limit') else \
             conf.api_configuration.max_returned_num
 

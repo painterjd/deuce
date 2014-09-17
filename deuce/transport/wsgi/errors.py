@@ -1,15 +1,15 @@
 import falcon
 
 
-class HTTPServiceUnavailable(falcon.HTTPServiceUnavailable):
+class HTTPInternalServerError(falcon.HTTPInternalServerError):
 
     """Wraps falcon.HTTPServiceUnavailable"""
 
     TITLE = u'Service temporarily unavailable'
 
     def __init__(self, description):
-        super(HTTPServiceUnavailable, self).__init__(
-            self.TITLE)
+        super(HTTPInternalServerError, self).__init__(
+            self.TITLE, description=description)
 
 
 class HTTPBadRequestAPI(falcon.HTTPBadRequest):
