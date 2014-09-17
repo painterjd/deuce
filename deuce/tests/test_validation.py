@@ -1,9 +1,7 @@
 from unittest import TestCase
-from deuce.util import FileCat
 
 from deuce.controllers.validation import ValidationFailed
 from deuce.controllers import validation as v
-import os
 
 # TODO: We probably want to move this to a
 # test helpers library

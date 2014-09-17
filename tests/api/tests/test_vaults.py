@@ -150,10 +150,12 @@ class TestVaultWithBlocksFiles(base.TestBase):
                                    file_url=self.files[0].Url)
 
         # Assign 5 blocks to file 2, sharing 2 blocks with file 1
+        self.filesize = 0
         self.assign_blocks_to_file(blocks=[4, 5, 0, 6, 2],
                                    file_url=self.files[1].Url)
 
         # Assign 8 unique blocks to file 3 and finalize it
+        self.filesize = 0
         self.assign_blocks_to_file(blocks=range(10, 18),
                                    file_url=self.files[2].Url)
         self.finalize_file(file_url=self.files[2].Url)

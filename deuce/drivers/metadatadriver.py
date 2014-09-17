@@ -258,5 +258,5 @@ class MetadataStorageDriver(object):
             raise ConstraintError(
                 deuce.context.project_id,
                 vault_id,
-                "Block {0} has references".format(block_id)
+                "Constraint Error: Block {0} has references".format(block_id)
             )

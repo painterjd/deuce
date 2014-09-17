@@ -1,11 +1,7 @@
-from unittest import TestCase
-from webtest import TestApp
-from deuce.tests import FunctionalTest
-
-import json
+from deuce.tests import ControllerTest
 
 
-class TestHealthController(FunctionalTest):
+class TestHealthController(ControllerTest):
 
     def setUp(self):
         super(TestHealthController, self).setUp()

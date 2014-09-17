@@ -1,8 +1,3 @@
-import os
-import hashlib
-from random import randrange
-import six
-from unittest import TestCase
 from deuce.tests import FunctionalTest
 from deuce.model import File
 

@@ -1,20 +1,18 @@
-from pecan import conf
-import os
-import msgpack
 import ddt
-import uuid
 import hashlib
-from random import randrange
-import six
-from six.moves.urllib.parse import urlparse, parse_qs
-from unittest import TestCase
-from deuce.tests import FunctionalTest
-
 import json
+import msgpack
+import os
+from random import randrange
+
+from pecan import conf
+from six.moves.urllib.parse import urlparse, parse_qs
+
+from deuce.tests import ControllerTest
 
 
 @ddt.ddt
-class TestBlocksController(FunctionalTest):
+class TestBlocksController(ControllerTest):
 
     def setUp(self):
         super(TestBlocksController, self).setUp()
@@ -25,8 +23,8 @@ class TestBlocksController(FunctionalTest):
         self._vault_path = '/v1.0/vaults/{0}'.format(vault_name)
         self._blocks_path = '{0}/blocks'.format(self._vault_path)
 
-        self._hdrs = {"x-project-id": self.create_project_id(),
-                      "x-auth-token": self.create_auth_token()}
+        self._files_path = self._vault_path + '/files'
+        self._hdrs = {"x-project-id": self.create_project_id()}
 
         response = self.app.put(self._vault_path,
                                 headers=self._hdrs)
@@ -44,22 +42,8 @@ class TestBlocksController(FunctionalTest):
             "X-Password": "failing_auth_hook"},
             expect_errors=True)
 
-    def _create_block_id(data=None):
-        """Creates a block ID for testing purpose"""
-        sha1 = hashlib.sha1()
-        sha1.update(data if data is None else os.urandom(2048))
-        return sha1.hexdigest()
-
-    def _calc_sha1(self, data):
-        sha1 = hashlib.sha1()
-        sha1.update(data)
-        return sha1.hexdigest()
-
-    def _get_block_path(self, blockid):
-        return '{0}/{1}'.format(self._blocks_path, blockid)
-
     def test_get_all_with_trailing_slash(self):
-        path = self._get_block_path('')
+        path = self.get_block_path('')
 
         response = self.app.get(path, headers=self._hdrs,
                                 expect_errors=True)
@@ -74,7 +58,7 @@ class TestBlocksController(FunctionalTest):
         self.assertEqual(response.status_int, 404)
 
     def test_put_invalid_block_id(self):
-        path = self._get_block_path('invalid_block_id')
+        path = self.get_block_path('invalid_block_id')
 
         response = self.app.put(path, headers=self._hdrs,
                                 expect_errors=True)
@@ -82,7 +66,7 @@ class TestBlocksController(FunctionalTest):
         self.assertEqual(response.status_int, 400)
 
         # Put a block with the invalid blockid/hash.
-        path = self._get_block_path('1234567890123456789012345678901234567890')
+        path = self.get_block_path('1234567890123456789012345678901234567890')
         headers = {
             "Content-Type": "application/octet-stream",
             "Content-Length": str(10),
@@ -94,7 +78,7 @@ class TestBlocksController(FunctionalTest):
         self.assertEqual(response.status_int, 412)
 
     def test_post_invalid_block_id(self):
-        path = self._get_block_path(self._blocks_path)
+        path = self.get_block_path(self._blocks_path)
 
         response = self.app.post(path, headers=self._hdrs,
                                  expect_errors=True)
@@ -116,7 +100,7 @@ class TestBlocksController(FunctionalTest):
         self.assertEqual(response.status_int, 412)
 
     def test_post_invalid_request_body(self):
-        path = self._get_block_path(self._blocks_path)
+        path = self.get_block_path(self._blocks_path)
 
         # Post several blocks with invalid request body
         headers = {
@@ -137,15 +121,15 @@ class TestBlocksController(FunctionalTest):
                                  params='non-msgpack', expect_errors=True)
         self.assertEqual(response.status_int, 400)
 
-    def test_post_invalid_enpoint(self):
-            path = self._get_block_path(self._blocks_path)
+    def test_post_invalid_endpoint(self):
+            path = self.get_block_path(self._blocks_path)
 
             headers = {
                 "Content-Type": "application/msgpack",
             }
             headers.update(self._hdrs)
             data = [os.urandom(x) for x in range(3)]
-            block_list = [self._calc_sha1(d) for d in data]
+            block_list = [self.calc_sha1(d) for d in data]
 
             contents = dict(zip(block_list, data))
 
@@ -253,24 +237,85 @@ class TestBlocksController(FunctionalTest):
 
         # Try to get some blocks that don't exist. This should
         # result in 404s
-        bad_block_ids = [self._create_block_id() for _ in range(0, 5)]
+        bad_block_ids = [self.create_block_id() for _ in range(0, 5)]
 
         for bad_id in bad_block_ids:
-            path = self._get_block_path(bad_id)
+            path = self.get_block_path(bad_id)
 
             response = self.app.get(path, headers=self._hdrs,
                                     expect_errors=True)
 
             self.assertEqual(response.status_int, 404)
 
-    def helper_create_blocks(self, num_blocks, async=False):
+    def test_delete_blocks_validation(self):
+        # delete non existent block
+        response = self.app.delete(self.get_block_path(
+                                   self.create_block_id()),
+                                   headers=self._hdrs,
+                                   expect_errors=True)
+        self.assertEqual(response.status_int, 404)
+
+        # delete block from non existent vault
+        response = self.app.delete('/v1.0/vaults/blah/blocks/' +
+                                   self.create_block_id(),
+                                   headers=self._hdrs,
+                                   expect_errors=True)
+        self.assertEqual(response.status_int, 404)
+
+    def test_delete_blocks_no_references(self):
+        # Just create and delete blocks
+        blocklist = self.helper_create_blocks(10)
+        for block in blocklist:
+            response = self.app.delete(self.get_block_path(block),
+                                       headers=self._hdrs)
+            self.assertEqual(response.status_int, 204)
+
+    @ddt.data(True, False)
+    def test_delete_blocks_with_references(self, finalize_status):
+
+        # Create two files each consisting of 3 blocks of size 100 bytes
+
+        responses = [self.app.post(self._files_path, headers=self._hdrs)
+                     for _ in range(2)]
+        file_ids = [urlparse(response.headers["Location"]).path
+                    for response in responses]
+        block_list = self.helper_create_blocks(3, singleblocksize=True)
+
+        offsets = [x * 100 for x in range(3)]
+        meta_info = [{'id': block, 'size': 100, 'offset': offset}
+                     for block, offset in zip(block_list, offsets)]
+        data = {"blocks": meta_info}
+
+        hdrs = {'content-type': 'application/x-deuce-block-list'}
+        hdrs.update(self._hdrs)
+
+        for file_id in file_ids:
+            # assign blocks to file
+            response = self.app.post(file_id,
+                params=json.dumps(data), headers=hdrs)
+            if finalize_status:
+                # finalize file
+                filelength = {'x-file-length': '300'}
+                hdrs.update(filelength)
+                response = self.app.post(file_id, headers=hdrs)
+
+        for block in block_list:
+            response = self.app.delete(self.get_block_path(block),
+                                headers=self._hdrs, expect_errors=True)
+            self.assertEqual(response.status_int, 412)
+
+    def helper_create_blocks(self, num_blocks, async=False,
+                             singleblocksize=False, blocksize=100):
         min_size = 1
         max_size = 2000
-        block_sizes = [randrange(min_size, max_size) for x in
+        if singleblocksize:
+            block_sizes = [blocksize for _ in range(num_blocks)]
+        else:
+            block_sizes = [randrange(min_size, max_size) for x in
                        range(0, num_blocks)]
 
         data = [os.urandom(x) for x in block_sizes]
-        block_list = [self._calc_sha1(d) for d in data]
+        block_list = [self.calc_sha1(d) for d in data]
 
         block_data = zip(block_sizes, data, block_list)
         if async:
@@ -287,7 +332,7 @@ class TestBlocksController(FunctionalTest):
             # Put each one of the generated blocks on the
             # size
             for size, data, sha1 in block_data:
-                path = self._get_block_path(sha1)
+                path = self.get_block_path(sha1)
 
                 # NOTE: Very important to set the content-type
                 # header. Otherwise pecan tries to do a UTF-8 test.
@@ -353,7 +398,7 @@ class TestBlocksController(FunctionalTest):
         # Now try to fetch each block, and compare against
         # the original block data
         for sha1 in block_list:
-            path = self._get_block_path(sha1)
+            path = self.get_block_path(sha1)
             response = self.app.get(path, headers=self._hdrs)
             self.assertEqual(response.status_int, 200)
             self.assertIn('x-block-reference-count', response.headers)
