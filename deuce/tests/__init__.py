@@ -1,3 +1,4 @@
+from abc import ABCMeta, abstractmethod
 import unittest
 from falcon import testing as ftest
 import deuce
@@ -7,6 +8,8 @@ import os
 import hashlib
 import uuid
 
+import six
+from six.moves.urllib.parse import urlparse, parse_qs
 __all__ = ['V1Base']
 
 import shutil
@@ -139,4 +142,107 @@ class V1Base(TestBase):
 
     Should contain methods specific to V1 of the API
     """
-    pass
+
+    def setUp(self):
+        super(V1Base, self).setUp()
+        from deuce import conf
+        if conf.metadata_driver.mongodb.testing.is_mocking:
+            conf.metadata_driver.mongodb.db_module = \
+                'deuce.tests.db_mocking.mongodb_mocking'
+            conf.metadata_driver.mongodb.FileBlockReadSegNum = 10
+            conf.metadata_driver.mongodb.maxFileBlockSegNum = 30
+
+        if conf.metadata_driver.cassandra.testing.is_mocking:
+            conf.metadata_driver.cassandra.db_module = \
+                'deuce.tests.mock_cassandra'
+
+        if conf.block_storage_driver.swift.testing.is_mocking:
+            conf.block_storage_driver.swift.swift_module = \
+                'deuce.tests.db_mocking.swift_mocking'
+
+
+@six.add_metaclass(ABCMeta)
+class DriverTest(V1Base):
+
+    """
+    Used for testing Deuce Drivers
+    """
+
+    def setUp(self):
+        super(DriverTest, self).setUp()
+
+    def tearDown(self):
+        super(DriverTest, self).tearDown()
+
+    @abstractmethod
+    def create_driver(self):
+        raise NotImplementedError()
+
+
+@six.add_metaclass(ABCMeta)
+class ControllerTest(V1Base):
+
+    """
+    Used for testing Deuce Controllers
+    """
+
+    def setUp(self):
+        super(ControllerTest, self).setUp()
+
+    def tearDown(self):
+        super(ControllerTest, self).tearDown()
+
+    def get_block_path(self, blockid):
+        return '{0}/{1}'.format(self._blocks_path, blockid)
+
+    def helper_create_vault(self, vault_name, hdrs):
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
+        response = self.simulate_put(vault_path, headers=hdrs)
+
+    def helper_delete_vault(self, vault_name, hdrs):
+        vault_path = '/v1.0/vaults/{0}'.format(vault_name)
+        response = self.simulate_delete(vault_path, headers=hdrs)
+
+    def helper_create_files(self, num):
+        params = {}
+        hdrs = self._hdrs.copy()
+        hdrs['x-file-length'] = '0'
+        for cnt in range(0, num):
+            response = self.simulate_post(self._files_path, headers=self._hdrs)
+            file_id = self.srmock.headers_dict['Location']
+            response = self.simulate_post(file_id,
+                                          params=params, headers=hdrs)
+            file_id = urlparse(file_id).path.split('/')[-1]
+            self.file_list.append(file_id)
+        return num
+
+    def helper_create_blocks(self, num_blocks):
+
+        block_sizes = [100 for x in
+                       range(0, num_blocks)]
+
+        data = [os.urandom(x) for x in block_sizes]
+        block_list = [self.calc_sha1(d) for d in data]
+
+        block_data = zip(block_sizes, data, block_list)
+
+        return block_list, block_data
+
+    def helper_store_blocks(self, block_data):
+
+        # Put each one of the generated blocks on the
+        # size
+        for size, data, sha1 in block_data:
+            path = self.get_block_path(sha1)
+
+            # NOTE: Very important to set the content-type
+            # header. Otherwise pecan tries to do a UTF-8 test.
+            headers = {
+                "Content-Type": "application/octet-stream",
+                "Content-Length": str(size),
+            }
+
+            headers.update(self._hdrs)
+
+            response = self.simulate_put(path, headers=headers,
+                                         body=data)
