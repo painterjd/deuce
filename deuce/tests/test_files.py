@@ -196,6 +196,13 @@ class TestFiles(ControllerTest):
 
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
+        # invalid file id
+        response = self.simulate_post(self._files_path + '/' +
+                                      '(%^(*&^',
+                                      headers=self._hdrs)
+
+        self.assertEqual(self.srmock.status, falcon.HTTP_400)
+
         hdrs = {'content-type': 'application/x-deuce-block-list'}
         hdrs.update(self._hdrs)
         data = "{\"blocks\":["

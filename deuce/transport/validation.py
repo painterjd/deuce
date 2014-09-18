@@ -197,10 +197,11 @@ def val_none_value(value):
 
 
 def _abort(status_code):
-    if status_code == 400:
-        raise errors.HTTPBadRequestAPI('Invalid Request')
-    elif status_code == 404:
-        raise errors.HTTPNotFound
+    abort_errors = {
+        400: errors.HTTPBadRequestAPI('Invalid Request'),
+        404: errors.HTTPNotFound
+    }
+    raise abort_errors[status_code]
 
 
 # parameter rules
@@ -211,10 +212,9 @@ BlockGetRule = Rule(val_block_id(), lambda: _abort(404))
 FileGetRule = Rule(val_file_id(), lambda: _abort(404))
 FilePostRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(400))
 BlockPutRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(400))
-ReqNoneRule = Rule(val_none_value(none_ok=True), lambda: _abort(404))
+
 
 # query string rules
-
 
 def VaultMarkerRule(func):
     @wraps(func)
