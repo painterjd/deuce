@@ -393,12 +393,14 @@ class TestBlocksController(ControllerTest):
                         assert h in resp_block_list
                 if exam_block_data:
                     self.helper_exam_block_data(resp_block_list)
-                return next_batch_url
+                return next_batch
             if not next_batch_url:
                 break
             # TODO (TheSriram): Make finding marker more elegant
-            params['marker'] = \
-                marker = next_batch_url.split('marker=')[1]
+            for query in query_string.split('&'):
+                if 'marker' in query:
+                    current_marker = query.split('marker=')[1]
+            params['marker'] = current_marker
         assert len(resp_block_list) == assert_data_len
         for h in resp_block_list:
             assert h in self.block_list

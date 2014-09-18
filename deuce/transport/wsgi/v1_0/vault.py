@@ -1,7 +1,7 @@
 import falcon
 import six
 from six.moves.urllib.parse import urlparse, parse_qs
-from deuce.util import set_qs
+from deuce.util import set_qs_on_url
 from deuce.model import Vault
 from deuce import conf
 import deuce.util.log as logging
@@ -91,7 +91,7 @@ class CollectionResource(object):
         if outmarker:
             query_args = {'marker': outmarker}
             query_args['limit'] = limit
-            returl = set_qs(req.url, query_args)
+            returl = set_qs_on_url(req.url, query_args)
             resp.set_header(name="X-Next-Batch", value=returl)
 
         # Set return json for vault URLs.
