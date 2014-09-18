@@ -7,6 +7,9 @@ import deuce.util.log as logging
 import os
 import hashlib
 import uuid
+import six
+from six.moves.urllib.parse import urlparse, parse_qs
+
 
 import six
 from six.moves.urllib.parse import urlparse, parse_qs
@@ -89,6 +92,11 @@ class TestBase(unittest.TestCase):
     def create_file_id(self):
         return str(uuid.uuid4())
 
+    def calc_sha1(self, data):
+        sha1 = hashlib.sha1()
+        sha1.update(data)
+        return sha1.hexdigest()
+
     def simulate_request(self, path, **kwargs):
         """Simulate a request.
 
@@ -102,7 +110,9 @@ class TestBase(unittest.TestCase):
 
         headers = kwargs.get('headers', self.headers).copy()
         kwargs['headers'] = headers
-        return self.app(ftest.create_environ(path=path, **kwargs),
+        return self.app(ftest.create_environ(path=path,
+                                             protocol='HTTP/1.0',
+                                             **kwargs),
                         self.srmock)
 
     def simulate_get(self, *args, **kwargs):
