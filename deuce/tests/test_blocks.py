@@ -51,6 +51,12 @@ class TestBlocksController(ControllerTest):
 
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
+    def test_get_invalid_block_id(self):
+        path = self.get_block_path('invalid_block_id')
+        response = self.simulate_get(path, headers=self._hdrs)
+
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
     def test_put_invalid_block_id(self):
         path = self.get_block_path('invalid_block_id')
 

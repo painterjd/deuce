@@ -123,6 +123,11 @@ class TestVaults(ControllerTest):
         response = self.simulate_head(vault_path, headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
+        response = self.simulate_get('/v1.0/vaults',
+                                     query_string='marker=*',
+                                     headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
     def test_vault_deletion(self):
 
         # 1. Delete non-existent vault
