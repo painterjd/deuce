@@ -1,5 +1,4 @@
-import os
-from deuce.tests import FunctionalTest
+from deuce.tests import V1Base
 from deuce.drivers.metadatadriver import MetadataStorageDriver, GapError,\
     OverlapError, ConstraintError
 from deuce.drivers.sqlite import SqliteStorageDriver
@@ -9,7 +8,7 @@ import deuce
 from mock import MagicMock
 
 
-class SqliteStorageDriverTest(FunctionalTest):
+class SqliteStorageDriverTest(V1Base):
 
     def create_driver(self):
         return SqliteStorageDriver()

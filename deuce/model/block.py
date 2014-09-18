@@ -1,7 +1,6 @@
 
 import deuce
 
-from pecan import conf
 import os
 
 
