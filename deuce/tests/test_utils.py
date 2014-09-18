@@ -92,11 +92,11 @@ class TestFileCat(TestCase):
         assert computed_md5 == expected_md5
 
     def test_set_qs(self):
-        url = 'http://whatever:8080/hello/world?param1=value1&param2=value2'
+        url = 'http://whatever:8080/hello/world'
 
         # Empty case
-        testurl = set_qs(url)
-        self.assertEqual(testurl, 'http://whatever:8080/hello/world')
+        query_string = set_qs(url,args={'param1':'value1'})
+        self.assertEqual('param1=value1', query_string)
 
         positive_cases = [
             {'whatever': '3'},
