@@ -11,6 +11,8 @@ import six
 from six.moves.urllib.parse import urlparse, parse_qs
 
 
+import six
+from six.moves.urllib.parse import urlparse, parse_qs
 __all__ = ['V1Base']
 
 import shutil
@@ -150,7 +152,23 @@ class V1Base(TestBase):
 
     Should contain methods specific to V1 of the API
     """
-    pass
+
+    def setUp(self):
+        super(V1Base, self).setUp()
+        from deuce import conf
+        if conf.metadata_driver.mongodb.testing.is_mocking:
+            conf.metadata_driver.mongodb.db_module = \
+                'deuce.tests.db_mocking.mongodb_mocking'
+            conf.metadata_driver.mongodb.FileBlockReadSegNum = 10
+            conf.metadata_driver.mongodb.maxFileBlockSegNum = 30
+
+        if conf.metadata_driver.cassandra.testing.is_mocking:
+            conf.metadata_driver.cassandra.db_module = \
+                'deuce.tests.mock_cassandra'
+
+        if conf.block_storage_driver.swift.testing.is_mocking:
+            conf.block_storage_driver.swift.swift_module = \
+                'deuce.tests.db_mocking.swift_mocking'
 
 
 @six.add_metaclass(ABCMeta)
