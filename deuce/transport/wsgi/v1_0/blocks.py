@@ -8,7 +8,7 @@ from deuce.util import set_qs
 from deuce.model import Vault
 from deuce.drivers.metadatadriver import ConstraintError
 from deuce.transport.validation import *
-from deuce.transport.wsgi import errors
+import deuce.transport.wsgi.errors as errors
 import deuce.util.log as logging
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,8 @@ class CollectionResource(object):
                     if retval:
                         resp.status = falcon.HTTP_201
                     else:
-                        raise errors.HTTPServiceUnavailable()
+                        raise errors.HTTPServiceUnavailable('Block '
+                                                            'Post Failed')
                     logger.info('blocks [{0}] added'.format(block_ids))
                 except ValueError:
                     raise errors.HTTPPreconditionFailed('hash error')

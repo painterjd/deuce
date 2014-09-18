@@ -8,11 +8,11 @@ except ImportError:  # pragma: no cover
 
 
 def set_qs(url, args={}):
-    """ Sets the query string on a URL using a dictionary """
+    """ Returns the query string on a URL using a dictionary """
 
     parts = list(parse.urlparse(url))
     parts[4] = parse.urlencode(args)
-    return parse.urlunparse(parts)
+    return parts[4]
 
 
 def relative_uri(url):
