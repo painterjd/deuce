@@ -119,8 +119,7 @@ class ItemResource(object):
             logger.error('Vault [{0}] does not exist'.format(vault_id))
             raise errors.HTTPBadRequestAPI('Vault does not exist')
 
-        if file_id is not None:
-            self._assign(resp, req, vault, vault_id, file_id)
+        self._assign(resp, req, vault, vault_id, file_id)
 
     def _assign(self, resp, req, vault, vault_id, file_id):
         f = vault.get_file(file_id)
