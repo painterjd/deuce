@@ -23,6 +23,3 @@ class Block(object):
         """
         return deuce.metadata_driver.get_block_ref_count(
             self.vault_id, self.block_id)
-
-    def __json__(self):
-        return self.block_id

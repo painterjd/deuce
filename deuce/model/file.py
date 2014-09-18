@@ -17,6 +17,3 @@ class File(object):
     @property
     def finalized(self):
         return self._finalized
-
-    def __json__(self):
-        return self._file_id

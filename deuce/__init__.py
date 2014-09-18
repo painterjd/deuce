@@ -19,9 +19,6 @@ class Config(object):
             else:
                 setattr(self, k, v)
 
-    def __getitem__(self, k):
-        return self.__dict__[k]
-
 
 # NOTE(TheSriram): The user can add in their rule of where they
 # want the .inis' placed, and their priorities.
@@ -53,7 +50,7 @@ def get_correct_conf(conf_list):
     for config_params in conf_list:
         conf_params = Config(config_params)
         for k, v in config_params.items():
-            if k not in ["status", "priority"]:
+            if k not in ["status", "priority"]:  # pragma: no cover
                 if not os.path.exists(os.path.abspath(
                     getattr(conf_params, k))) or \
                         (k + '.ini' not in getattr(conf_params, k)):
@@ -73,7 +70,7 @@ conf_ini = Config(config_files)
 
 for k, v in config_files.items():
     if not os.path.exists(os.path.abspath(getattr(conf_ini, k))) or \
-            (k + '.ini' not in getattr(conf_ini, k)):
+            (k + '.ini' not in getattr(conf_ini, k)):  # pragma: no cover
         raise OSError("Please set absolute path to "
                       "correct {0} ini file".format(k))
 
@@ -87,7 +84,7 @@ config = ConfigObj(
     os.path.abspath(conf_ini.config),
     configspec=configspec,
     interpolation=False)
-if not config.validate(Validator()):
+if not config.validate(Validator()):  # pragma: no cover
     raise ValueError('Validation of config failed wrt to configspec')
 
 conf_dict = config.dict()
