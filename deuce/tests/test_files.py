@@ -376,8 +376,10 @@ class TestFiles(ControllerTest):
             if not next_batch_url:
                 break
             # TODO (TheSriram): Make finding marker more elegant
-            params['marker'] = \
-                marker = next_batch_url.split('marker=')[1]
+            for query in query_string.split('&'):
+                if 'marker' in query:
+                    current_marker = query.split('marker=')[1]
+            params['marker'] = current_marker
 
         self.assertEqual(len(resp_block_list), 1.2 *
                          conf.api_configuration.max_returned_num)
@@ -437,8 +439,10 @@ class TestFiles(ControllerTest):
                 break
 
             # TODO (TheSriram): Make finding marker more elegant
-            params['marker'] = \
-                marker = next_batch_url.split('marker=')[1]
+            for query in query_string.split('&'):
+                if 'marker' in query:
+                    current_marker = query.split('marker=')[1]
+            params['marker'] = current_marker
 
         self.assertEqual(len(resp_file_list), assert_data_len)
 

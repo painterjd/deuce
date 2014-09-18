@@ -2,7 +2,7 @@ import json
 
 import falcon
 
-from deuce.util import set_qs
+from deuce.util import set_qs_on_url
 from deuce.model import Vault
 from deuce import conf
 import deuce.util.log as logging
@@ -50,7 +50,7 @@ class CollectionResource(object):
             query_args = {'marker': outmarker}
             query_args['limit'] = limit
 
-            returl = set_qs(req.url, query_args)
+            returl = set_qs_on_url(req.url, query_args)
             resp.set_header("X-Next-Batch", returl)
 
         resp.body = json.dumps(responses)

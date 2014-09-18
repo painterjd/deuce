@@ -4,7 +4,7 @@ import falcon
 import msgpack
 
 from deuce import conf
-from deuce.util import set_qs
+from deuce.util import set_qs_on_url
 from deuce.model import Vault
 from deuce.drivers.metadatadriver import ConstraintError
 from deuce.transport.validation import *
@@ -115,7 +115,7 @@ class CollectionResource(object):
                     if retval:
                         resp.status = falcon.HTTP_201
                     else:
-                        raise errors.HTTPServiceUnavailable('Block '
+                        raise errors.HTTPInternalServerError('Block '
                                                             'Post Failed')
                     logger.info('blocks [{0}] added'.format(block_ids))
                 except ValueError:
@@ -156,7 +156,7 @@ class CollectionResource(object):
         if outmarker:
             query_args = {'marker': outmarker}
             query_args['limit'] = limit
-            returl = set_qs(req.url, query_args)
+            returl = set_qs_on_url(req.url, query_args)
             resp.set_header("X-Next-Batch", returl)
 
         resp.body = json.dumps([response.block_id for response in responses])
