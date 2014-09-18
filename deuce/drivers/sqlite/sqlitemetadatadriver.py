@@ -56,7 +56,7 @@ schemas.append([
         PRIMARY KEY(projectid, vaultid)
     )
     """
-])  # Version 2
+])  # Version 1
 
 CURRENT_DB_VERSION = len(schemas)
 
