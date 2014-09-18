@@ -32,16 +32,6 @@ class HTTPBadRequestBody(falcon.HTTPBadRequest):
         super(HTTPBadRequestBody, self).__init__(self.TITLE, description)
 
 
-class HTTPDocumentTypeNotSupported(HTTPBadRequestBody):
-
-    """Wraps HTTPBadRequestBody with a standard description."""
-
-    DESCRIPTION = u'Document type not supported.'
-
-    def __init__(self):
-        super(HTTPDocumentTypeNotSupported, self).__init__(self.DESCRIPTION)
-
-
 class HTTPPreconditionFailed(falcon.HTTPPreconditionFailed):
 
     """Wraps HTTPPreconditionFailed with a contextual title."""
