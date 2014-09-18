@@ -4,6 +4,7 @@ from falcon import testing as ftest
 import deuce
 from deuce.transport.wsgi.driver import Driver
 import deuce.util.log as logging
+from deuce.util.misc import relative_uri
 import os
 import hashlib
 import uuid
@@ -214,15 +215,14 @@ class ControllerTest(V1Base):
         response = self.simulate_delete(vault_path, headers=hdrs)
 
     def helper_create_files(self, num):
-        params = {}
         hdrs = self._hdrs.copy()
         hdrs['x-file-length'] = '0'
         for cnt in range(0, num):
             response = self.simulate_post(self._files_path, headers=self._hdrs)
-            file_id = self.srmock.headers_dict['Location']
-            response = self.simulate_post(file_id,
-                                          params=params, headers=hdrs)
-            file_id = urlparse(file_id).path.split('/')[-1]
+            file_path = self.srmock.headers_dict['Location']
+            file_uri, querystring = relative_uri(file_path)
+            response = self.simulate_post(file_uri, headers=hdrs)
+            file_id = urlparse(file_path).path.split('/')[-1]
             self.file_list.append(file_id)
         return num
 
