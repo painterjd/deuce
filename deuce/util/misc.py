@@ -13,3 +13,8 @@ def set_qs(url, args={}):
     parts = list(parse.urlparse(url))
     parts[4] = parse.urlencode(args)
     return parse.urlunparse(parts)
+
+
+def relative_uri(url):
+    parts = list(parse.urlparse(url))
+    return (parts[2], parts[4])
