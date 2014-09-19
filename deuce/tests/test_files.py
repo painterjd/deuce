@@ -295,8 +295,6 @@ class TestFiles(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_200)
 
         # List the blocks that make up this file
-        # import ipdb
-        # ipdb.set_trace()
         self.helper_test_file_blocks_controller(self._file_id, hdrs)
 
         # Delete the finalized file. delete returns 'ok'
@@ -431,8 +429,6 @@ class TestFiles(ControllerTest):
             assert isinstance(json.loads(response[0].decode()), list)
 
             if not repeat:
-                # import ipdb
-                # ipdb.set_trace()
                 assert (not next_batch_url) == (not assert_return_url)
                 assert len(resp_file_list) == assert_data_len
                 for h in resp_file_list:
