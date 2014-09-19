@@ -10,7 +10,8 @@ except ImportError:
 else:
     REQUIRES = ['configobj', 'falcon', 'six', 'setuptools >= 1.1.6',
                 'cassandra-driver', 'pymongo', 'msgpack-python',
-                'python-swiftclient', 'asyncio', 'aiohttp']
+                'python-swiftclient', 'python-logstash', 'asyncio',
+                'aiohttp']
     setup(
         name='deuce',
         version='0.1',
