@@ -14,10 +14,10 @@ class SqliteStorageDriverTest(V1Base):
         return SqliteStorageDriver()
 
     def test_basic_construction(self):
-        driver = SqliteStorageDriver()
+        driver = self.create_driver()
 
     def test_geneology(self):
-        driver = SqliteStorageDriver()
+        driver = self.create_driver()
         assert isinstance(driver, MetadataStorageDriver)
         assert isinstance(driver, object)
 

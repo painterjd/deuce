@@ -180,6 +180,7 @@ class HookTest(V1Base):
     """
     Used for testing Deuce Hooks
     """
+
     def app_setup(self, hooks):
         endpoints = [
             ('/v1.0', v1_0.public_endpoints()),

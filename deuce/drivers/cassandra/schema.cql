@@ -8,7 +8,7 @@ use deucekeyspace;
 CREATE TABLE vaults(
   projectid TEXT,
   vaultid TEXT,
-  PRIMARY KEY(proectid, vaultid)
+  PRIMARY KEY(projectid, vaultid)
 );
 
 CREATE COLUMNFAMILY blocks (
