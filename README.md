@@ -57,5 +57,5 @@ Install the code
 Start it up
 
 ```
-  pecan serve config.py
+  deuce-server
 ```

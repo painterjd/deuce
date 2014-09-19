@@ -299,8 +299,6 @@ class ControllerTest(V1Base):
         for size, data, sha1 in block_data:
             path = self.get_block_path(sha1)
 
-            # NOTE: Very important to set the content-type
-            # header. Otherwise pecan tries to do a UTF-8 test.
             headers = {
                 "Content-Type": "application/octet-stream",
                 "Content-Length": str(size),
