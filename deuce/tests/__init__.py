@@ -1,6 +1,8 @@
 from abc import ABCMeta, abstractmethod
 import unittest
 from falcon import testing as ftest
+import falcon
+from deuce.transport.wsgi import v1_0
 import deuce
 from deuce.transport.wsgi.driver import Driver
 import deuce.util.log as logging
@@ -54,7 +56,7 @@ class TestBase(unittest.TestCase):
     def setUp(self):
         super(TestBase, self).setUp()
         import deuce
-        deuce.context = DummyContextObject
+        deuce.context = DummyContextObject()
         deuce.context.project_id = self.create_project_id()
         deuce.context.openstack = DummyContextObject()
         deuce.context.openstack.auth_token = self.create_auth_token()
@@ -170,6 +172,58 @@ class V1Base(TestBase):
         if conf.block_storage_driver.swift.testing.is_mocking:
             conf.block_storage_driver.swift.swift_module = \
                 'deuce.tests.db_mocking.swift_mocking'
+
+
+@six.add_metaclass(ABCMeta)
+class HookTest(V1Base):
+
+    """
+    Used for testing Deuce Hooks
+    """
+    def app_setup(self, hooks):
+        endpoints = [
+            ('/v1.0', v1_0.public_endpoints()),
+        ]
+        self.app = falcon.API(before=hooks)
+        for version_path, endpoints in endpoints:
+            for route, resource in endpoints:
+                self.app.add_route(version_path + route, resource)
+        self.srmock = ftest.StartResponseMock()
+        self.headers = {}
+
+    def setUp(self):
+        super(HookTest, self).setUp()
+
+    def tearDown(self):
+        super(HookTest, self).tearDown()
+
+    def create_service_catalog(self, objectStoreType='object-store',
+                               endpoints=True, region='test',
+                               url='url-data'):
+        catalog = {
+            'access': {
+                'serviceCatalog': []
+            }
+        }
+
+        if len(objectStoreType):
+            service = {
+                'name': 'test-service',
+                'type': objectStoreType,
+                'endpoints': [
+                ]
+            }
+            if endpoints:
+                endpoint = {
+                    'internalURL': url,
+                    'publicURL': url,
+                    'tenantId': '9876543210',
+                    'region': region,
+                }
+                service['endpoints'].append(endpoint)
+            catalog['access']['serviceCatalog'].append(service)
+
+        return catalog
 
 
 @six.add_metaclass(ABCMeta)
