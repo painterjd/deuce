@@ -15,9 +15,6 @@ class DiskStorageDriverTest(V1Base):
     def create_driver(self):
         return DiskStorageDriver()
 
-    def get_Auth_Token(self):
-        return None, None
-
     def test_ancestry(self):
         driver = self.create_driver()
 
@@ -125,8 +122,6 @@ class DiskStorageDriverTest(V1Base):
         assert driver.delete_vault(vault_id)
 
     def test_multi_block_crud(self):
-        storage_url, token = self.get_Auth_Token()
-
         driver = self.create_driver()
 
         block_size = 3000

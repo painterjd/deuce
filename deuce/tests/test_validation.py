@@ -1,5 +1,4 @@
 from unittest import TestCase
-from deuce.util import FileCat
 
 from deuce.transport.validation import ValidationFailed
 from deuce.transport import validation as v

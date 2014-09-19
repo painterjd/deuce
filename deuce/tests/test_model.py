@@ -1,6 +1,6 @@
 from deuce.tests import V1Base
 
-from deuce.model import Vault, Block, File
+from deuce.model import Vault, File
 
 
 class TestModel(V1Base):
