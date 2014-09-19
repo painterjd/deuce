@@ -22,7 +22,7 @@ import json
 
 
 class SwiftStorageDriverTest(DiskStorageDriverTest):
-    # TODO (TheSriram) : Make pecan.conf swift version aware
+
     def setUp(self):
         super(SwiftStorageDriverTest, self).setUp()
         storage_url, auth_token = self.get_Auth_Token()
