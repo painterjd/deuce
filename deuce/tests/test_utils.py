@@ -1,9 +1,8 @@
-from unittest import TestCase
-from deuce.util import FileCat, set_qs
-from deuce.tests.util import MockFile
-import os
-from random import randrange
 from hashlib import md5
+from random import randrange
+from unittest import TestCase
+from deuce.util import FileCat, set_qs, set_qs_on_url
+from deuce.tests.util import MockFile
 
 try:  # pragma: no cover
     import six.moves.urllib.parse as parse
@@ -91,11 +90,18 @@ class TestFileCat(TestCase):
         assert bytes_read == sum(file_sizes)
         assert computed_md5 == expected_md5
 
+    def test_set_qs_on_url(self):
+        url = 'http://whatever:8080/hello/world'
+
+        # Empty case
+        query_string = set_qs(url, args={'param1': 'value1'})
+        self.assertEqual('param1=value1', query_string)
+
     def test_set_qs(self):
         url = 'http://whatever:8080/hello/world?param1=value1&param2=value2'
 
         # Empty case
-        testurl = set_qs(url)
+        testurl = set_qs_on_url(url)
         self.assertEqual(testurl, 'http://whatever:8080/hello/world')
 
         positive_cases = [

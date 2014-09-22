@@ -1,8 +1,7 @@
 from unittest import TestCase
-from deuce.util import FileCat
 
-from deuce.controllers.validation import ValidationFailed
-from deuce.controllers import validation as v
+from deuce.transport.validation import ValidationFailed
+from deuce.transport import validation as v
 import os
 
 # TODO: We probably want to move this to a
