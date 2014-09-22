@@ -1,9 +1,9 @@
-from deuce.tests import FunctionalTest
+from deuce.tests import V1Base
 
 from deuce.model import Vault, File
 
 
-class TestModel(FunctionalTest):
+class TestModel(V1Base):
 
     def setUp(self):
         super(TestModel, self).setUp()

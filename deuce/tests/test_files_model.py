@@ -1,8 +1,8 @@
-from deuce.tests import FunctionalTest
+from deuce.tests import V1Base
 from deuce.model import File
 
 
-class TestFilesModel(FunctionalTest):
+class TestFilesModel(V1Base):
 
     def setUp(self):
         super(TestFilesModel, self).setUp()

@@ -3,9 +3,10 @@ import re
 import inspect
 from functools import wraps
 from collections import namedtuple
-from pecan import request, abort
 
-from deuce.common import local
+
+from deuce.transport.wsgi import errors
+
 
 VAULT_ID_MAX_LEN = 128
 VAULT_ID_REGEX = re.compile('^[a-zA-Z0-9_\-]+$')
@@ -54,7 +55,7 @@ def Rule(vfunc, on_error, getter=None):
 
 
 def validate(**rules):
-    """Pecan validation endpoint decorator
+    """Falcon validation endpoint decorator
 
     This decorator allows validation of input from user
     API endpoints. This allows separation of business logic
@@ -72,6 +73,7 @@ def validate(**rules):
     in the response and the resultant function will never actually
     be called.
     """
+
     def _validate(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -125,9 +127,7 @@ def validate(**rules):
                     rule.errfunc()
                     return
 
-            assert funcparams.args[0] == 'self'
-
-            return f(args[0], **outargs)
+            return f(*args, **kwargs)
         return wrapper
     return _validate
 
@@ -197,9 +197,12 @@ def val_none_value(value):
 
 
 def _abort(status_code):
-    import deuce
-    abort(status_code, headers={"Transaction-ID":
-        deuce.context.transaction.request_id})
+    abort_errors = {
+        400: errors.HTTPBadRequestAPI('Invalid Request'),
+        404: errors.HTTPNotFound
+    }
+    raise abort_errors[status_code]
+
 
 # parameter rules
 VaultGetRule = Rule(val_vault_id(), lambda: _abort(404))
@@ -209,20 +212,88 @@ BlockGetRule = Rule(val_block_id(), lambda: _abort(404))
 FileGetRule = Rule(val_file_id(), lambda: _abort(404))
 FilePostRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(400))
 BlockPutRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(400))
-ReqNoneRule = Rule(val_none_value(none_ok=True), lambda: _abort(404))
+
 
 # query string rules
-VaultMarkerRule = Rule(val_vault_id(none_ok=True),
-lambda: _abort(404), lambda v: request.params.get(v))
 
-FileMarkerRule = Rule(val_file_id(none_ok=True), lambda: _abort(404),
-                      lambda v: request.params.get(v))
+def VaultMarkerRule(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        vaultmarker = Rule(
+            val_vault_id(
+                none_ok=True),
+            lambda: _abort(404),
+            lambda v: args[1].get_param(v))
 
-OffsetMarkerRule = Rule(val_offset(none_ok=True), lambda: _abort(404),
-                        lambda v: request.params.get(v))
+        @wraps(func)
+        @validate(marker=vaultmarker)
+        def validator(*args, **kwargs):
+            return func(*args, **kwargs)
+        validator(*args, **kwargs)
+    return wrap
 
-BlockMarkerRule = Rule(val_block_id(none_ok=True), lambda: _abort(404),
-                       lambda v: request.params.get(v))
 
-LimitRule = Rule(val_limit(none_ok=True), lambda: _abort(404),
-                 lambda v: request.params.get(v))
+def FileMarkerRule(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        filemarker = Rule(
+            val_file_id(
+                none_ok=True),
+            lambda: _abort(404),
+            lambda v: args[1].get_param(v))
+
+        @wraps(func)
+        @validate(marker=filemarker)
+        def validator(*args, **kwargs):
+            return func(*args, **kwargs)
+        validator(*args, **kwargs)
+    return wrap
+
+
+def OffsetMarkerRule(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        offsetmarker = Rule(
+            val_offset(
+                none_ok=True),
+            lambda: _abort(404),
+            lambda v: args[1].get_param(v))
+
+        @wraps(func)
+        @validate(marker=offsetmarker)
+        def validator(*args, **kwargs):
+            return func(*args, **kwargs)
+        validator(*args, **kwargs)
+    return wrap
+
+
+def BlockMarkerRule(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        blockmarker = Rule(
+            val_block_id(
+                none_ok=True),
+            lambda: _abort(404),
+            lambda v: args[1].get_param(v))
+
+        @validate(marker=blockmarker)
+        def validator(*args, **kwargs):
+            return func(*args, **kwargs)
+        validator(*args, **kwargs)
+    return wrap
+
+
+def LimitRule(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        limitrule = Rule(
+            val_limit(
+                none_ok=True),
+            lambda: _abort(404),
+            lambda v: args[1].get_param(v))
+
+        @validate(limit=limitrule)
+        def validator(*args, **kwargs):
+            return func(*args, **kwargs)
+        validator(*args, **kwargs)
+    return wrap
