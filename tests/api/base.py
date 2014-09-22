@@ -112,7 +112,7 @@ class TestBase(fixtures.BaseTestFixture):
         self.assertIsNotNone(headers['content-length'])
         if json:
             self.assertEqual(headers['content-type'],
-                             'application/json; charset=UTF-8')
+                             'application/json; charset=utf-8')
         if binary:
             content_type = headers['content-type'].split(';')[0]
             self.assertEqual(content_type,
@@ -120,7 +120,7 @@ class TestBase(fixtures.BaseTestFixture):
         if contentlength is not None:
             self.assertEqual(int(headers['content-length']), contentlength)
 
-    def assertUrl(self, url, base=False, vaults=False, vaultspath=True,
+    def assertUrl(self, url, base=False, vaults=False, vaultspath=False,
                   blocks=False, files=False, filepath=False, fileblock=False,
                   nextlist=False):
         """Check that the url provided has information according to the flags
@@ -135,7 +135,7 @@ class TestBase(fixtures.BaseTestFixture):
             self.assertEqual(u.path, '/{0}'.format(self.api_version), msg)
 
         if vaults:
-            self.assertEqual(u.path, '/{0}/vaults/'.format(self.api_version,
+            self.assertEqual(u.path, '/{0}/vaults'.format(self.api_version,
                                                           msg))
 
         if vaultspath:
@@ -172,13 +172,7 @@ class TestBase(fixtures.BaseTestFixture):
         self.assertEqual(resp.status_code, 404,
                          'Status code returned: {0} . '
                          'Expected 404'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        resp_body = resp.json()
-        self.assertIn('message', resp_body)
-        self.assertEqual(resp_body['message'],
-                         'The resource could not be found.')
-        self.assertIn('status', resp_body)
-        self.assertEqual(resp_body['status'], 404)
+        self.assertHeaders(resp.headers, contentlength=0)
 
     def _create_empty_vault(self, vaultname=None, size=50):
         """

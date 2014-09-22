@@ -1,53 +1,27 @@
-from unittest import TestCase
-from webtest import TestApp
-from deuce.tests import FunctionalTest
-
-import deuce
-from deuce.hooks import OpenStackHook
-
-import webob.exc
+import falcon
 
 
-class DummyClassObject(object):
-    pass
+from deuce.transport.wsgi import hooks
+from deuce.tests import HookTest
 
 
-class TestOpenStackHook(FunctionalTest):
+def before_hooks(req, resp, params):
+    # Openstack Hook included
+    return [
+        hooks.DeuceContextHook(req, resp, params),
+        hooks.TransactionidHook(req, resp, params),
+        hooks.OpenstackHook(req, resp, params)
+    ]
 
-    def setUp(self):
-        super(TestOpenStackHook, self).setUp()
-        self.state = DummyClassObject()
-        self.state.request = DummyClassObject()
-        self.state.request.headers = {}
-        self.state.response = DummyClassObject()
 
-        deuce.context = DummyClassObject()
-        deuce.context.project_id = self.create_project_id()
-        deuce.context.transaction = DummyClassObject()
-        deuce.context.transaction.request_id = 'openstack-hook-test'
+class TestOpenstackHook(HookTest):
 
-    def test_token_present(self):
-        hook = OpenStackHook()
-        self.state.request.headers['x-auth-token'] = 'good'
+    def test_openstack_hook(self):
 
-        self.assertFalse(hasattr(deuce.context, 'openstack'))
+        self.app_setup(before_hooks)
 
-        hook.on_route(self.state)
+        response = self.simulate_get('/v1.0', headers={'X-Auth-Token': 'blah'})
+        self.assertEqual(self.srmock.status, falcon.HTTP_200)
 
-        self.assertTrue(hasattr(deuce.context, 'openstack'))
-
-    def test_hook_not_present(self):
-        hook = OpenStackHook()
-        with self.assertRaises(webob.exc.HTTPUnauthorized) \
-                as expected_exception:
-            hook.on_route(self.state)
-
-    def test_hook_health(self):
-        hook = OpenStackHook()
-        self.state.request.path = '/v1.0/health'
-        hook.on_route(self.state)
-
-    def test_hook_ping(self):
-        hook = OpenStackHook()
-        self.state.request.path = '/v1.0/ping'
-        hook.on_route(self.state)
+        response = self.simulate_get('/v1.0')
+        self.assertEqual(self.srmock.status, falcon.HTTP_400)
