@@ -6,6 +6,7 @@ import msgpack
 from deuce import conf
 from deuce.util import set_qs_on_url
 from deuce.model import Vault
+from deuce.model.exceptions import ConsistencyError
 from deuce.drivers.metadatadriver import ConstraintError
 from deuce.transport.validation import *
 import deuce.transport.wsgi.errors as errors
@@ -32,20 +33,22 @@ class ItemResource(object):
         # in the vault controller
         assert vault is not None
 
-        if vault.meta_has_block(block_id):
-            block = vault.get_block(block_id)
-            if block:
+        try:
+
+            if vault.block_consistency_check(block_id):
+                block = vault.get_block(block_id)
                 ref_cnt = block.get_ref_count()
                 resp.set_header('X-Block-Reference-Count', str(ref_cnt))
                 resp.status = falcon.HTTP_200
             else:
-                logger.error('Block Storage Inconsistent with Metadata '
-                             'for block [{0}]'.format(block_id))
-                raise errors.HTTPBadGateway('Block Storage inconsistent '
-                                            'with Metadata')
-        else:
-            logger.error('block [{0}] does not exist'.format(block_id))
-            raise errors.HTTPNotFound
+                logger.error('block [{0}] does not exist'.format(block_id))
+                raise errors.HTTPNotFound
+
+        except ConsistencyError:
+            logger.error('Block Storage Inconsistent with Metadata '
+                         'for block [{0}]'.format(block_id))
+            raise errors.HTTPBadGateway('Block Storage inconsistent '
+                                        'with Metadata')
 
     @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
     def on_get(self, req, resp, vault_id, block_id):

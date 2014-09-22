@@ -1,5 +1,6 @@
 from deuce.model.block import Block
 from deuce.model.file import File
+from deuce.model.exceptions import ConsistencyError
 from deuce.util import log as logging
 import deuce
 import uuid
@@ -97,6 +98,15 @@ class Vault(object):
             self.id, marker=marker, limit=limit)
 
         return (Block(self.id, bid) for bid in gen)
+
+    def block_consistency_check(self, block_id):
+        if self.meta_has_block(block_id):
+            if self.get_block(block_id):
+                return True
+            else:
+                raise ConsistencyError
+        else:
+            return False
 
     def meta_has_block(self, block_id):
         return deuce.metadata_driver.has_block(self.id, block_id)
