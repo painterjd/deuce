@@ -21,12 +21,17 @@ class TestBlockStorageController(ControllerTest):
 
         # Create a vault for us to work with
 
-        vault_name = self.create_vault_id()
-        self._vault_path = '/v1.0/vaults/{0}'.format(vault_name)
+        self.vault_name = self.create_vault_id()
+        self._vault_path = '/v1.0/vaults/{0}'.format(self.vault_name)
         self._storage_path = '{0:}/storage'.format(self._vault_path)
         self._block_storage_path = '{0:}/blocks'.format(self._storage_path)
 
         self._hdrs = {"x-project-id": self.create_project_id()}
+        self.helper_create_vault(self.vault_name, self._hdrs)
+
+    def tearDown(self):
+        self.helper_delete_vault(self.vault_name, self._hdrs)
+        super(TestBlockStorageController, self).tearDown()
 
     def get_storage_block_path(self, block_id):
         return '{0:}/{1:}'.format(self._block_storage_path, block_id)
@@ -40,8 +45,24 @@ class TestBlockStorageController(ControllerTest):
                                      headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_405)
 
+    def test_list_blocks_bad_vault(self):
+        vault_path = '/v1.0/vaults/{0}'.format(self.create_vault_id())
+        storage_path = '{0:}/storage'.format(vault_path)
+        block_storage_path = '{0:}/blocks'.format(storage_path)
+        response = self.simulate_get(block_storage_path,
+                                     headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
     def test_list_blocks(self):
         response = self.simulate_get(self._block_storage_path,
+                                     headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_501)
+
+    def test_list_blocks_with_marker(self):
+        block_marker = self.create_block_id()
+        marker = 'marker={0:}'.format(block_marker)
+        response = self.simulate_get(self._block_storage_path,
+                                     query_string=marker,
                                      headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_501)
 
