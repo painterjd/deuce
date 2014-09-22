@@ -15,6 +15,37 @@ logger = logging.getLogger(__name__)
 
 
 class ItemResource(object):
+    @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
+    def on_head(self, req, resp, vault_id, block_id):
+
+        """Checks for the existence of the block in the
+        metadata storage and if successful check for it in
+        the storage driver
+        if it fails we return a 502, otherwise we return
+        all other headers returned on
+            GET /v1.0/vaults/{vault_id}/blocks/{block_id}
+        """
+
+        vault = Vault.get(vault_id)
+
+        # Existence of the vault should have been confirmed
+        # in the vault controller
+        assert vault is not None
+
+        if vault.meta_has_block(block_id):
+            block = vault.get_block(block_id)
+            if block:
+                ref_cnt = block.get_ref_count()
+                resp.set_header('X-Block-Reference-Count', str(ref_cnt))
+                resp.status = falcon.HTTP_200
+            else:
+                logger.error('Block Storage Inconsistent with Metadata '
+                             'for block [{0}]'.format(block_id))
+                raise errors.HTTPBadGateway('Block Storage inconsistent '
+                                            'with Metadata')
+        else:
+            logger.error('block [{0}] does not exist'.format(block_id))
+            raise errors.HTTPNotFound
 
     @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
     def on_get(self, req, resp, vault_id, block_id):

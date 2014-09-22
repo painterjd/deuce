@@ -98,6 +98,9 @@ class Vault(object):
 
         return (Block(self.id, bid) for bid in gen)
 
+    def meta_has_block(self, block_id):
+        return deuce.metadata_driver.has_block(self.id, block_id)
+
     def get_block(self, block_id):
         obj = deuce.storage_driver.get_block_obj(self.id,
             block_id)
