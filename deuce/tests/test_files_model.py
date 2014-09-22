@@ -1,13 +1,8 @@
-import os
-import hashlib
-from random import randrange
-import six
-from unittest import TestCase
-from deuce.tests import FunctionalTest
+from deuce.tests import V1Base
 from deuce.model import File
 
 
-class TestFilesModel(FunctionalTest):
+class TestFilesModel(V1Base):
 
     def setUp(self):
         super(TestFilesModel, self).setUp()

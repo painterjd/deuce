@@ -1,7 +1,6 @@
 from deuce.util import client as p3k_swiftclient
 from deuce.tests.util.mockfile import MockFile
-from deuce.tests import FunctionalTest
-from unittest import TestCase
+from deuce.tests import V1Base
 from swiftclient.exceptions import ClientException
 import mock
 import asyncio
@@ -19,7 +18,7 @@ class Response(object):
             self.content.read = mock.Mock(return_value=fut)
 
 
-class Test_P3k_SwiftClient(FunctionalTest):
+class Test_P3k_SwiftClient(V1Base):
 
     def setUp(self):
         self.storage_url = 'http://mock_storage_url.com'

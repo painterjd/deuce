@@ -254,10 +254,13 @@ class TestBlocksAssignedToFile(base.TestBase):
         self.assertEqual(resp.status_code, 412,
                          'Status code returned: {0} . '
                          'Expected 412'.format(resp.status_code))
-        self.assertHeaders(resp.headers, contentlength=0)
-        self.assertEqual(len(resp.content), 0,
-                         'Response Content was not empty. Content: '
-                         '{0}'.format(resp.content))
+        resp_body = resp.json()
+        self.assertIn('title', resp_body)
+        self.assertEqual(resp_body['title'], 'Precondition Failure')
+        self.assertIn('description', resp_body)
+        self.assertEqual(resp_body['description'],
+                '["Constraint Error: Block {0} has references"]'
+                ''.format(self.blockid))
 
     def tearDown(self):
         super(TestBlocksAssignedToFile, self).tearDown()

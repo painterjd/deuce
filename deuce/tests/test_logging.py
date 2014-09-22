@@ -1,11 +1,11 @@
 import uuid
 from testfixtures import LogCapture
 
-from deuce.tests import FunctionalTest
+from deuce.tests import V1Base
 from deuce.util import log as logging
 
 
-class TestLogging(FunctionalTest):
+class TestLogging(V1Base):
 
     def setUp(self):
         super(TestLogging, self).setUp()
@@ -21,7 +21,7 @@ class TestLogging(FunctionalTest):
             return True
 
     def test_logging_handler(self):
-        self.app.get('/v1.0/', headers=self._hdrs, expect_errors=True)
+        self.simulate_get('/v1.0/', headers=self._hdrs)
 
         # NOTE(TheSriram): Create a new LOG handler, and make sure the
         # the next time we try to create one, we receive the one created
@@ -32,8 +32,14 @@ class TestLogging(FunctionalTest):
 
         self.assertEqual(LOG_new, LOG_exists)
 
+    def test_logging_withoutcontext(self):
+        LOG = logging.getLogger(__name__)
+        with LogCapture() as capture:
+            LOG.info("Testing Request ID outside wsgi call")
+        self.assertFalse(self._testuuid(capture.records[0].request_id))
+
     def test_logging_requestid(self):
-        self.app.get('/v1.0/', headers=self._hdrs, expect_errors=True)
+        self.simulate_get('/v1.0/', headers=self._hdrs)
 
         LOG = logging.getLogger(__name__)
 

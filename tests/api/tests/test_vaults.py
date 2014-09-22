@@ -216,10 +216,12 @@ class TestPopulatedVault(base.TestBase):
         self.assertEqual(resp.status_code, 412,
                          'Status code returned for Delete Vault: {0} . '
                          'Expected 412'.format(resp.status_code))
-        self.assertHeaders(resp.headers, contentlength=0)
-        self.assertEqual(len(resp.content), 0,
-                         'Response Content was not empty. Content: '
-                         '{0}'.format(resp.content))
+        self.assertHeaders(resp.headers, json=True)
+        resp_body = resp.json()
+        self.assertIn('title', resp_body)
+        self.assertEqual(resp_body['title'], 'Precondition Failure')
+        self.assertIn('description', resp_body)
+        self.assertEqual(resp_body['description'], 'Vault cannot be deleted')
 
     def tearDown(self):
         super(TestPopulatedVault, self).tearDown()

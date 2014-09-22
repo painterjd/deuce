@@ -1,4 +1,4 @@
-from pecan import conf
+from deuce import conf
 from deuce.drivers.blockstoragedriver import BlockStorageDriver
 
 import os
@@ -19,7 +19,6 @@ class DiskStorageDriver(BlockStorageDriver):
     """
 
     def __init__(self):
-        # Load the pecan config
         self._path = conf.block_storage_driver.options.path
 
     def _get_vault_path(self, vault_id):

@@ -1,7 +1,7 @@
 aiohttp
 asyncio
+falcon
 msgpack-python
-pecan
 pymongo
 six
 python-swiftclient
