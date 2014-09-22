@@ -1,6 +1,3 @@
-
-from pecan import conf, response
-
 from deuce.model.block import Block
 from deuce.model.file import File
 from deuce.util import log as logging

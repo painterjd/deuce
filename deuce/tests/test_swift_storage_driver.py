@@ -1,16 +1,26 @@
+import six
+from deuce.drivers.blockstoragedriver import BlockStorageDriver
+from deuce import conf
 import mock
-import os
-import sys
+from deuce.drivers.swift import SwiftStorageDriver
 
-from pecan import conf
+from deuce.tests.test_disk_storage_driver import DiskStorageDriverTest
+
+# Users need take care of authenticate themselves and
+# have the token ready for each query.
+
 from swiftclient import client as Conn
 from swiftclient.exceptions import ClientException
 
-from deuce.drivers.swift import SwiftStorageDriver
-from deuce.tests.test_disk_storage_driver import DiskStorageDriverTest
-
 
 class SwiftStorageDriverTest(DiskStorageDriverTest):
+
+    def setUp(self):
+        super(SwiftStorageDriverTest, self).setUp()
+        storage_url, auth_token = self.get_Auth_Token()
+        import deuce
+        deuce.context.openstack.auth_token = auth_token
+        deuce.context.openstack.swift.storage_url = storage_url
 
     def create_driver(self):
         return SwiftStorageDriver()
@@ -48,7 +58,6 @@ class SwiftStorageDriverTest(DiskStorageDriverTest):
                       "x-auth-token": self.create_auth_token()}
         return storage_url, token
 
-    # TODO (TheSriram) : Make pecan.conf swift version aware
     def setUp(self):
         super(SwiftStorageDriverTest, self).setUp()
         storage_url, auth_token = self.get_Auth_Token()

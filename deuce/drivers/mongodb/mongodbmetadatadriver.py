@@ -1,5 +1,5 @@
 
-from pecan import conf
+from deuce import conf
 
 import deuce
 

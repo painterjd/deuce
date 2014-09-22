@@ -1,7 +1,6 @@
 
 import deuce
 
-from pecan import conf
 import os
 
 
@@ -30,6 +29,3 @@ class Block(object):
         """
         return deuce.metadata_driver.get_block_ref_modified(
             self.vault_id, self.block_id)
-
-    def __json__(self):
-        return self.block_id

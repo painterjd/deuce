@@ -6,7 +6,7 @@ import uuid
 from deuce.drivers.metadatadriver import MetadataStorageDriver
 from deuce.drivers.metadatadriver import GapError, OverlapError
 from deuce.drivers.metadatadriver import ConstraintError
-from pecan import conf
+from deuce import conf
 
 import deuce
 
