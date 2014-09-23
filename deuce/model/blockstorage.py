@@ -30,10 +30,10 @@ class BlockStorage(object):
         """
         if self.Vault is None:
             return None
-        
+
         obj = deuce.storage_driver.get_block_obj(self.vault_id, block_id)
 
-        return Block(self.id, block_id, obj) if obj else None
+        return Block(self.vault_id, block_id, obj) if obj else None
 
     @staticmethod
     def get_blocks_generator(marker, limit):

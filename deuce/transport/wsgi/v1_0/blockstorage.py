@@ -50,7 +50,7 @@ class ItemResource(object):
         # resp.set_header('X-Ref-Modified', str(ref_mod))
 
         resp.stream = block.get_obj()
-        resp.stream_len = vault.get_block_length(block_id)
+        resp.stream_len = block.get_block_length()
         resp.status = falcon.HTTP_200
         resp.content_type = 'application/octet-stream'
 
@@ -90,7 +90,7 @@ class CollectionResource(object):
         """List the blocks in the vault from storage-alone
         """
         vault = Vault.get(vault_id)
-        if not vault:
+        if vault is None:
             logger.error('Vault [{0}] does not exist'.format(vault_id))
             raise errors.HTTPNotFound
 

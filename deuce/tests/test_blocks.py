@@ -21,14 +21,11 @@ class TestBlocksController(ControllerTest):
 
         # Create a vault for us to work with
 
-        vault_name = self.create_vault_id()
-        self._vault_path = '/v1.0/vaults/{0}'.format(vault_name)
-        self._blocks_path = '{0}/blocks'.format(self._vault_path)
+        self.vault_name = self.create_vault_id()
 
-        self._files_path = self._vault_path + '/files'
         self._hdrs = {"x-project-id": self.create_project_id()}
 
-        response = self.simulate_put(self._vault_path,
+        response = self.simulate_put(self.get_vault_path(self.vault_name),
                                      headers=self._hdrs)
 
         self.block_list = []
@@ -36,11 +33,12 @@ class TestBlocksController(ControllerTest):
 
     def test_no_block_state(self):
         # Try listing the blocks. There should be none
-        response = self.simulate_get(self._blocks_path, headers=self._hdrs)
+        response = self.simulate_get(self.get_blocks_path(self.vault_name),
+                                     headers=self._hdrs)
         self.assertEqual(response[0].decode(), json.dumps([]))
 
     def test_get_all_with_trailing_slash(self):
-        path = self.get_block_path('')
+        path = self.get_block_path(self.vault_name, '')
 
         response = self.simulate_get(path, headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_200)
@@ -52,20 +50,21 @@ class TestBlocksController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
     def test_get_invalid_block_id(self):
-        path = self.get_block_path('invalid_block_id')
+        path = self.get_block_path(self.vault_name, 'invalid_block_id')
         response = self.simulate_get(path, headers=self._hdrs)
 
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
     def test_put_invalid_block_id(self):
-        path = self.get_block_path('invalid_block_id')
+        path = self.get_block_path(self.vault_name, 'invalid_block_id')
 
         response = self.simulate_put(path, headers=self._hdrs)
 
         self.assertEqual(self.srmock.status, falcon.HTTP_400)
 
         # Put a block with the invalid blockid/hash.
-        path = self.get_block_path('1234567890123456789012345678901234567890')
+        path = self.get_block_path(self.vault_name,
+                                   '1234567890123456789012345678901234567890')
         headers = {
             "Content-Type": "application/octet-stream",
             "Content-Length": str(10),
@@ -76,7 +75,8 @@ class TestBlocksController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_412)
 
     def test_post_invalid_block_id(self):
-        path = self.get_block_path(self._blocks_path)
+        path = self.get_block_path(self.vault_name,
+                                   self.get_blocks_path(self.vault_name))
 
         response = self.simulate_post(path, headers=self._hdrs)
 
@@ -92,12 +92,13 @@ class TestBlocksController(ControllerTest):
         contents = dict(zip(block_list, data))
 
         request_body = msgpack.packb(contents)
-        response = self.simulate_post(self._blocks_path, headers=headers,
+        response = self.simulate_post(self.get_blocks_path(self.vault_name),
+                                      headers=headers,
                                       body=request_body)
         self.assertEqual(self.srmock.status, falcon.HTTP_412)
 
     def test_post_invalid_request_body(self):
-        path = self.get_block_path(self._blocks_path)
+        path = self.get_blocks_path(self.vault_name)
 
         # Post several blocks with invalid request body
         headers = {
@@ -109,17 +110,19 @@ class TestBlocksController(ControllerTest):
         contents = [block_list, data] * 3
 
         request_body = msgpack.packb(contents)
-        response = self.simulate_post(self._blocks_path, headers=headers,
+        response = self.simulate_post(path,
+                                      headers=headers,
                                       body=request_body)
         self.assertEqual(self.srmock.status, falcon.HTTP_400)
 
         # Post non-message packed request body
-        response = self.simulate_post(self._blocks_path, headers=headers,
+        response = self.simulate_post(path,
+                                      headers=headers,
                                       body='non-msgpack')
         self.assertEqual(self.srmock.status, falcon.HTTP_400)
 
     def test_post_invalid_endpoint(self):
-        path = self.get_block_path(self._blocks_path)
+        path = self.get_blocks_path(self.vault_name)
 
         headers = {
             "Content-Type": "application/msgpack",
@@ -132,13 +135,13 @@ class TestBlocksController(ControllerTest):
 
         request_body = msgpack.packb(contents)
         # invalid endpoint : POST v1.0/vaults/{vault_name}/blocks/myblock
-        response = self.simulate_post(self._blocks_path + '/myblock',
+        response = self.simulate_post(path + '/myblock',
                                       headers=headers,
                                       body=request_body)
         self.assertEqual(self.srmock.status, falcon.HTTP_405)
         # invalid endpoint : POST v1.0/vaults/{vault_name}/blocks/myblock
         # with no request_body
-        response = self.simulate_post(self._blocks_path + '/myblock',
+        response = self.simulate_post(path + '/myblock',
                                       headers=headers)
         self.assertEqual(self.srmock.status, falcon.HTTP_405)
 
@@ -149,7 +152,8 @@ class TestBlocksController(ControllerTest):
         # blocks afterward.
         # Now try to get a list of blocks to ensure that they'e
         # there.
-        # response = self.simulate_get(self._blocks_path, headers=self._hdrs)
+        # response = self.simulate_get(self.get_blocks_path(self.vault_name),
+        #                              headers=self._hdrs)
         # all_blocks = response[0].decode()
         # self.assertEqual(len(all_blocks), 5)
         # self.assertEqual(self.srmock.status, falcon.HTTP_200)
@@ -157,7 +161,7 @@ class TestBlocksController(ControllerTest):
         # Now check the first one. We're going to send the marker
         # and limit and we should get just one
 
-        response = self.simulate_get(self._blocks_path,
+        response = self.simulate_get(self.get_blocks_path(self.vault_name),
                                      query_string='limit=1',
                                      headers=self._hdrs)
 
@@ -166,7 +170,7 @@ class TestBlocksController(ControllerTest):
 
         # Now try with a bad limit
 
-        response = self.simulate_get(self._blocks_path,
+        response = self.simulate_get(self.get_blocks_path(self.vault_name),
                                      query_string='limit=blah',
                                      headers=self._hdrs)
 
@@ -174,7 +178,7 @@ class TestBlocksController(ControllerTest):
 
         # Now try a bad marker
 
-        response = self.simulate_get(self._blocks_path,
+        response = self.simulate_get(self.get_blocks_path(self.vault_name),
                                      query_string='marker=blah',
                                      headers=self._hdrs)
 
@@ -184,7 +188,7 @@ class TestBlocksController(ControllerTest):
     def test_put_and_list(self, async_status):
 
         # Test None block_id
-        path = '{0}/'.format(self._blocks_path)
+        path = '{0}/'.format(self.get_blocks_path(self.vault_name))
         data = os.urandom(100)
         headers = {
             "Content-Type": "application/octet-stream",
@@ -202,20 +206,20 @@ class TestBlocksController(ControllerTest):
         self.block_list += block_list
 
         # List all.
-        next_batch_url = self.helper_get_blocks(self._blocks_path,
+        next_batch_url = self.helper_get_blocks(path,
                                                 0, 0, assert_ret_url=False,
                                                 assert_data_len=5,
                                                 repeat=False,
                                                 exam_block_data=True)
 
         # List some blocks
-        next_batch_url = self.helper_get_blocks(self._blocks_path,
+        next_batch_url = self.helper_get_blocks(path,
                                                 0, 4, True, 4, False)
 
         # List the rest blocks
         # TODO (TheSriram): Make finding marker more elegant
         marker = next_batch_url.split('marker=')[1]
-        next_batch_url = self.helper_get_blocks(self._blocks_path,
+        next_batch_url = self.helper_get_blocks(path,
                                                 marker, 8, False, 1, False)
 
         # Create more blocks.
@@ -226,14 +230,14 @@ class TestBlocksController(ControllerTest):
 
         # List from 0; use conf limit
         max_num = conf.api_configuration.max_returned_num
-        next_batch_url = self.helper_get_blocks(self._blocks_path,
+        next_batch_url = self.helper_get_blocks(path,
                                                 0, 0, assert_ret_url=True,
                                                 assert_data_len=max_num,
                                                 repeat=False)
 
         # List from 0; Use conf limit, repeat to the end.
         block_num = self.total_block_num
-        next_batch_url = self.helper_get_blocks(self._blocks_path,
+        next_batch_url = self.helper_get_blocks(path,
                                                 0, 0, assert_ret_url=False,
                                                 assert_data_len=block_num,
                                                 repeat=True)
@@ -243,7 +247,7 @@ class TestBlocksController(ControllerTest):
         bad_block_ids = [self.create_block_id() for _ in range(0, 5)]
 
         for bad_id in bad_block_ids:
-            path = self.get_block_path(bad_id)
+            path = self.get_block_path(self.vault_name, bad_id)
 
             response = self.simulate_get(path, headers=self._hdrs)
 
@@ -251,9 +255,9 @@ class TestBlocksController(ControllerTest):
 
     def test_delete_blocks_validation(self):
         # delete non existent block
-        response = self.simulate_delete(self.get_block_path(
-            self.create_block_id()),
-            headers=self._hdrs)
+        response = self.simulate_delete(self.get_block_path(self.vault_name,
+                                        self.create_block_id()),
+                                        headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
         # delete block from non existent vault
@@ -266,8 +270,9 @@ class TestBlocksController(ControllerTest):
         # Just create and delete blocks
         blocklist = self.helper_create_blocks(10)
         for block in blocklist:
-            response = self.simulate_delete(self.get_block_path(block),
-                                            headers=self._hdrs)
+            response = self.simulate_delete(
+                self.get_block_path(self.vault_name, block),
+                headers=self._hdrs)
             self.assertEqual(self.srmock.status, falcon.HTTP_204)
 
     @ddt.data(True, False)
@@ -276,12 +281,13 @@ class TestBlocksController(ControllerTest):
         # Create two files each consisting of 3 blocks of size 100 bytes
         file_ids = []
         for _ in range(2):
-            response = self.simulate_post(self._files_path,
+            response = self.simulate_post(self.get_files_path(self.vault_name),
                                           headers=self._hdrs)
             rel_url, querystring = relative_uri(
                 self.srmock.headers_dict['Location'])
             file_ids.append(rel_url)
-        # responses = [self.simulate_post(self._files_path, headers=self._hdrs)
+        # responses = [self.simulate_post(self.get_files_path(self.vault_name),
+        #                                 headers=self._hdrs)
         #              for _ in range(2)]
         # file_ids = [urlparse(response.headers["Location"]).path
         #             for response in responses]
@@ -306,8 +312,9 @@ class TestBlocksController(ControllerTest):
                 response = self.simulate_post(file_id, headers=hdrs)
 
         for block in block_list:
-            response = self.simulate_delete(self.get_block_path(block),
-                                            headers=self._hdrs)
+            response = self.simulate_delete(
+                self.get_block_path(self.vault_name, block),
+                headers=self._hdrs)
             self.assertEqual(self.srmock.status, falcon.HTTP_412)
 
     def test_vault_error(self):
@@ -337,14 +344,16 @@ class TestBlocksController(ControllerTest):
                 "Content-Type": "application/msgpack"
             }
             headers.update(self._hdrs)
-            response = self.simulate_post(self._blocks_path, headers=headers,
-                                          body=request_body)
+            response = self.simulate_post(
+                self.get_blocks_path(self.vault_name),
+                headers=headers,
+                body=request_body)
         else:
 
             # Put each one of the generated blocks on the
             # size
             for size, data, sha1 in block_data:
-                path = self.get_block_path(sha1)
+                path = self.get_block_path(self.vault_name, sha1)
 
                 headers = {
                     "Content-Type": "application/octet-stream",
@@ -417,7 +426,7 @@ class TestBlocksController(ControllerTest):
         # Now try to fetch each block, and compare against
         # the original block data
         for sha1 in block_list:
-            path = self.get_block_path(sha1)
+            path = self.get_block_path(self.vault_name, sha1)
             response = self.simulate_get(path, headers=self._hdrs)
             self.assertEqual(self.srmock.status, falcon.HTTP_200)
             self.assertIn('x-block-reference-count', str(self.srmock.headers))

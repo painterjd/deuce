@@ -38,7 +38,7 @@ class ItemResource(object):
         resp.set_header('X-Block-Reference-Count', str(ref_cnt))
 
         resp.stream = block.get_obj()
-        resp.stream_len = vault.get_block_length(block_id)
+        resp.stream_len = block.get_block_length()
         resp.status = falcon.HTTP_200
         resp.content_type = 'application/octet-stream'
 

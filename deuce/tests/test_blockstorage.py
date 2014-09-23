@@ -1,14 +1,6 @@
 import ddt
 import hashlib
-import json
 import falcon
-import msgpack
-import os
-from random import randrange
-from mock import patch
-from deuce import conf
-from deuce.util.misc import set_qs, relative_uri
-from six.moves.urllib.parse import urlparse, parse_qs
 
 from deuce.tests import ControllerTest
 
@@ -33,22 +25,18 @@ class TestBlockStorageController(ControllerTest):
         self.helper_delete_vault(self.vault_name, self._hdrs)
         super(TestBlockStorageController, self).tearDown()
 
-    def get_storage_block_path(self, block_id):
-        return '{0:}/{1:}'.format(self._block_storage_path, block_id)
-
     def test_put_block(self):
         block_id = self.create_block_id()
 
-        block_path = self.get_storage_block_path(block_id)
+        block_path = self.get_storage_block_path(self.vault_name, block_id)
 
         response = self.simulate_put(block_path,
                                      headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_405)
 
     def test_list_blocks_bad_vault(self):
-        vault_path = '/v1.0/vaults/{0}'.format(self.create_vault_id())
-        storage_path = '{0:}/storage'.format(vault_path)
-        block_storage_path = '{0:}/blocks'.format(storage_path)
+        block_storage_path = self.get_storage_blocks_path(
+            self.create_vault_id())
         response = self.simulate_get(block_storage_path,
                                      headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
@@ -69,26 +57,53 @@ class TestBlockStorageController(ControllerTest):
     def test_head_block(self):
         block_id = self.create_block_id()
 
-        block_path = self.get_storage_block_path(block_id)
+        block_path = self.get_storage_block_path(self.vault_name, block_id)
 
         response = self.simulate_head(block_path,
                                       headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_501)
 
-    def test_get_block(self):
+    def test_get_block_no_block(self):
         block_id = self.create_block_id()
 
-        block_path = self.get_storage_block_path(block_id)
+        block_path = self.get_storage_block_path(self.vault_name, block_id)
 
-        response = self.simulate_get(block_path,
-                                     headers=self._hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_501)
+        response = self.simulate_get(block_path, headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_get_block_bad_vault(self):
+        block_path = self.get_storage_block_path(self.create_vault_id(),
+                                                 self.create_block_id())
+        response = self.simulate_get(block_path, headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_get_block(self):
+        block_list, block_data = self.helper_create_blocks(num_blocks=1)
+        self.assertEqual(len(block_list), 1)
+
+        self.helper_store_blocks(self.vault_name, block_data)
+
+        block_path = self.get_storage_block_path(
+            self.vault_name, block_list[0])
+
+        response = self.simulate_get(block_path, headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_200)
+        # TODO: self.assertIn('x-ref-modified', str(self.srmock.headers))
+        self.assertIn('x-block-reference-count', str(self.srmock.headers))
+        self.assertEqual(
+            int(self.srmock.headers_dict['x-block-reference-count']),
+            0)
+
+        response_body = [resp for resp in response]
+        bindata = response_body[0]
+        z = hashlib.sha1()
+        z.update(bindata)
+        self.assertEqual(z.hexdigest(), block_list[0])
 
     def test_delete_block(self):
         block_id = self.create_block_id()
 
-        block_path = self.get_storage_block_path(block_id)
+        block_path = self.get_storage_block_path(self.vault_name, block_id)
 
-        response = self.simulate_delete(block_path,
-                                        headers=self._hdrs)
+        response = self.simulate_delete(block_path, headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_501)

@@ -23,3 +23,7 @@ class Block(object):
         """
         return deuce.metadata_driver.get_block_ref_count(
             self.vault_id, self.block_id)
+
+    def get_block_length(self):
+        return deuce.storage_driver.get_block_object_length(
+            self.vault_id, self.block_id)
