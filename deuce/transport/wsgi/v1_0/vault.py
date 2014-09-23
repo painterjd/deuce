@@ -71,6 +71,9 @@ class CollectionResource(object):
     @VaultMarkerRule
     @LimitRule
     def on_get(self, req, resp):
+
+        # NOTE(TheSriram): get_param(param) automatically returns None
+        # if param is not present
         inmarker = req.get_param('marker')
         limit = req.get_param_as_int('limit') if req.get_param_as_int('limit') else \
             conf.api_configuration.max_returned_num

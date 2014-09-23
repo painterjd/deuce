@@ -15,6 +15,7 @@ CREATE TABLE blocks (
   vaultid TEXT,
   blockid TEXT,
   blocksize INT,
+  reftime DATETIME,
   PRIMARY KEY(projectid, vaultid, blockid)
 );
 """, """

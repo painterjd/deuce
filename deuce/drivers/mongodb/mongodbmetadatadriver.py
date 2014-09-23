@@ -6,6 +6,7 @@ import deuce
 import sys
 import importlib
 import atexit
+import datetime
 
 
 import itertools
@@ -357,7 +358,6 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         # Query BLOCKS for the block
         self._blocks.ensure_index([('projectid', 1),
             ('vaultid', 1), ('blockid', 1)])
-        retval = False
 
         args = {
             'projectid': deuce.context.project_id,
@@ -371,7 +371,6 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         """Returns the blocksize for this block"""
         self._blocks.ensure_index([('projectid', 1),
             ('vaultid', 1), ('blockid', 1)])
-        retval = False
 
         args = {
             'projectid': deuce.context.project_id,
@@ -479,13 +478,18 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             ('fileid', 1),
             ('blockid', 1)])
 
+        # Update the reftime
+        args['reftime'] = int(datetime.datetime.utcnow().timestamp())
+        self._blocks.update(args, args, upsert=False)
+
     def register_block(self, vault_id, block_id, blocksize):
         if not self.has_block(vault_id, block_id):
             args = {
                 'projectid': deuce.context.project_id,
                 'vaultid': vault_id,
                 'blockid': str(block_id),
-                'blocksize': blocksize
+                'blocksize': blocksize,
+                'reftime': int(datetime.datetime.utcnow().timestamp())
             }
 
             self._blocks.update(args, args, upsert=True)
@@ -534,6 +538,11 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             files_cnt += sum(1 for _ in docgen)
 
         return files_cnt + fileblocks_cnt
+
+    def get_block_ref_modified(self, vault_id, block_id):
+
+        blockdata = self.get_block_data(vault_id, block_id)
+        return blockdata['reftime']
 
     def get_health(self):
         try:
