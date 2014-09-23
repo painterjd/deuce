@@ -23,7 +23,7 @@ class CollectionResource(object):
             logger.error('Vault [{0}] does not exist'.format(vault_id))
             raise errors.HTTPNotFound
 
-        inmarker = req.get_param('marker') if req.get_param('marker') else 0
+        inmarker = req.get_param('marker')
         limit = req.get_param_as_int('limit') if req.get_param_as_int('limit') \
             else conf.api_configuration.max_returned_num
 
@@ -175,8 +175,8 @@ class ItemResource(object):
                 missing_blocks.append(block_id)
 
             deuce.metadata_driver.assign_block(vault_id, file_id,
-                                               mapping['id'],
-                                               mapping['offset'])
+                                               block_id,
+                                               offset)
 
         resp.body = json.dumps(missing_blocks)
 
