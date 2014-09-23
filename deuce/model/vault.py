@@ -99,14 +99,17 @@ class Vault(object):
 
         return (Block(self.id, bid) for bid in gen)
 
-    def block_consistency_check(self, block_id):
+    def has_block(self, block_id, check_storage=False):
         if self.meta_has_block(block_id):
-            if self.get_block(block_id):
+            if self.storage_has_block(block_id):
                 return True
             else:
                 raise ConsistencyError
         else:
             return False
+
+    def storage_has_block(self, block_id):
+        return deuce.storage_driver.block_exists(self.id, block_id)
 
     def meta_has_block(self, block_id):
         return deuce.metadata_driver.has_block(self.id, block_id)

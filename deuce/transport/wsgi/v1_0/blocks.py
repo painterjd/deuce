@@ -6,6 +6,7 @@ import msgpack
 from deuce import conf
 from deuce.util import set_qs_on_url
 from deuce.model import Vault
+from deuce.model import Block
 from deuce.model.exceptions import ConsistencyError
 from deuce.drivers.metadatadriver import ConstraintError
 from deuce.transport.validation import *
@@ -34,15 +35,16 @@ class ItemResource(object):
         assert vault is not None
 
         try:
-
-            if vault.block_consistency_check(block_id):
-                block = vault.get_block(block_id)
-                ref_cnt = block.get_ref_count()
-                resp.set_header('X-Block-Reference-Count', str(ref_cnt))
-                resp.status = falcon.HTTP_200
-            else:
+            if not vault.has_block(block_id):
                 logger.error('block [{0}] does not exist'.format(block_id))
                 raise errors.HTTPNotFound
+            block = Block(vault_id, block_id)
+            ref_cnt = block.get_ref_count()
+            resp.set_header('X-Block-Reference-Count', str(ref_cnt))
+
+            ref_mod = block.get_ref_modified()
+            resp.set_header('X-Ref-Modified', str(ref_mod))
+            resp.status = falcon.HTTP_200
 
         except ConsistencyError:
             logger.error('Block Storage Inconsistent with Metadata '

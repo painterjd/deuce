@@ -71,7 +71,7 @@ class TestBlocksController(ControllerTest):
 
     def test_head_inconsistent_metadata_block_id(self):
         from deuce.model import Vault
-        with patch.object(Vault, 'get_block', return_value=False):
+        with patch.object(Vault, 'storage_has_block', return_value=False):
             block_list = self.helper_create_blocks(1, async=True)
             path = self.get_block_path(block_list[0])
             self.simulate_head(path, headers=self._hdrs)
@@ -83,6 +83,7 @@ class TestBlocksController(ControllerTest):
         self.simulate_head(path, headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_200)
         self.assertIn('x-block-reference-count', str(self.srmock.headers))
+        self.assertIn('x-ref-modified', str(self.srmock.headers))
 
     def test_put_invalid_block_id(self):
         path = self.get_block_path('invalid_block_id')
