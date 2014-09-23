@@ -14,13 +14,12 @@ else:
                 'aiohttp']
     setup(
         name='deuce',
-        version='0.1',
+        version='0.2',
         description='Deuce - Block-level de-duplication as-a-service',
         license='Apache License 2.0',
         url='github.com/rackerlabs/deuce',
         author='Rackspace',
         author_email='',
-        include_package_data=True,
         install_requires=REQUIRES,
         test_suite='deuce',
         zip_safe=False,
@@ -29,5 +28,7 @@ else:
                 'deuce-server = deuce.cmd.server:run',
             ]
         },
-        packages=find_packages(exclude=['tests*', 'deuce/tests*'])
+        data_files=[('config', ['ini/config.ini', 'ini/configspec.ini'])],
+        include_package_data=True,
+        packages=find_packages(exclude=['tests*', 'deuce/tests*']),
     )
