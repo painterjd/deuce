@@ -54,6 +54,14 @@ Install the code
   python setup.py develop
 ```
 
+Copy over config files:
+
+```
+  mkdir ~/.deuce
+  cp ini/config.ini ~/.deuce/config.ini
+  cp ini/configspec.ini ~/.deuce/configspec.ini
+```
+
 Start it up
 
 ```

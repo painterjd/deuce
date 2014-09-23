@@ -63,6 +63,19 @@ class Session(object):
 
             self.conn.execute(insert_query, insert_args)
 
+        elif original_query == actual_driver.CQL_UPDATE_REF_TIME or \
+                original_query == actual_driver.CQL_REGISTER_BLOCK:
+
+            # unixTimeStampOf() and now() are not part of SQLite
+            query = query.replace('unixTimeStampOf(now())',
+                                  "strftime('%s', 'now')")
+
+        elif original_query == actual_driver.CQL_HEALTH_CHECK:
+
+            # neither now() nor system.local are part of sqlite
+            # So the following gives us the same query as the original
+            query = "SELECT strftime('%s', 'now')"
+
         res = self.conn.execute(query, queryargs)
         res = list(res)
 
