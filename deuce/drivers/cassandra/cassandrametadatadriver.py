@@ -610,7 +610,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
                 projectid=deuce.context.project_id,
                 vaultid=vault_id,
                 blockid=block_id,
-                blocksize=blocksize
+                blocksize=int(blocksize)
             )
 
             res = self._session.execute(CQL_REGISTER_BLOCK, args)
