@@ -1,3 +1,2 @@
-include config.py
 prune tests
 prune deuce/tests
