@@ -288,9 +288,7 @@ class TestBlocksController(ControllerTest):
         block_list = self.helper_create_blocks(3, singleblocksize=True)
 
         offsets = [x * 100 for x in range(3)]
-        meta_info = [{'id': block, 'size': 100, 'offset': offset}
-                     for block, offset in zip(block_list, offsets)]
-        data = {"blocks": meta_info}
+        data = list(zip(block_list, offsets))
 
         hdrs = {'content-type': 'application/x-deuce-block-list'}
         hdrs.update(self._hdrs)

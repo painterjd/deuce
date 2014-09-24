@@ -160,16 +160,16 @@ class ItemResource(object):
             raise errors.HTTPBadRequestAPI('Finalized file cannot be modified')
 
         # Deserialize from stream
-
+        # TODO (TheSriram): Validate payload
         payload = json.loads(body.decode())
-        blocks = payload['blocks']
 
         missing_blocks = list()
 
-        for mapping in blocks:
-
-            block_id = mapping['id']
-            offset = int(mapping['offset'])
+        for mapping in payload:
+            # NOTE(TheSriram): payload is a list of lists of the form
+            # [[block,offset],[block,offset],[block,offset]]
+            block_id = mapping[0]
+            offset = int(mapping[1])
 
             if not deuce.metadata_driver.has_block(vault_id, block_id):
 
