@@ -86,7 +86,7 @@ class TestBlocksController(ControllerTest):
         block_list = self.helper_create_blocks(1, async=True)
         path = self.get_block_path(block_list[0])
         self.simulate_head(path, headers=self._hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_200)
+        self.assertEqual(self.srmock.status, falcon.HTTP_204)
         self.assertIn('x-block-reference-count', str(self.srmock.headers))
         self.assertIn('x-ref-modified', str(self.srmock.headers))
 

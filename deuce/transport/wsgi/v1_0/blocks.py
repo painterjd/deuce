@@ -43,7 +43,7 @@ class ItemResource(object):
 
             ref_mod = block.get_ref_modified()
             resp.set_header('X-Ref-Modified', str(ref_mod))
-            resp.status = falcon.HTTP_200
+            resp.status = falcon.HTTP_204
 
         except ConsistencyError:
             logger.error('Block Storage Inconsistent with Metadata '
