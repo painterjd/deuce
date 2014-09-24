@@ -30,10 +30,9 @@ class ItemResource(object):
 
         vault = Vault.get(vault_id)
 
-        # Existence of the vault should have been confirmed
-        # in the vault controller
-        assert vault is not None
-
+        if not vault:
+            logger.error('Vault [{0}] does not exist'.format(vault_id))
+            raise errors.HTTPNotFound
         try:
             if not vault.has_block(block_id):
                 logger.error('block [{0}] does not exist'.format(block_id))
