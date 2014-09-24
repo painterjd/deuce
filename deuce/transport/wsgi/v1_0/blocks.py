@@ -45,9 +45,8 @@ class ItemResource(object):
             resp.set_header('X-Ref-Modified', str(ref_mod))
             resp.status = falcon.HTTP_204
 
-        except ConsistencyError:
-            logger.error('Block Storage Inconsistent with Metadata '
-                         'for block [{0}]'.format(block_id))
+        except ConsistencyError as ex:
+            logger.error(ex)
             raise errors.HTTPBadGateway('Block Storage inconsistent '
                                         'with Metadata')
 
