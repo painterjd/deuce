@@ -28,7 +28,7 @@ else:
                 'deuce-server = deuce.cmd.server:run',
             ]
         },
-        data_files=[('config', ['ini/config.ini', 'ini/configspec.ini'])],
+        data_files=[('config', ['./ini/config.ini', './ini/configspec.ini'])],
         include_package_data=True,
         packages=find_packages(exclude=['tests*', 'deuce/tests*']),
     )
