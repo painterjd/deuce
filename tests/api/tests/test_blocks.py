@@ -225,6 +225,13 @@ class TestListBlocks(base.TestBase):
                          'Discrepancy between the list of blocks returned '
                          'and the blocks uploaded')
 
+    def test_list_blocks_bad_marker(self):
+        """Request a Block List with a bad marker"""
+
+        bad_marker = sha.new(self.id_generator(50)).hexdigest()
+        resp = self.client.list_of_blocks(self.vaultname, marker=bad_marker)
+        self.assert_404_response(resp)
+
     def tearDown(self):
         super(TestListBlocks, self).tearDown()
         [self.client.delete_block(self.vaultname, block.Id) for block in
