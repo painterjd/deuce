@@ -114,6 +114,7 @@ class TestBlockUploaded(base.TestBase):
                          'Status code for getting data of a block is '
                          '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, binary=True,
+                           lastmodified=True,
                            contentlength=len(self.block_data))
         self.assertIn('X-Block-Reference-Count', resp.headers)
         self.assertEqual(resp.headers['X-Block-Reference-Count'], '0')
@@ -301,7 +302,9 @@ class TestBlocksReferenceCount(base.TestBase):
         self.assertEqual(resp.status_code, 200,
                          'Status code for getting data of a block is '
                          '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, binary=True)
+        self.assertHeaders(resp.headers, binary=True,
+                           lastmodified=True,
+                           contentlength=len(self.block_data))
         self.assertIn('X-Block-Reference-Count', resp.headers)
         self.assertEqual(resp.headers['X-Block-Reference-Count'], expected)
         self.assertEqual(resp.content, self.block_data,

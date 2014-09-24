@@ -18,7 +18,7 @@ CQL_CREATE_VAULT = '''
 
 CQL_DELETE_VAULT = '''
     DELETE FROM vaults
-    where projectid = %(projectid)s
+    WHERE projectid = %(projectid)s
     AND vaultid = %(vaultid)s
 '''
 
@@ -54,7 +54,7 @@ CQL_GET_FILE_SIZE = '''
 
 CQL_DELETE_FILE = '''
     DELETE FROM files
-    where projectid = %(projectid)s
+    WHERE projectid = %(projectid)s
     AND vaultid = %(vaultid)s
     AND fileid = %(fileid)s
 '''
@@ -94,7 +94,7 @@ CQL_GET_ALL_BLOCKS = '''
     WHERE projectid = %(projectid)s
     AND vaultid = %(vaultid)s
     AND blockid >= %(marker)s
-    order by blockid
+    ORDER BY blockid
     LIMIT %(limit)s
 '''
 
@@ -149,21 +149,21 @@ CQL_ASSIGN_BLOCK_TO_FILE = '''
 
 CQL_REGISTER_BLOCK = '''
     INSERT INTO blocks
-    (projectid, vaultid, blockid, blocksize)
-    values (%(projectid)s, %(vaultid)s, %(blockid)s, %(blocksize)s)
+    (projectid, vaultid, blockid, blocksize, reftime)
+    VALUES (%(projectid)s, %(vaultid)s, %(blockid)s, %(blocksize)s,
+      unixTimeStampOf(now()))
 '''
 
 CQL_UNREGISTER_BLOCK = '''
     DELETE FROM blocks
-    where projectid=%(projectid)s
+    WHERE projectid=%(projectid)s
     AND vaultid=%(vaultid)s
     AND blockid=%(blockid)s
 '''
 
 CQL_GET_BLOCK_SIZE = '''
     SELECT blocksize FROM blocks
-    WHERE
-    projectid = %(projectid)s
+    WHERE projectid = %(projectid)s
     AND vaultid = %(vaultid)s
     AND blockid = %(blockid)s
 '''
@@ -171,8 +171,23 @@ CQL_GET_BLOCK_SIZE = '''
 CQL_GET_BLOCK_REF_COUNT = '''
     SELECT refcount
     FROM blockreferences
-    WHERE
-    projectid = %(projectid)s
+    WHERE projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND blockid = %(blockid)s
+'''
+
+CQL_UPDATE_REF_TIME = '''
+    UPDATE blocks
+    SET reftime = unixTimeStampOf(now())
+    WHERE projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND blockid = %(blockid)s
+'''
+
+CQL_GET_BLOCK_REF_TIME = '''
+    SELECT reftime
+    FROM blocks
+    WHERE projectid = %(projectid)s
     AND vaultid = %(vaultid)s
     AND blockid = %(blockid)s
 '''
@@ -182,16 +197,14 @@ CQL_GET_BLOCK_REF_COUNT = '''
 CQL_INC_BLOCK_REF_COUNT = '''
     UPDATE blockreferences
     SET refcount = refcount + %(delta)s
-    WHERE
-    projectid = %(projectid)s
+    WHERE projectid = %(projectid)s
     AND vaultid = %(vaultid)s
     AND blockid = %(blockid)s
 '''
 
 CQL_DEL_BLOCK_REF_COUNT = '''
     DELETE FROM blockreferences
-    WHERE
-    projectid = %(projectid)s
+    WHERE projectid = %(projectid)s
     AND vaultid = %(vaultid)s
     AND blockid = %(blockid)s
 '''
@@ -597,7 +610,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
                 projectid=deuce.context.project_id,
                 vaultid=vault_id,
                 blockid=block_id,
-                blocksize=blocksize
+                blocksize=int(blocksize)
             )
 
             res = self._session.execute(CQL_REGISTER_BLOCK, args)
@@ -642,6 +655,13 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
         self._session.execute(CQL_INC_BLOCK_REF_COUNT, args)
 
+        reftime_args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            blockid=block_id,
+        )
+        self._session.execute(CQL_UPDATE_REF_TIME, reftime_args)
+
     def _del_block_ref_count(self, vault_id, block_id):
 
         args = dict(
@@ -651,6 +671,21 @@ class CassandraStorageDriver(MetadataStorageDriver):
         )
 
         self._session.execute(CQL_DEL_BLOCK_REF_COUNT, args)
+
+    def get_block_ref_modified(self, vault_id, block_id):
+
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            blockid=block_id
+        )
+
+        res = self._session.execute(CQL_GET_BLOCK_REF_TIME, args)
+
+        try:
+            return res[0][0]
+        except IndexError:
+            return 0
 
     def get_health(self):
         try:
