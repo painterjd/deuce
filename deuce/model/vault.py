@@ -105,7 +105,9 @@ class Vault(object):
                 return True
             else:
                 raise ConsistencyError(deuce.context.project_id,
-                                       self.id, block_id)
+                                       self.id, block_id,
+                                       msg='Block does not exist'
+                                           ' in Block Storage')
         else:
             return False
 
