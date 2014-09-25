@@ -168,8 +168,7 @@ class ItemResource(object):
         for mapping in payload:
             # NOTE(TheSriram): payload is a list of lists of the form
             # [[block,offset],[block,offset],[block,offset]]
-            block_id = mapping[0]
-            offset = int(mapping[1])
+            block_id, offset = mapping
 
             if not deuce.metadata_driver.has_block(vault_id, block_id):
 

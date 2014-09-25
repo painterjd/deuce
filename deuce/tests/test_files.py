@@ -210,9 +210,11 @@ class TestFiles(ControllerTest):
         # Register enough_num of blocks into system.
         block_list, blocks_data = self.helper_create_blocks(
             num_blocks=enough_num)
-        offsets = [str(cnt * 100) for cnt in range(0, enough_num)]
-        block_ids = [str(block_list[cnt]) for cnt in range(0, enough_num)]
-        data = json.dumps(list(zip(block_ids, offsets)))
+
+        # NOTE(TheSriram): data is list of lists of the form:
+        # [[blockid, offset], [blockid, offset]]
+        data = json.dumps([[block_list[cnt], cnt * 100]
+                 for cnt in range(0, enough_num)])
 
         response = self.simulate_post(self._distractor_file_id,
                                       body=data, headers=hdrs)
@@ -240,10 +242,11 @@ class TestFiles(ControllerTest):
 
         block_list2, blocks_data2 = self.helper_create_blocks(num_blocks=(
             enough_num2 - enough_num))
-        offsets = [str(cnt * 100) for cnt in range(enough_num, enough_num2)]
-        block_ids = [str(block_list2[cnt - enough_num])
-                     for cnt in range(enough_num, enough_num2)]
-        data2 = json.dumps(list(zip(block_ids, offsets)))
+
+        # NOTE(TheSriram): data2 is list of lists of the form:
+        # [[blockid, offset], [blockid, offset]]
+        data2 = json.dumps([[block_list2[cnt - enough_num], cnt * 100]
+                 for cnt in range(enough_num, enough_num2)])
 
         response = self.simulate_post(self._file_id, body=data2, headers=hdrs)
         self.assertGreater(len(response[0].decode()), 2)
