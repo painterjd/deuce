@@ -25,7 +25,9 @@ class ConsistencyError(Exception):
         self.vault_id = vault_id
         self.block_id = block_id
 
-        extended_msg = "[{0}/{1}] Consistency Error: [{2}] Block id: {3}"\
-                       .format(project_id, vault_id, msg, block_id)
+        extended_msg = "[{0}/{1}] Block id: {2} Consistency Error "\
+            .format(project_id, vault_id, block_id)
+        if msg:
+            extended_msg = extended_msg + '[{0}]'.format(msg)
 
         Exception.__init__(self, extended_msg)
