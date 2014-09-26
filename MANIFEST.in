@@ -1,2 +1,3 @@
+include ini/*.ini
 prune tests
 prune deuce/tests
