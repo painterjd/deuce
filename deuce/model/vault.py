@@ -1,6 +1,7 @@
 from deuce.model.block import Block
 from deuce.model.file import File
 from deuce.util import log as logging
+from deuce.util import storage_id
 import deuce
 import uuid
 import hashlib
@@ -59,10 +60,10 @@ class Vault(object):
             raise ValueError('Invalid Hash Value in the block ID')
 
         retval = deuce.storage_driver.store_block(
-            self.id, block_id, blockdata)
+            self.id, storage_id(block_id), blockdata)
 
         file_id = deuce.metadata_driver.register_block(
-            self.id, block_id, data_len)
+            self.id, block_id, storage_id(block_id), data_len)
 
         return retval
 
@@ -73,10 +74,10 @@ class Vault(object):
 
             if hashlib.sha1(blockdata).hexdigest() != block_id:
                 raise ValueError('Invalid Hash Value in the block ID')
-
+        storage_ids = [storage_id(block_id) for block_id in block_ids]
         retval = deuce.storage_driver.store_async_block(
             self.id,
-            block_ids,
+            storage_ids,
             blockdatas)
 
         # TODO(TheSriram): We must avoid race conditions
@@ -84,10 +85,12 @@ class Vault(object):
         # operation, lets either post all the blocks or post none at
         # all, a worker process can be spawned off to kill partially uploaded
         # blocks. For eg: out of 10 blocks, 3 got uploaded.
-        for block_id, blockdata in zip(block_ids, blockdatas):
+        for block_id, storageid, blockdata in zip(block_ids, storage_ids,
+                                                    blockdatas):
             file_id = deuce.metadata_driver.register_block(
                 self.id,
                 block_id,
+                storageid,
                 len(blockdata))
 
         return retval
@@ -100,24 +103,25 @@ class Vault(object):
 
     def get_block(self, block_id):
         obj = deuce.storage_driver.get_block_obj(self.id,
-            block_id)
+              storage_id(block_id))
 
         return Block(self.id, block_id, obj) if obj else None
 
     def get_block_length(self, block_id):
         return deuce.storage_driver.get_block_object_length(
-            self.id, block_id)
+            self.id, storage_id(block_id))
 
     def get_blocks_generator(self, block_ids):
         return deuce.storage_driver.create_blocks_generator(
-            self.id, block_ids)
+            self.id, [storage_id(block_id) for block_id in block_ids])
 
     def delete_block(self, vault_id, block_id):
 
         deuce.metadata_driver.unregister_block(vault_id, block_id)
 
         succ_storage = deuce.storage_driver.delete_block(vault_id,
-                                                         block_id)
+                                                         storage_id(
+                                                             block_id))
         return succ_storage
 
     def create_file(self):

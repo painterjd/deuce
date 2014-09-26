@@ -15,9 +15,10 @@ CREATE COLUMNFAMILY blocks (
   projectid TEXT,
   vaultid TEXT,
   blockid TEXT,
+  storageid TEXT,
   blocksize INT,
   reftime TIMESTAMP,
-  PRIMARY KEY((projectid, vaultid), blockid) 
+  PRIMARY KEY((projectid, vaultid), blockid)
 );
 
 CREATE TABLE files (

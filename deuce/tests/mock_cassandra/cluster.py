@@ -14,6 +14,7 @@ CREATE TABLE blocks (
   projectid TEXT,
   vaultid TEXT,
   blockid TEXT,
+  storageid TEXT,
   blocksize INT,
   reftime DATETIME,
   PRIMARY KEY(projectid, vaultid, blockid)

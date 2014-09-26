@@ -482,12 +482,13 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         args['reftime'] = int(datetime.datetime.utcnow().timestamp())
         self._blocks.update(args, args, upsert=False)
 
-    def register_block(self, vault_id, block_id, blocksize):
+    def register_block(self, vault_id, block_id, storage_id, blocksize):
         if not self.has_block(vault_id, block_id):
             args = {
                 'projectid': deuce.context.project_id,
                 'vaultid': vault_id,
                 'blockid': str(block_id),
+                'storageid': storage_id,
                 'blocksize': blocksize,
                 'reftime': int(datetime.datetime.utcnow().timestamp())
             }

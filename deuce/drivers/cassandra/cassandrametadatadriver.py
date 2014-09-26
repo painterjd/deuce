@@ -149,8 +149,9 @@ CQL_ASSIGN_BLOCK_TO_FILE = '''
 
 CQL_REGISTER_BLOCK = '''
     INSERT INTO blocks
-    (projectid, vaultid, blockid, blocksize, reftime)
-    VALUES (%(projectid)s, %(vaultid)s, %(blockid)s, %(blocksize)s,
+    (projectid, vaultid, blockid, storageid, blocksize, reftime)
+    VALUES (%(projectid)s, %(vaultid)s, %(blockid)s, %(storageid)s,
+    %(blocksize)s,
       unixTimeStampOf(now()))
 '''
 
@@ -426,10 +427,11 @@ class CassandraStorageDriver(MetadataStorageDriver):
                 expected_offset += size
             elif offset < expected_offset:  # Block overlaps previous block
                 raise OverlapError(deuce.context.project_id, vault_id,
-                    file_id, blockid, startpos=offset, endpos=expected_offset)
+                                   file_id, blockid, startpos=offset,
+                                   endpos=expected_offset)
             else:  # There is a gap between this block and the previous one
                 raise GapError(deuce.context.project_id, vault_id, file_id,
-                    startpos=expected_offset, endpos=offset)
+                               startpos=expected_offset, endpos=offset)
 
         # Now we must check the very last block and ensure
         # that is completes the file. This is only doable if
@@ -438,7 +440,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
             if expected_offset < file_size:  # Gap
                 raise GapError(deuce.context.project_id, vault_id, file_id,
-                    startpos=expected_offset, endpos=file_size)
+                               startpos=expected_offset, endpos=file_size)
 
             else:
                 assert expected_offset > file_size
@@ -446,7 +448,8 @@ class CassandraStorageDriver(MetadataStorageDriver):
                 # This means that the "last" block overlaps
                 # the end of the file.
                 raise OverlapError(deuce.context.project_id, vault_id, file_id,
-                    blockid, startpos=file_size, endpos=expected_offset)
+                                   blockid, startpos=file_size,
+                                   endpos=expected_offset)
 
         if self.has_file(vault_id, file_id):
             if file_size is None:
@@ -524,7 +527,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
         return cnt[0] > 0
 
     def create_block_generator(self, vault_id, marker=None,
-            limit=None):
+                               limit=None):
 
         args = dict(
             projectid=deuce.context.project_id,
@@ -538,7 +541,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
         return [row[0] for row in res]
 
     def create_file_generator(self, vault_id, marker=None, limit=None,
-            finalized=True):
+                              finalized=True):
 
         args = dict(
             projectid=deuce.context.project_id,
@@ -603,13 +606,14 @@ class CassandraStorageDriver(MetadataStorageDriver):
         self._session.execute(CQL_ASSIGN_BLOCK_TO_FILE, args)
         self._inc_block_ref_count(vault_id, block_id)
 
-    def register_block(self, vault_id, block_id, blocksize):
+    def register_block(self, vault_id, block_id, storage_id, blocksize):
         if not self.has_block(vault_id, block_id):
 
             args = dict(
                 projectid=deuce.context.project_id,
                 vaultid=vault_id,
                 blockid=block_id,
+                storageid=storage_id,
                 blocksize=int(blocksize)
             )
 

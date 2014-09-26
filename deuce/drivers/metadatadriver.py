@@ -207,7 +207,7 @@ class MetadataStorageDriver(object):
         raise NotImplementedError
 
     @abstractmethod
-    def register_block(self, vault_id, block_id, size):
+    def register_block(self, vault_id, block_id, storage_id, size):
         """Registers a block in the metadata driver."""
         raise NotImplementedError
 
