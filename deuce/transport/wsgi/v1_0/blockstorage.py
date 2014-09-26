@@ -22,8 +22,10 @@ class ItemResource(object):
     def on_put(self, req, resp, vault_id, block_id):
         """Note: This does not support PUT as it is read-only + DELETE
         """
+        # PUT operations must go to /vaults/{vaultid}/blocks
+        # instead of /vaults/{vaultid}/storage/blocks
         url = req.uri
-        url.replace('blockstorage', 'block')
+        url = url.replace('storage/', '')
         raise errors.HTTPMethodNotAllowed(
             ['HEAD', 'GET', 'DELETE'],
             'This is read-only access. Uploads must go to {0:}'.format(
