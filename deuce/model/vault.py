@@ -86,7 +86,7 @@ class Vault(object):
         # all, a worker process can be spawned off to kill partially uploaded
         # blocks. For eg: out of 10 blocks, 3 got uploaded.
         for block_id, storageid, blockdata in zip(block_ids, storage_ids,
-                                                    blockdatas):
+                                                  blockdatas):
             file_id = deuce.metadata_driver.register_block(
                 self.id,
                 block_id,

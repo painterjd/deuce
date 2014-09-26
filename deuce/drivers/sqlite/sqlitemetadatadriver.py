@@ -1,5 +1,3 @@
-import uuid
-
 from deuce import conf
 import deuce
 import importlib
