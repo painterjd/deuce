@@ -205,19 +205,16 @@ class TestFiles(ControllerTest):
 
         hdrs = {'content-type': 'application/x-deuce-block-list'}
         hdrs.update(self._hdrs)
-        data = "{\"blocks\":["
         enough_num = int(conf.api_configuration.max_returned_num)
 
         # Register enough_num of blocks into system.
         block_list, blocks_data = self.helper_create_blocks(
             num_blocks=enough_num)
-        for cnt in range(0, enough_num):
-            data = data + '{' + '\"id\": \"{0}\", \"size\": \"100\", \
-                \"offset\": \"{1}\"'.format(
-                str(block_list[cnt]), str(cnt * 100)) + '}'
-            if cnt < enough_num - 1:
-                data = data + ','
-        data = data + ']}'
+
+        # NOTE(TheSriram): data is list of lists of the form:
+        # [[blockid, offset], [blockid, offset]]
+        data = json.dumps([[block_list[cnt], cnt * 100]
+                 for cnt in range(0, enough_num)])
 
         response = self.simulate_post(self._distractor_file_id,
                                       body=data, headers=hdrs)
@@ -241,18 +238,15 @@ class TestFiles(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_412)
 
         # Register 1.20 times of blocks into system.
-        data2 = "{\"blocks\":["
         enough_num2 = int(1.2 * conf.api_configuration.max_returned_num)
 
         block_list2, blocks_data2 = self.helper_create_blocks(num_blocks=(
             enough_num2 - enough_num))
-        for cnt in range(enough_num, enough_num2):
-            data2 = data2 + '{' + '\"id\": \"{0}\", \"size\": \"100\", \
-                \"offset\": \"{1}\"'.format(str(block_list2[cnt - enough_num]),
-                                            str(cnt * 100)) + '}'
-            if cnt < enough_num2 - 1:
-                data2 = data2 + ','
-        data2 = data2 + ']}'
+
+        # NOTE(TheSriram): data2 is list of lists of the form:
+        # [[blockid, offset], [blockid, offset]]
+        data2 = json.dumps([[block_list2[cnt - enough_num], cnt * 100]
+                 for cnt in range(enough_num, enough_num2)])
 
         response = self.simulate_post(self._file_id, body=data2, headers=hdrs)
         self.assertGreater(len(response[0].decode()), 2)
