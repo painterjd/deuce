@@ -169,6 +169,15 @@ class BaseDeuceClient(client.AutoMarshallingHTTPClient):
             self.url, self.version, vaultname, blockid))
         return resp
 
+    def block_head(self, vaultname, blockid):
+        """
+        Execute HEAD on a block
+        """
+
+        resp = self.request('HEAD', '{0}/{1}/vaults/{2}/blocks/{3}'.format(
+            self.url, self.version, vaultname, blockid))
+        return resp
+
     def create_file(self, vaultname):
         """
         Create a file
