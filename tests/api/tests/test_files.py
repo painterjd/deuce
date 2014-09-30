@@ -69,11 +69,9 @@ class TestFileBlockUploaded(base.TestBase):
 
         block_list = list()
         block_info = self.blocks[0]
-        block_list.append({'id': block_info.Id, 'size': len(block_info.Data),
-                           'offset': 0})
-        block_dict = {'blocks': block_list}
+        block_list.append([block_info.Id, 0])
 
-        resp = self.client.assign_to_file(json.dumps(block_dict),
+        resp = self.client.assign_to_file(json.dumps(block_list),
                                           alternate_url=self.fileurl)
 
         self.assertEqual(resp.status_code, 200,
@@ -89,11 +87,9 @@ class TestFileBlockUploaded(base.TestBase):
         block_data = os.urandom(30720)
         blockid = sha.new(block_data).hexdigest()
         block_list = list()
-        block_list.append({'id': blockid, 'size': len(block_data),
-                           'offset': 0})
-        block_dict = {'blocks': block_list}
+        block_list.append([blockid, 0])
 
-        resp = self.client.assign_to_file(json.dumps(block_dict),
+        resp = self.client.assign_to_file(json.dumps(block_list),
                                           alternate_url=self.fileurl)
 
         self.assertEqual(resp.status_code, 200,
