@@ -27,7 +27,17 @@ class TestNoBlocksUploaded(base.TestBase):
     def test_get_missing_block(self):
         """Get a block that has not been uploaded"""
 
-        resp = self.client.get_block(self.vaultname, self.id_generator(50))
+        self.block_data = os.urandom(100)
+        self.blockid = sha.new(self.block_data).hexdigest()
+        resp = self.client.get_block(self.vaultname, self.blockid)
+        self.assert_404_response(resp)
+
+    def test_head_missing_block(self):
+        """Head a block that has not been uploaded"""
+
+        self.block_data = os.urandom(100)
+        self.blockid = sha.new(self.block_data).hexdigest()
+        resp = self.client.block_head(self.vaultname, self.blockid)
         self.assert_404_response(resp)
 
     def test_delete_missing_block(self):
@@ -120,6 +130,20 @@ class TestBlockUploaded(base.TestBase):
         self.assertEqual(resp.headers['X-Block-Reference-Count'], '0')
         self.assertEqual(resp.content, self.block_data,
                          'Block data returned does not match block uploaded')
+
+    def test_head_one_block(self):
+        """Head an individual block"""
+
+        resp = self.client.block_head(self.vaultname, self.blockid)
+        self.assertEqual(resp.status_code, 200,
+                         'Status code returned is '
+                         '{0} . Expected 200'.format(resp.status_code))
+        self.assertHeaders(resp.headers,
+                           lastmodified=True,
+                           contentlength=0)
+        self.assertIn('X-Block-Reference-Count', resp.headers)
+        self.assertEqual(resp.headers['X-Block-Reference-Count'], '0')
+        self.assertEqual(len(resp.content), 0)
 
     def test_delete_block(self):
         """Delete one block"""
@@ -316,6 +340,33 @@ class TestBlocksReferenceCount(base.TestBase):
         self.assertEqual(resp.headers['X-Block-Reference-Count'], expected)
         self.assertEqual(resp.content, self.block_data,
                          'Block data returned does not match block uploaded')
+
+    @ddt.data('all', 'delete_finalized', 'delete_non_finalized')
+    def test_head_block_with_multiple_references(self, value):
+        """Head an individual block that has multiple references"""
+
+        expected = '3'
+        if value == 'delete_finalized':
+            # delete 1 reference; a finalized file
+            self.client.delete_file(vaultname=self.vaultname,
+                                    fileid=self.files[2].Id)
+        elif value == 'delete_non_finalized':
+            # delete 1 reference; a non-finalized file
+            self.client.delete_file(vaultname=self.vaultname,
+                                    fileid=self.files[0].Id)
+        elif value == 'all':
+            expected = '4'
+
+        resp = self.client.block_head(self.vaultname, self.blockid)
+        self.assertEqual(resp.status_code, 200,
+                         'Status code is '
+                         '{0} . Expected 200'.format(resp.status_code))
+        self.assertHeaders(resp.headers,
+                           lastmodified=True,
+                           contentlength=0)
+        self.assertIn('X-Block-Reference-Count', resp.headers)
+        self.assertEqual(resp.headers['X-Block-Reference-Count'], expected)
+        self.assertEqual(len(resp.content), 0)
 
     def tearDown(self):
         super(TestBlocksReferenceCount, self).tearDown()

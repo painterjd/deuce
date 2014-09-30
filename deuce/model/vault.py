@@ -1,5 +1,6 @@
 from deuce.model.block import Block
 from deuce.model.file import File
+from deuce.model.exceptions import ConsistencyError
 from deuce.util import log as logging
 
 import deuce
@@ -102,6 +103,24 @@ class Vault(object):
             self.id, marker=marker, limit=limit)
 
         return (Block(self.id, bid) for bid in gen)
+
+    def has_block(self, block_id, check_storage=False):
+        if self._meta_has_block(block_id):
+            if self._storage_has_block(block_id):
+                return True
+            else:
+                raise ConsistencyError(deuce.context.project_id,
+                                       self.id, block_id,
+                                       msg='Block does not exist'
+                                           ' in Block Storage')
+        else:
+            return False
+
+    def _storage_has_block(self, block_id):
+        return deuce.storage_driver.block_exists(self.id, block_id)
+
+    def _meta_has_block(self, block_id):
+        return deuce.metadata_driver.has_block(self.id, block_id)
 
     def get_block(self, block_id):
         storage_id = self._get_storage_id(block_id)
