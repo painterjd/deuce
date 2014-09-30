@@ -90,7 +90,7 @@ class Vault(object):
 
         for block_id, storageid, blockdata in zip(block_ids, retval[1],
                                                   blockdatas):
-            file_id = deuce.metadata_driver.register_block(
+            deuce.metadata_driver.register_block(
                 self.id,
                 block_id,
                 storageid,
@@ -117,7 +117,8 @@ class Vault(object):
             return False
 
     def _storage_has_block(self, block_id):
-        return deuce.storage_driver.block_exists(self.id, block_id)
+        return deuce.storage_driver.block_exists(self.id,
+            self._get_storage_id(block_id))
 
     def _meta_has_block(self, block_id):
         return deuce.metadata_driver.has_block(self.id, block_id)
