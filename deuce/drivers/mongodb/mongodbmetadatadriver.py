@@ -159,6 +159,22 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         else:
             return 0
 
+    def get_storage_id(self, vault_id, block_id):
+        """Retrieve storage id for a given block id"""
+        self._files.ensure_index([('projectid', 1),
+                                  ('vaultid', 1), ('blockid', 1)])
+        args = {
+            'projectid': deuce.context.project_id,
+            'vaultid': vault_id,
+            'blockid': block_id
+        }
+
+        res = self._blocks.find_one(args)
+        if res:
+            return str(res.get('storageid'))
+        else:
+            return None
+
     def has_file(self, vault_id, file_id):
         self._files.ensure_index([('projectid', 1),
             ('vaultid', 1), ('fileid', 1)])

@@ -98,6 +98,14 @@ CQL_GET_ALL_BLOCKS = '''
     LIMIT %(limit)s
 '''
 
+CQL_GET_STORAGE_ID = '''
+    SELECT storageid
+    FROM blocks
+    WHERE projectid = %(projectid)s
+    AND vaultid = %(vaultid)s
+    AND blockid =%(blockid)s
+'''
+
 CQL_GET_COUNT_ALL_BLOCKS = '''
     SELECT COUNT(*)
     FROM blocks
@@ -350,6 +358,20 @@ class CassandraStorageDriver(MetadataStorageDriver):
             return int(res[0][0])
         except IndexError:
             return 0
+
+    def get_storage_id(self, vault_id, block_id):
+        """Retrieve storage id for a given block id"""
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            blockid=block_id
+        )
+
+        res = self._session.execute(CQL_GET_STORAGE_ID, args)
+        try:
+            return str(res[0][0])
+        except IndexError:
+            return None
 
     def has_file(self, vault_id, file_id):
         args = dict(

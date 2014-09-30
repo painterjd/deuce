@@ -161,6 +161,14 @@ SQL_GET_ALL_BLOCKS = '''
     LIMIT :limit
 '''
 
+SQL_GET_STORAGE_ID = '''
+    SELECT storageid
+    FROM blocks
+    WHERE projectid = :projectid
+    AND vaultid = :vaultid
+    AND blockid = :blockid
+'''
+
 SQL_GET_COUNT_ALL_BLOCKS = '''
     SELECT COUNT(DISTINCT(blockid))
     FROM blocks
@@ -420,6 +428,21 @@ class SqliteStorageDriver(MetadataStorageDriver):
         except StopIteration:
             return 0
 
+    def get_storage_id(self, vault_id, block_id):
+        """Retrieve storage id for a given block id"""
+        args = {
+            'projectid': deuce.context.project_id,
+            'vaultid': vault_id,
+            'blockid': block_id
+        }
+
+        res = self._conn.execute(SQL_GET_STORAGE_ID, args)
+        try:
+            row = next(res)
+            return str(row[0])
+        except StopIteration:
+            return None
+
     def has_file(self, vault_id, file_id):
         args = {
             'projectid': deuce.context.project_id,
@@ -636,7 +659,7 @@ class SqliteStorageDriver(MetadataStorageDriver):
                 'vaultid': vault_id,
                 'blockid': block_id,
                 'blocksize': int(blocksize),
-                'storageid': storage_id
+                'storageid': str(storage_id)
             }
 
             self._conn.execute(SQL_REGISTER_BLOCK, args)

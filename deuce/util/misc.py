@@ -25,7 +25,3 @@ def set_qs_on_url(url, args={}):
 def relative_uri(url):
     parts = list(parse.urlparse(url))
     return (parts[2], parts[4])
-
-
-def storage_id(blockid):
-    return str(uuid.uuid5(uuid.NAMESPACE_DNS, blockid))
