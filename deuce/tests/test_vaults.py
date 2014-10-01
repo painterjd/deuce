@@ -176,7 +176,7 @@ class TestVaults(ControllerTest):
         # Delete the vault
         response = self.simulate_delete(vault_path,
                                         headers=self._hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_412)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Delete the dummy block
 
@@ -251,7 +251,7 @@ class TestVaults(ControllerTest):
 
         # Delete should fail.
         response = self.simulate_delete(vault_path, headers=self._hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_412)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
     def test_vault_error(self):
         from deuce.model import Vault

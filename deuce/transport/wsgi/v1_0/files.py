@@ -90,7 +90,7 @@ class ItemResource(object):
             raise errors.HTTPNotFound
 
         if not f.finalized:
-            raise errors.HTTPPreconditionFailed('File not Finalized')
+            raise errors.HTTPConflict('File not Finalized')
 
         block_gen = deuce.metadata_driver.create_file_block_generator(
             vault_id, file_id)
@@ -139,13 +139,10 @@ class ItemResource(object):
             except Exception as e:
                 # There are gaps or overlaps in blocks of the file
                 # The list of errors returns
-                # NEED RETURN 413
                 details = str(e)
-                resp.status = falcon.HTTP_413
                 logger.error('File [{0}] finalization '
                              'failed; [{1}]'.format(file_id, details))
-                resp.body = json.dumps(details)
-                return
+                raise errors.HTTPConflict(json.dumps(details))
             else:
                 resp.status = falcon.HTTP_200
                 return
