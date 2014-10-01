@@ -635,7 +635,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
                 projectid=deuce.context.project_id,
                 vaultid=vault_id,
                 blockid=block_id,
-                storageid=storage_id,
+                storageid=uuid.UUID(storage_id),
                 blocksize=int(blocksize)
             )
 

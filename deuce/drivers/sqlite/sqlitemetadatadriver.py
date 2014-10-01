@@ -659,7 +659,7 @@ class SqliteStorageDriver(MetadataStorageDriver):
                 'vaultid': vault_id,
                 'blockid': block_id,
                 'blocksize': int(blocksize),
-                'storageid': str(storage_id)
+                'storageid': storage_id
             }
 
             self._conn.execute(SQL_REGISTER_BLOCK, args)

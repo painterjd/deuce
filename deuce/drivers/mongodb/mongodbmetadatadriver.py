@@ -1,3 +1,4 @@
+import uuid
 
 from deuce import conf
 
@@ -504,7 +505,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
                 'projectid': deuce.context.project_id,
                 'vaultid': vault_id,
                 'blockid': str(block_id),
-                'storageid': storage_id,
+                'storageid': uuid.UUID(storage_id),
                 'blocksize': blocksize,
                 'reftime': int(datetime.datetime.utcnow().timestamp())
             }

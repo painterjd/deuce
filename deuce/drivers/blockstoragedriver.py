@@ -102,5 +102,5 @@ class BlockStorageDriver(object):
     def storage_id(self, blockid):
         """Generates a storage id, for a given
         block id"""
-        return uuid.uuid5(uuid.NAMESPACE_DNS, blockid + ' ' +
-            str(time.time()))
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, blockid + ' ' +
+            str(time.time())))
