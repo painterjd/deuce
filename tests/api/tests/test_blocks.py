@@ -135,9 +135,9 @@ class TestBlockUploaded(base.TestBase):
         """Head an individual block"""
 
         resp = self.client.block_head(self.vaultname, self.blockid)
-        self.assertEqual(resp.status_code, 200,
+        self.assertEqual(resp.status_code, 204,
                          'Status code returned is '
-                         '{0} . Expected 200'.format(resp.status_code))
+                         '{0} . Expected 204'.format(resp.status_code))
         self.assertHeaders(resp.headers,
                            lastmodified=True,
                            contentlength=0)
@@ -358,9 +358,9 @@ class TestBlocksReferenceCount(base.TestBase):
             expected = '4'
 
         resp = self.client.block_head(self.vaultname, self.blockid)
-        self.assertEqual(resp.status_code, 200,
+        self.assertEqual(resp.status_code, 204,
                          'Status code is '
-                         '{0} . Expected 200'.format(resp.status_code))
+                         '{0} . Expected 204'.format(resp.status_code))
         self.assertHeaders(resp.headers,
                            lastmodified=True,
                            contentlength=0)
