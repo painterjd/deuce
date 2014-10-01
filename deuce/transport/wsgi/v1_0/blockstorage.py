@@ -25,8 +25,31 @@ class ItemResource(object):
         """
         # PUT operations must go to /vaults/{vaultid}/blocks
         # instead of /vaults/{vaultid}/storage/blocks
-        url = req.uri
-        url = url.replace('storage/', '')
+        path = req.path
+
+        path_parts = path.split('/')
+        del path_parts[4]
+
+        # TODO: Depends on PR #173 to enable
+        # If there exists a Block ID in Metadata then remove
+        # Storage Block ID and insert Metadata Block ID
+        # Otherwise, assume the block_id is the what the Blocks
+        # PUT requires
+        # metadata_block_id = deuce.metadata_driver.get_block_id(vault_id,
+        #                                                        block_id)
+        # if metadata_block_id is not None:
+        #   del path_parts[len(path_parts)-1]
+        #   path.append(metadata_block_id)
+
+        path = str('/').join(path_parts)
+
+        block_url = (req.protocol + '://' +
+                     req.get_header('host') +
+                     req.app +
+                     path)
+
+        resp.set_header('X-Block-Location', block_url)
+
         logger.warn('Caller tried to PUT a block directly to storage. '
             'Transaction: {0} Project: {1}'.format(
                 deuce.context.transaction.request_id,
@@ -34,7 +57,7 @@ class ItemResource(object):
         raise errors.HTTPMethodNotAllowed(
             ['HEAD', 'GET', 'DELETE'],
             'This is read-only access. Uploads must go to {0:}'.format(
-                url))
+                block_url))
 
     @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
     def on_get(self, req, resp, vault_id, block_id):
