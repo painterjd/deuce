@@ -31,5 +31,7 @@ class Block(object):
             self.vault_id, self.block_id)
 
     def get_block_length(self):
+        """Returns the length of this block from storage
+        """
         return deuce.storage_driver.get_block_object_length(
             self.vault_id, self.block_id)
