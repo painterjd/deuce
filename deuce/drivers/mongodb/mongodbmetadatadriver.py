@@ -162,7 +162,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
 
     def get_storage_id(self, vault_id, block_id):
         """Retrieve storage id for a given block id"""
-        self._files.ensure_index([('projectid', 1),
+        self._blocks.ensure_index([('projectid', 1),
                                   ('vaultid', 1), ('blockid', 1)])
         args = {
             'projectid': deuce.context.project_id,
@@ -173,6 +173,23 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         res = self._blocks.find_one(args)
         if res:
             return str(res.get('storageid'))
+        else:
+            return None
+
+    def get_block_id(self, vault_id, storage_id):
+        """Retrieve block id for a given storage id"""
+        self._blocks.ensure_index([('projectid', 1),
+                                  ('vaultid', 1),
+                                  ('storageid', 1)])
+        args = {
+            'projectid': deuce.context.project_id,
+            'vaultid': vault_id,
+            'storageid': uuid.UUID(storage_id)
+        }
+
+        res = self._blocks.find_one(args)
+        if res:
+            return str(res.get('blockid'))
         else:
             return None
 

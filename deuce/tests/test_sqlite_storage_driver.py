@@ -121,9 +121,12 @@ class SqliteStorageDriverTest(V1Base):
 
         gen_storage_id = self._genstorageid(vault_id, block_id)
         driver.register_block(vault_id, block_id, gen_storage_id, size)
+
         meta_storage_id = driver.get_storage_id(vault_id, block_id)
+        meta_block_id = driver.get_block_id(vault_id, gen_storage_id)
 
         self.assertEqual(gen_storage_id, meta_storage_id)
+        self.assertEqual(meta_block_id, block_id)
 
         self.assertTrue(driver.has_block(vault_id, block_id))
         driver.unregister_block(vault_id, block_id)
@@ -133,6 +136,11 @@ class SqliteStorageDriverTest(V1Base):
             vault_id,
             self.create_block_id(b'bogus'))
         self.assertIsNone(bogus_storage_id)
+
+        bogus_block_id = driver.get_block_id(
+            vault_id,
+            self._genstorageid(vault_id, self.create_block_id(b'bogus')))
+        self.assertIsNone(bogus_block_id)
 
     def test_block_crud(self):
         driver = self.create_driver()

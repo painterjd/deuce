@@ -21,6 +21,9 @@ CREATE COLUMNFAMILY blocks (
   PRIMARY KEY((projectid, vaultid), blockid)
 );
 
+CREATE INDEX storageid_index
+    on blocks (storageid);
+
 CREATE TABLE files (
   projectid TEXT,
   vaultid TEXT,
