@@ -5,6 +5,7 @@ import msgpack
 import six
 from six.moves.urllib.parse import urlparse, parse_qs
 
+import deuce
 from deuce import conf
 from deuce.drivers.metadatadriver import ConstraintError
 from deuce.model import BlockStorage, Vault
@@ -22,12 +23,41 @@ class ItemResource(object):
     def on_put(self, req, resp, vault_id, block_id):
         """Note: This does not support PUT as it is read-only + DELETE
         """
-        url = req.uri
-        url.replace('blockstorage', 'block')
+        # PUT operations must go to /vaults/{vaultid}/blocks
+        # instead of /vaults/{vaultid}/storage/blocks
+        path = req.path
+
+        path_parts = path.split('/')
+        del path_parts[4]
+
+        # TODO: Depends on PR #173 to enable
+        # If there exists a Block ID in Metadata then remove
+        # Storage Block ID and insert Metadata Block ID
+        # Otherwise, assume the block_id is the what the Blocks
+        # PUT requires
+        # metadata_block_id = deuce.metadata_driver.get_block_id(vault_id,
+        #                                                        block_id)
+        # if metadata_block_id is not None:
+        #   del path_parts[len(path_parts)-1]
+        #   path.append(metadata_block_id)
+
+        path = str('/').join(path_parts)
+
+        block_url = (req.protocol + '://' +
+                     req.get_header('host') +
+                     req.app +
+                     path)
+
+        resp.set_header('X-Block-Location', block_url)
+
+        logger.warn('Caller tried to PUT a block directly to storage. '
+            'Transaction: {0} Project: {1}'.format(
+                deuce.context.transaction.request_id,
+                deuce.context.project_id))
         raise errors.HTTPMethodNotAllowed(
             ['HEAD', 'GET', 'DELETE'],
             'This is read-only access. Uploads must go to {0:}'.format(
-                url))
+                block_url))
 
     @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
     def on_get(self, req, resp, vault_id, block_id):
@@ -93,7 +123,7 @@ class CollectionResource(object):
             logger.error('Vault [{0}] does not exist'.format(vault_id))
             raise errors.HTTPNotFound
 
-        inmarker = req.get_param('marker') if req.get_param('marker') else 0
+        inmarker = req.get_param('marker') if req.get_param('marker') else None
         limit = req.get_param_as_int('limit') if req.get_param_as_int('limit') else \
             conf.api_configuration.max_returned_num
 
