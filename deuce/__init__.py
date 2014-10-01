@@ -65,6 +65,7 @@ def find_config_file():
     for candidate in candidate_paths:
         if os.path.exists(candidate):
             chosen = candidate
+            break
 
     if chosen is None:  # pragma: no cover
 
