@@ -109,7 +109,7 @@ class CollectionResource(object):
             logger.error('Vault [{0}] does not exist'.format(vault_id))
             raise errors.HTTPNotFound
 
-        inmarker = req.get_param('marker') if req.get_param('marker') else 0
+        inmarker = req.get_param('marker') if req.get_param('marker') else None
         limit = req.get_param_as_int('limit') if req.get_param_as_int('limit') else \
             conf.api_configuration.max_returned_num
 
