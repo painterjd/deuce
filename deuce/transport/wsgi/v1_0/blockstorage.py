@@ -5,6 +5,7 @@ import msgpack
 import six
 from six.moves.urllib.parse import urlparse, parse_qs
 
+import deuce
 from deuce import conf
 from deuce.drivers.metadatadriver import ConstraintError
 from deuce.model import BlockStorage, Vault
@@ -26,6 +27,10 @@ class ItemResource(object):
         # instead of /vaults/{vaultid}/storage/blocks
         url = req.uri
         url = url.replace('storage/', '')
+        logger.warn('Caller tried to PUT a block directly to storage. '
+            'Transaction: {0} Project: {1}'.format(
+                deuce.context.transaction.request_id,
+                deuce.context.project_id))
         raise errors.HTTPMethodNotAllowed(
             ['HEAD', 'GET', 'DELETE'],
             'This is read-only access. Uploads must go to {0:}'.format(
