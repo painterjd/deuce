@@ -316,16 +316,14 @@ class TestBase(fixtures.BaseTestFixture):
 
         for index in blocks:
             block_info = self.blocks[index]
-            block_list.append({'id': block_info.Id,
-                               'size': len(block_info.Data), 'offset': offset})
+            block_list.append([block_info.Id, offset])
             if offset_divisor:
                 offset += len(block_info.Data) / offset_divisor
             else:
                 offset += len(block_info.Data)
             self.blocks_size += len(block_info.Data)
 
-        block_dict = {'blocks': block_list}
-        resp = self.client.assign_to_file(json.dumps(block_dict),
+        resp = self.client.assign_to_file(json.dumps(block_list),
                                           alternate_url=file_url)
         return 200 == resp.status_code
 
