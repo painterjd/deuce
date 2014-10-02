@@ -100,7 +100,8 @@ class BlockStorageDriver(object):
         return (self.get_block_obj(vault_id, block_id)
             for block_id in block_gen)
 
-    def storage_id(self, blockid):
+    @staticmethod
+    def storage_id(blockid):
         """Generates a storage id, for a given
         block id"""
         return str(uuid.uuid5(uuid.NAMESPACE_URL, blockid + ' ' +
