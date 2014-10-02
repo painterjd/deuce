@@ -37,7 +37,7 @@ class Vault(object):
         self.id = vault_id
 
     def _get_storage_id(self, block_id):
-        return deuce.metadata_driver.get_storage_id(self.id, block_id)
+        return deuce.metadata_driver.get_block_storage_id(self.id, block_id)
 
     def get_vault_statistics(self):
         # Get information about the vault

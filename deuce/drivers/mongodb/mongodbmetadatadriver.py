@@ -160,7 +160,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         else:
             return 0
 
-    def get_storage_id(self, vault_id, block_id):
+    def get_block_storage_id(self, vault_id, block_id):
         """Retrieve storage id for a given block id"""
         self._blocks.ensure_index([('projectid', 1),
                                   ('vaultid', 1), ('blockid', 1)])
@@ -176,7 +176,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         else:
             return None
 
-    def get_block_id(self, vault_id, storage_id):
+    def get_storage_block_id(self, vault_id, storage_id):
         """Retrieve block id for a given storage id"""
         self._blocks.ensure_index([('projectid', 1),
                                   ('vaultid', 1),

@@ -43,6 +43,9 @@ class ItemResource(object):
 
             ref_mod = block.get_ref_modified()
             resp.set_header('X-Ref-Modified', str(ref_mod))
+
+            storage_id = block.get_storage_id()
+            resp.set_header('X-Storage-ID', str(storage_id))
             resp.status = falcon.HTTP_204
 
         except ConsistencyError as ex:

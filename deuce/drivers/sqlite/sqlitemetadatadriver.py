@@ -436,7 +436,7 @@ class SqliteStorageDriver(MetadataStorageDriver):
         except StopIteration:
             return 0
 
-    def get_storage_id(self, vault_id, block_id):
+    def get_block_storage_id(self, vault_id, block_id):
         """Retrieve storage id for a given block id"""
         args = {
             'projectid': deuce.context.project_id,
@@ -451,7 +451,7 @@ class SqliteStorageDriver(MetadataStorageDriver):
         except StopIteration:
             return None
 
-    def get_block_id(self, vault_id, storage_id):
+    def get_storage_block_id(self, vault_id, storage_id):
         """Retrieve block id for a given storage id"""
         args = {
             'projectid': deuce.context.project_id,
