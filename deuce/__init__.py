@@ -4,14 +4,40 @@ Deuce Global
 context = None
 
 import os
+import sys
 from configobj import ConfigObj
 from validate import Validator
 
+CONFIG_FILENAME = 'config.ini'
+CONFIGSPEC_FILENAME = 'configspec.ini'
+
+# This path is the path that is created when we
+# have a virtual environment, or typically '/var' if
+# we are installed in the system's site-packages.
+CONFIG_DIR = os.path.join(sys.prefix, 'config')
+
+spec_paths = [
+    os.path.join(CONFIG_DIR, CONFIGSPEC_FILENAME),
+    os.path.abspath(os.path.join("ini", CONFIGSPEC_FILENAME))
+]
+
+SPEC_PATH = None
+
+for path in spec_paths:
+    if os.path.exists(path):
+        SPEC_PATH = path
+
+if SPEC_PATH is None:  # pragma: no cover
+    sys.stderr.write("Unable to find config spec. Checked here:")
+
+    for path in spec_paths:
+        sys.stderr.write("{0}\n".format(path))
+
+    sys.exit(1)
+
 
 class Config(object):
-
-    '''Builds deuce conf on passing in a dict.'''
-
+    """Builds deuce conf on passing in a dict."""
     def __init__(self, config):
         for k, v in config.items():
             if isinstance(v, dict):
@@ -19,73 +45,58 @@ class Config(object):
             else:
                 setattr(self, k, v)
 
-
-# NOTE(TheSriram): The user can add in their rule of where they
-# want the .inis' placed, and their priorities.
-
-config_files_root = {
-    'config': '/etc/deuce/config.ini',
-    'configspec': '/etc/deuce/configspec.ini',
-    'status': False,
-    'priority': 2
-}
-config_files_user = {
-    'config': '{0:}/.deuce/config.ini'.format(os.environ['HOME']),
-    'configspec': '{0:}/.deuce/configspec.ini'.format(os.environ['HOME']),
-    'status': False,
-    'priority': 1
-}
-
-config_files_deuce = {
-    'config': os.path.abspath('../ini/config.ini'),
-    'configspec': os.path.abspath('../ini/configspec.ini'),
-    'status': False,
-    'priority': 3
-}
-
-conf_list = [config_files_root, config_files_user, config_files_deuce]
+# List of paths where we might find the config file, in order
+candidate_paths = [
+    os.path.join('/etc/deuce', CONFIG_FILENAME),  # system-wide config
+    os.path.join(os.environ['HOME'], ".deuce", CONFIG_FILENAME),  # homedir
+    os.path.join(CONFIG_DIR, CONFIG_FILENAME),  # installed
+    os.path.join(os.path.abspath("ini"), CONFIG_FILENAME)  # local dev
+]
 
 
-def get_correct_conf(conf_list):
-    for config_params in conf_list:
-        conf_params = Config(config_params)
-        for k, v in config_params.items():
-            if k not in ["status", "priority"]:  # pragma: no cover
-                if not os.path.exists(os.path.abspath(
-                    getattr(conf_params, k))) or \
-                        (k + '.ini' not in getattr(conf_params, k)):
-                    pass
-                else:
-                    config_params['status'] = True
-    final_conf_list = [conf for conf in conf_list if conf['status'] is True]
-    sorted_conf_list = sorted(final_conf_list, key=lambda k: k['priority'])
+def find_config_file():
+    """Checks all candidate paths looking for a config
+    file. If the config file cannot be found at any
+    location the process will exit with an appropriate error"""
+    global candidate_paths
 
-    del sorted_conf_list[0]['status']
-    del sorted_conf_list[0]['priority']
-    return sorted_conf_list[0]
+    chosen = None
 
-config_files = get_correct_conf(conf_list)
+    for candidate in candidate_paths:
+        if os.path.exists(candidate):
+            chosen = candidate
+            break
 
-conf_ini = Config(config_files)
+    if chosen is None:  # pragma: no cover
 
-for k, v in config_files.items():
-    if not os.path.exists(os.path.abspath(getattr(conf_ini, k))) or \
-            (k + '.ini' not in getattr(conf_ini, k)):  # pragma: no cover
-        raise OSError("Please set absolute path to "
-                      "correct {0} ini file".format(k))
+        sys.stderr.write("FATAL ERROR: could not locate a config:\n")
+
+        for p in candidate_paths:
+            sys.stderr.write("{0}\n".format(p))
+
+        sys.exit(1)
+
+    return chosen
 
 configspec = ConfigObj(
-    os.path.abspath(conf_ini.configspec),
+    os.path.abspath(SPEC_PATH),
     interpolation=False,
     list_values=False,
     _inspec=True)
 
+config_file = find_config_file()
+
 config = ConfigObj(
-    os.path.abspath(conf_ini.config),
+    config_file,
     configspec=configspec,
     interpolation=False)
+
 if not config.validate(Validator()):  # pragma: no cover
-    raise ValueError('Validation of config failed wrt to configspec')
+    msg = 'Validation of {0} failed using {0}'.format(
+        config_file, SPEC_PATH)
+
+    raise ValueError(msg)
 
 conf_dict = config.dict()
+
 conf = Config(conf_dict)

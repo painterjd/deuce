@@ -1,3 +1,6 @@
+import time
+import uuid
+import socket
 
 import six
 from abc import ABCMeta, abstractmethod, abstractproperty
@@ -96,3 +99,10 @@ class BlockStorageDriver(object):
         individually."""
         return (self.get_block_obj(vault_id, block_id)
             for block_id in block_gen)
+
+    @staticmethod
+    def storage_id(blockid):
+        """Generates a storage id, for a given
+        block id"""
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, blockid + ' ' +
+            str(socket.gethostname()) + str(time.time())))

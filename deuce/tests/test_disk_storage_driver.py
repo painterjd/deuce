@@ -35,12 +35,13 @@ class DiskStorageDriverTest(V1Base):
         # delete a non-empty vault.
         driver.create_vault(vault_id)
         block_id = 'baab'
-        driver.store_block(vault_id, block_id, b' ')
-        assert driver.block_exists(vault_id, block_id)
+        retval = driver.store_block(vault_id, block_id, b' ')
+        (status, storage_id) = retval
+        assert driver.block_exists(vault_id, storage_id)
         assert not driver.delete_vault(vault_id)
         assert driver.vault_exists(vault_id)
         # Cleanup and delete again.
-        driver.delete_block(vault_id, block_id)
+        driver.delete_block(vault_id, storage_id)
         assert driver.delete_vault(vault_id)
         assert not driver.vault_exists(vault_id)
 
@@ -81,28 +82,31 @@ class DiskStorageDriverTest(V1Base):
         block_data = MockFile(block_size)
 
         # Test Invalid block_id, ie, wrong sha1 hash.
+        storage_id = ""
         try:
-            driver.store_block(vault_id, "test_disk_trouble_file",
-                os.urandom(10))
+            status, storage_id = driver.store_block(vault_id,
+                                                    "test_disk_trouble_file",
+                                                    os.urandom(10))
         except:
             assert True
-        driver.delete_block(vault_id, "test_disk_trouble_file")
+        driver.delete_block(vault_id, storage_id)
 
         assert (driver.get_block_object_length(vault_id,
-            "test_invalid_block_for_length") == 0)
+                                               storage_id) == 0)
 
         # Test delete invalid block
         driver.delete_block(vault_id, "test_invalid_block_deletion")
 
         # Test valid block_id.
         block_id = block_data.sha1()
-        driver.store_block(vault_id, block_id, block_data.read())
+        status, storage_id = driver.store_block(
+            vault_id, block_id, block_data.read())
         block_data.seek(0)
 
-        assert driver.block_exists(vault_id, block_id)
+        assert driver.block_exists(vault_id, storage_id)
 
         # Read back the block data and compare
-        file_obj = driver.get_block_obj(vault_id, block_id)
+        file_obj = driver.get_block_obj(vault_id, storage_id)
 
         returned_data = file_obj.read()
 
@@ -110,12 +114,12 @@ class DiskStorageDriverTest(V1Base):
 
         assert len(returned_data) == block_size
         assert returned_data == block_data._content
-        assert (driver.get_block_object_length(vault_id, block_id)
-            == block_size)
+        assert (driver.get_block_object_length(vault_id, storage_id)
+                == block_size)
 
-        driver.delete_block(vault_id, block_id)
+        driver.delete_block(vault_id, storage_id)
 
-        assert not driver.block_exists(vault_id, block_id)
+        assert not driver.block_exists(vault_id, storage_id)
 
         assert None == driver.get_block_obj(vault_id, 'invalid_block_id')
 
@@ -131,13 +135,13 @@ class DiskStorageDriverTest(V1Base):
         driver.create_vault(vault_id)
         block_datas = [MockFile(block_size) for _ in range(3)]
         block_ids = [block_data.sha1() for block_data in block_datas]
-        driver.store_async_block(vault_id, block_ids, [
+        (status, storage_ids) = driver.store_async_block(vault_id, block_ids, [
             block_data.read() for block_data in block_datas])
-        for block_id, block_data in zip(block_ids, block_datas):
-            assert driver.block_exists(vault_id, block_id)
+        for storage_id, block_data in zip(storage_ids, block_datas):
+            assert driver.block_exists(vault_id, storage_id)
 
             # Read back the block data and compare
-            file_obj = driver.get_block_obj(vault_id, block_id)
+            file_obj = driver.get_block_obj(vault_id, storage_id)
 
             returned_data = file_obj.read()
 
@@ -146,9 +150,9 @@ class DiskStorageDriverTest(V1Base):
             assert len(returned_data) == block_size
             assert returned_data == block_data._content
 
-            driver.delete_block(vault_id, block_id)
+            driver.delete_block(vault_id, storage_id)
 
-            assert not driver.block_exists(vault_id, block_id)
+            assert not driver.block_exists(vault_id, storage_id)
 
             assert None == driver.get_block_obj(vault_id, 'invalid_block_id')
         assert driver.delete_vault(vault_id)
@@ -174,16 +178,18 @@ class DiskStorageDriverTest(V1Base):
         orig_hex = orig_hash.hexdigest()
 
         block_ids = []
+        storage_ids = []
         for block_data in blocks:
             block_id = block_data.sha1()
             block_ids.append(block_id)
-            driver.store_block(vault_id, block_id,
-                block_data.read())
+            status, storage_id = driver.store_block(vault_id, block_id,
+                                                    block_data.read())
+            storage_ids.append(storage_id)
             block_data.seek(0)
 
         # Now call the block generator.
 
-        blockid_gen = block_ids[:]
+        blockid_gen = storage_ids[:]
 
         gen = driver.create_blocks_generator(vault_id, blockid_gen)
 
@@ -196,6 +202,6 @@ class DiskStorageDriverTest(V1Base):
             assert fetched_data[x].read() == blocks[x].read()
 
         # Clenaup.
-        for block_id in block_ids[:]:
-            driver.delete_block(vault_id, block_id)
+        for storage_id in storage_ids[:]:
+            driver.delete_block(vault_id, storage_id)
         assert driver.delete_vault(vault_id)

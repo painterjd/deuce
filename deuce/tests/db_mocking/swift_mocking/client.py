@@ -32,7 +32,7 @@ def _get_vault_block_path(vault_id):
 
 
 def _get_block_path(vault_id, block_id):
-    if block_id.startswith('blocks/'):
+    if str(block_id).startswith('blocks/'):
         vault_path = _get_vault_path(vault_id)
         return os.path.join(vault_path, str(block_id))
     else:

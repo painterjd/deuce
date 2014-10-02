@@ -6,6 +6,8 @@ import msgpack
 from deuce import conf
 from deuce.util import set_qs_on_url
 from deuce.model import Vault
+from deuce.model import Block
+from deuce.model.exceptions import ConsistencyError
 from deuce.drivers.metadatadriver import ConstraintError
 from deuce.transport.validation import *
 import deuce.transport.wsgi.errors as errors
@@ -15,6 +17,40 @@ logger = logging.getLogger(__name__)
 
 
 class ItemResource(object):
+    @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
+    def on_head(self, req, resp, vault_id, block_id):
+
+        """Checks for the existence of the block in the
+        metadata storage and if successful check for it in
+        the storage driver
+        if it fails we return a 502, otherwise we return
+        all other headers returned on
+            GET /v1.0/vaults/{vault_id}/blocks/{block_id}
+        """
+
+        vault = Vault.get(vault_id)
+
+        if not vault:
+            logger.error('Vault [{0}] does not exist'.format(vault_id))
+            raise errors.HTTPNotFound
+        try:
+            if not vault.has_block(block_id):
+                logger.error('block [{0}] does not exist'.format(block_id))
+                raise errors.HTTPNotFound
+            block = Block(vault_id, block_id)
+            ref_cnt = block.get_ref_count()
+            resp.set_header('X-Block-Reference-Count', str(ref_cnt))
+
+            ref_mod = block.get_ref_modified()
+            resp.set_header('X-Ref-Modified', str(ref_mod))
+
+            storage_id = block.get_storage_id()
+            resp.set_header('X-Storage-ID', str(storage_id))
+            resp.status = falcon.HTTP_204
+
+        except ConsistencyError as ex:
+            logger.error(ex)
+            raise errors.HTTPBadGateway(str(ex))
 
     @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
     def on_get(self, req, resp, vault_id, block_id):

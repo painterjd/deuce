@@ -4,6 +4,7 @@ import ddt
 import json
 import os
 import sha
+import uuid
 
 
 class TestNoFilesCreated(base.TestBase):
@@ -68,11 +69,9 @@ class TestFileBlockUploaded(base.TestBase):
 
         block_list = list()
         block_info = self.blocks[0]
-        block_list.append({'id': block_info.Id, 'size': len(block_info.Data),
-                           'offset': 0})
-        block_dict = {'blocks': block_list}
+        block_list.append([block_info.Id, 0])
 
-        resp = self.client.assign_to_file(json.dumps(block_dict),
+        resp = self.client.assign_to_file(json.dumps(block_list),
                                           alternate_url=self.fileurl)
 
         self.assertEqual(resp.status_code, 200,
@@ -88,11 +87,9 @@ class TestFileBlockUploaded(base.TestBase):
         block_data = os.urandom(30720)
         blockid = sha.new(block_data).hexdigest()
         block_list = list()
-        block_list.append({'id': blockid, 'size': len(block_data),
-                           'offset': 0})
-        block_dict = {'blocks': block_list}
+        block_list.append([blockid, 0])
 
-        resp = self.client.assign_to_file(json.dumps(block_dict),
+        resp = self.client.assign_to_file(json.dumps(block_list),
                                           alternate_url=self.fileurl)
 
         self.assertEqual(resp.status_code, 200,
@@ -434,7 +431,7 @@ class TestMultipleFinalizedFiles(base.TestBase):
             self.create_new_file()
             self.upload_block()
             self.assign_all_blocks_to_file()
-            self.blocks_file.append(self.blocks)
+            self.blocks_file.append(*self.blocks)
             self.finalize_file()
         self.created_files = [file_info.Id for file_info in self.files]
         self.file_ids = self.created_files[:]
@@ -512,10 +509,21 @@ class TestMultipleFinalizedFiles(base.TestBase):
                          'Discrepancy between the list of files returned '
                          'and the files created/finalilzed')
 
+    def test_list_files_bad_marker(self):
+        """Request File List with a bad marker"""
+
+        fileids, fileurls = zip(*self.files)
+        while True:
+            bad_marker = uuid.uuid4()
+            if bad_marker not in fileids:
+                break
+        resp = self.client.list_of_files(self.vaultname, marker=bad_marker)
+        self.assert_404_response(resp)
+
     def tearDown(self):
         super(TestMultipleFinalizedFiles, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
             fileid=fileid) for fileid in self.created_files]
         [self.client.delete_block(self.vaultname, block.Id) for block in
-            self.blocks]
+            self.blocks_file]
         self.client.delete_vault(self.vaultname)

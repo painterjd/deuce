@@ -5,6 +5,7 @@ import falcon
 import msgpack
 import os
 from random import randrange
+import uuid
 from mock import patch
 from deuce import conf
 from deuce.util.misc import set_qs, relative_uri
@@ -56,6 +57,41 @@ class TestBlocksController(ControllerTest):
         response = self.simulate_get(path, headers=self._hdrs)
 
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_head_invalid_block_id(self):
+        path = self.get_block_path('invalid_block_id')
+        response = self.simulate_get(path, headers=self._hdrs)
+
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_head_non_existent_block_id(self):
+        path = self.get_block_path(self.calc_sha1(b'mock'))
+        response = self.simulate_head(path, headers=self._hdrs)
+
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_head_inconsistent_metadata_block_id(self):
+        from deuce.model import Vault
+        with patch.object(Vault, '_storage_has_block', return_value=False):
+            block_list = self.helper_create_blocks(1, async=True)
+            path = self.get_block_path(block_list[0])
+            self.simulate_head(path, headers=self._hdrs)
+            self.assertEqual(self.srmock.status, falcon.HTTP_502)
+
+    def test_head_block_nonexistent_vault(self):
+        self.simulate_head('/v1.0/vaults/mock/blocks/'
+                           + self.calc_sha1(b'mock'), headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_head_block(self):
+        block_list = self.helper_create_blocks(1, async=True)
+        path = self.get_block_path(block_list[0])
+        self.simulate_head(path, headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_204)
+        self.assertIn('x-block-reference-count', str(self.srmock.headers))
+        self.assertIn('x-ref-modified', str(self.srmock.headers))
+        self.assertIn('x-storage-id', str(self.srmock.headers))
+        self.assertTrue(uuid.UUID(self.srmock.headers_dict['x-storage-id']))
 
     def test_put_invalid_block_id(self):
         path = self.get_block_path('invalid_block_id')
@@ -288,9 +324,7 @@ class TestBlocksController(ControllerTest):
         block_list = self.helper_create_blocks(3, singleblocksize=True)
 
         offsets = [x * 100 for x in range(3)]
-        meta_info = [{'id': block, 'size': 100, 'offset': offset}
-                     for block, offset in zip(block_list, offsets)]
-        data = {"blocks": meta_info}
+        data = list(zip(block_list, offsets))
 
         hdrs = {'content-type': 'application/x-deuce-block-list'}
         hdrs.update(self._hdrs)
