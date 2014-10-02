@@ -154,7 +154,7 @@ class ItemResource(object):
             #       status code
             logger.error('Finalized file [{0}] '
                          'cannot be modified'.format(file_id))
-            raise errors.HTTPBadRequestAPI('Finalized file cannot be modified')
+            raise errors.HTTPConflict('Finalized file cannot be modified')
 
         # Deserialize from stream
         # TODO (TheSriram): Validate payload

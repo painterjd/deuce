@@ -279,7 +279,7 @@ class TestFiles(ControllerTest):
 
         # Error on trying to change Finalized file.
         response = self.simulate_post(self._file_id, body=data, headers=hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_400)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Get finalized file.
         response = self.simulate_get(self._file_id, headers=hdrs)

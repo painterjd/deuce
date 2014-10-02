@@ -93,7 +93,7 @@ class ItemResource(object):
                 falcon.HTTP_201 if retval is True else falcon.HTTP_500)
             logger.info('block [{0}] added'.format(block_id))
         except ValueError as e:
-            raise errors.HTTPConflict('hash error')
+            raise errors.HTTPPreconditionFailed('hash error')
 
     @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
     def on_delete(self, req, resp, vault_id, block_id):
@@ -155,7 +155,7 @@ class CollectionResource(object):
                                                             'Post Failed')
                     logger.info('blocks [{0}] added'.format(block_ids))
                 except ValueError:
-                    raise errors.HTTPConflict('hash error')
+                    raise errors.HTTPPreconditionFailed('hash error')
         except (TypeError, ValueError):
             logger.error('Request Body not well formed '
                          'for posting multiple blocks to {0}'.format(vault_id))

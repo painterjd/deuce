@@ -106,7 +106,7 @@ class TestBlocksController(ControllerTest):
         headers.update(self._hdrs)
         data = os.urandom(10)
         response = self.simulate_put(path, headers=headers, body=data)
-        self.assertEqual(self.srmock.status, falcon.HTTP_409)
+        self.assertEqual(self.srmock.status, falcon.HTTP_412)
 
     def test_post_invalid_block_id(self):
         path = self.get_block_path(self._blocks_path)
@@ -127,7 +127,7 @@ class TestBlocksController(ControllerTest):
         request_body = msgpack.packb(contents)
         response = self.simulate_post(self._blocks_path, headers=headers,
                                       body=request_body)
-        self.assertEqual(self.srmock.status, falcon.HTTP_409)
+        self.assertEqual(self.srmock.status, falcon.HTTP_412)
 
     def test_post_invalid_request_body(self):
         path = self.get_block_path(self._blocks_path)
