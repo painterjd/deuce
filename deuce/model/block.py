@@ -29,3 +29,8 @@ class Block(object):
         """
         return deuce.metadata_driver.get_block_ref_modified(
             self.vault_id, self.block_id)
+
+    def get_storage_id(self):
+        """Returns the storage id for a given block"""
+        return deuce.metadata_driver.get_block_storage_id(self.vault_id,
+                                                          self.block_id)
