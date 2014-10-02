@@ -176,6 +176,26 @@ class TestValidationFuncs(TestCase):
             with self.assertRaises(ValidationFailed):
                 v.val_block_id()(blockid)
 
+    def test_storage_block_id(self):
+
+        import uuid
+
+        # Let's try try to append some UUIds and check for faileus
+        positive_cases = [str(uuid.uuid4()) for _ in range(0, 1000)]
+
+        for storageid in positive_cases:
+            v.val_storage_block_id(storageid)
+
+        negative_cases = [
+            '',
+            'e7bf692b-ec7b-40ad-b0d1-45ce6798fb6z',  # note trailing z
+            str(uuid.uuid4()).upper()  # Force case sensitivity
+        ]
+
+        for storageid in negative_cases:
+            with self.assertRaises(ValidationFailed):
+                v.val_storage_block_id()(storageid)
+
     def test_file_id(self):
 
         import uuid
@@ -243,10 +263,15 @@ class TestValidationFuncs(TestCase):
         # Tests each rule to ensure that empty and other
         # cases work
 
-        rules = {v.VaultGetRule, v.VaultPutRule, v.BlockGetRule,
+        rules = {v.VaultGetRule, v.VaultPutRule,
+                 v.BlockGetRule, v.BlockPutRule,
+                 v.StorageBlockGetRule, v.StorageBlockPutRule,
                  v.FileGetRule, v.FilePostRuleNoneOk,
-                 v.BlockPutRuleNoneOk, v.FileMarkerRule, v.VaultMarkerRule,
-                 v.OffsetMarkerRule, v.BlockMarkerRule, v.LimitRule}
+                 v.BlockGetRuleNoneOk, v.BlockPutRuleNoneOk,
+                 v.StorageBlockRuleGetNoneOk, v.StorageBlockRulePutNoneOk,
+                 v.FileMarkerRule, v.VaultMarkerRule,
+                 v.BlockMarkerRule, v.StorageBlockMarkerRule,
+                 v.OffsetMarkerRule, v.LimitRule}
 
         for rule in rules:
             with self.assertRaises(ValidationFailed):

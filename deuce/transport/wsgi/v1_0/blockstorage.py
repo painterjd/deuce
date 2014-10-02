@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class ItemResource(object):
 
-    @validate(vault_id=VaultPutRule, block_id=BlockPutRule)
+    @validate(vault_id=VaultPutRule, block_id=StorageBlockPutRule)
     def on_put(self, req, resp, vault_id, block_id):
         """Note: This does not support PUT as it is read-only + DELETE
         """
@@ -42,7 +42,7 @@ class ItemResource(object):
 
         if metadata_block_id is not None:
             del path_parts[(len(path_parts) - 1)]
-            path.append(metadata_block_id)
+            path_parts.append(metadata_block_id)
 
         resp.set_header('X-Block-ID', metadata_block_id)
 
@@ -64,7 +64,7 @@ class ItemResource(object):
             'This is read-only access. Uploads must go to {0:}'.format(
                 block_url))
 
-    @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
+    @validate(vault_id=VaultGetRule, block_id=StorageBlockGetRule)
     def on_get(self, req, resp, vault_id, block_id):
         """Returns a specific block from storage alone"""
         storage = BlockStorage(vault_id)
@@ -74,7 +74,7 @@ class ItemResource(object):
         block = storage.get_block(block_id)
         # TODO: Finish this
 
-    @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
+    @validate(vault_id=VaultGetRule, block_id=StorageBlockGetRule)
     def on_head(self, req, resp, vault_id, block_id):
         """Returns the block data from storage alone"""
         storage = BlockStorage(vault_id)
@@ -87,7 +87,7 @@ class ItemResource(object):
 
         # resp.status = falcon.HTTP_204
 
-    @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
+    @validate(vault_id=VaultGetRule, block_id=StorageBlockGetRule)
     def on_delete(self, req, resp, vault_id, block_id):
         """Deletes a block_id from a given vault_id in
         the storage after verifying it does not exist
@@ -104,7 +104,7 @@ class ItemResource(object):
 class CollectionResource(object):
 
     @validate(vault_id=VaultGetRule)
-    @BlockMarkerRule
+    @StorageBlockMarkerRule
     @LimitRule
     def on_get(self, req, resp, vault_id):
         """List the blocks in the vault from storage-alone

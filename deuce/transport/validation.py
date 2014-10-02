@@ -11,8 +11,10 @@ from deuce.transport.wsgi import errors
 VAULT_ID_MAX_LEN = 128
 VAULT_ID_REGEX = re.compile('^[a-zA-Z0-9_\-]+$')
 BLOCK_ID_REGEX = re.compile('\\b[0-9a-f]{40}\\b')
-FILE_ID_REGEX = re.compile(
+UUID_REGEX = re.compile(
     '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+FILE_ID_REGEX = UUID_REGEX
+STORAGE_BLOCK_ID_REGEX = UUID_REGEX
 OFFSET_REGEX = re.compile(
     '(?<![-.])\\b[0-9]+\\b(?!\\.[0-9])')
 LIMIT_REGEX = re.compile(
@@ -172,6 +174,12 @@ def val_block_id(value):
 
 
 @validation_function
+def val_storage_block_id(value):
+    if not STORAGE_BLOCK_ID_REGEX.match(value):
+        raise ValidationFailed('Invalid Block ID {0}'.format(value))
+
+
+@validation_function
 def val_file_id(value):
     if not FILE_ID_REGEX.match(value):
         raise ValidationFailed('Invalid File ID {0}'.format(value))
@@ -209,10 +217,17 @@ VaultGetRule = Rule(val_vault_id(), lambda: _abort(404))
 VaultPutRule = Rule(val_vault_id(), lambda: _abort(400))
 BlockGetRule = Rule(val_block_id(), lambda: _abort(404))
 BlockPutRule = Rule(val_block_id(), lambda: _abort(404))
+StorageBlockGetRule = Rule(val_storage_block_id(), lambda: _abort(404))
+StorageBlockPutRule = Rule(val_storage_block_id(), lambda: _abort(400))
 # BlockPostRule = Rule(val_vault_id(), lambda: _abort(400))
 FileGetRule = Rule(val_file_id(), lambda: _abort(404))
 FilePostRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(400))
+BlockGetRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(404))
 BlockPutRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(400))
+StorageBlockRuleGetNoneOk = Rule(val_storage_block_id(none_ok=True),
+                                 lambda: _abort(404))
+StorageBlockRulePutNoneOk = Rule(val_storage_block_id(none_ok=True),
+                                 lambda: _abort(400))
 
 
 # query string rules
@@ -273,6 +288,22 @@ def BlockMarkerRule(func):
     def wrap(*args, **kwargs):
         blockmarker = Rule(
             val_block_id(
+                none_ok=True),
+            lambda: _abort(404),
+            lambda v: args[1].get_param(v))
+
+        @validate(marker=blockmarker)
+        def validator(*args, **kwargs):
+            return func(*args, **kwargs)
+        validator(*args, **kwargs)
+    return wrap
+
+
+def StorageBlockMarkerRule(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        blockmarker = Rule(
+            val_storage_block_id(
                 none_ok=True),
             lambda: _abort(404),
             lambda v: args[1].get_param(v))

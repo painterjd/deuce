@@ -43,7 +43,7 @@ class TestBlockStorageController(ControllerTest):
     def test_put_block_nonexistant_block(self):
         # No block already in metadata/storage
 
-        block_id = self.create_block_id()
+        block_id = self.create_storage_block_id()
 
         block_path = self.get_storage_block_path(block_id)
 
@@ -54,9 +54,12 @@ class TestBlockStorageController(ControllerTest):
 
     def test_put_block_existing_block(self):
         # block already in metadata/storage
+
+        # Generate a block
         upload_data = os.urandom(100)
         upload_block_id = self.calc_sha1(upload_data)
 
+        # Upload it to Deuce in the correct method (via blocks/{sha1})
         upload_block_path = self.get_block_path(upload_block_id)
         upload_headers = self._hdrs
         upload_headers.update({
@@ -69,6 +72,7 @@ class TestBlockStorageController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_201)
         self.assertIn('x-storage-id', self.srmock.headers_dict)
 
+        # Now try to upload it via the Storage Blocks method
         block_path = self.get_storage_block_path(
             self.srmock.headers_dict['x-storage-id'])
 
@@ -86,7 +90,7 @@ class TestBlockStorageController(ControllerTest):
         self._block_storage_path = '{0:}/blocks'.format(self._storage_path)
         self.helper_create_vault(self.vault_name, self._hdrs)
 
-        block_id = self.create_block_id()
+        block_id = self.create_storage_block_id()
 
         block_path = self.get_storage_block_path(block_id)
 
@@ -112,7 +116,7 @@ class TestBlockStorageController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_501)
 
     def test_list_blocks_with_marker(self):
-        block_marker = self.create_block_id()
+        block_marker = self.create_storage_block_id()
         marker = 'marker={0:}'.format(block_marker)
         response = self.simulate_get(self._block_storage_path,
                                      query_string=marker,
@@ -120,7 +124,7 @@ class TestBlockStorageController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_501)
 
     def test_head_block(self):
-        block_id = self.create_block_id()
+        block_id = self.create_storage_block_id()
 
         block_path = self.get_storage_block_path(block_id)
 
@@ -129,7 +133,7 @@ class TestBlockStorageController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_501)
 
     def test_get_block(self):
-        block_id = self.create_block_id()
+        block_id = self.create_storage_block_id()
 
         block_path = self.get_storage_block_path(block_id)
 
@@ -138,7 +142,7 @@ class TestBlockStorageController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_501)
 
     def test_delete_block(self):
-        block_id = self.create_block_id()
+        block_id = self.create_storage_block_id()
 
         block_path = self.get_storage_block_path(block_id)
 
