@@ -212,6 +212,16 @@ class MetadataStorageDriver(object):
         raise NotImplementedError
 
     @abstractmethod
+    def get_block_storage_id(self, vault_id, block_id):
+        """Retrieve storage id for a given block id"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_block_metadata_id(self, vault_id, storage_id):
+        """Retrieve block id for a given storage id"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_block_data(self, vault_id, block_id):  # TODO: rename
         """Returns the size of the block"""
         raise NotImplementedError

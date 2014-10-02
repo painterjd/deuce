@@ -90,8 +90,9 @@ class ItemResource(object):
         vault = Vault.get(vault_id)
 
         try:
-            retval = vault.put_block(
+            retval, storage_id = vault.put_block(
                 block_id, req.stream.read(), req.get_header('content-length'))
+            resp.set_header('X-Storage-ID', str(storage_id))
             resp.status = (
                 falcon.HTTP_201 if retval is True else falcon.HTTP_500)
             logger.info('block [{0}] added'.format(block_id))

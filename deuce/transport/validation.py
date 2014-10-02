@@ -208,6 +208,7 @@ def _abort(status_code):
 VaultGetRule = Rule(val_vault_id(), lambda: _abort(404))
 VaultPutRule = Rule(val_vault_id(), lambda: _abort(400))
 BlockGetRule = Rule(val_block_id(), lambda: _abort(404))
+BlockPutRule = Rule(val_block_id(), lambda: _abort(404))
 # BlockPostRule = Rule(val_vault_id(), lambda: _abort(400))
 FileGetRule = Rule(val_file_id(), lambda: _abort(404))
 FilePostRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(400))

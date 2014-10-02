@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class ItemResource(object):
 
-    @validate(vault_id=VaultPutRule, block_id=BlockPutRuleNoneOk)
+    @validate(vault_id=VaultPutRule, block_id=BlockPutRule)
     def on_put(self, req, resp, vault_id, block_id):
         """Note: This does not support PUT as it is read-only + DELETE
         """
@@ -30,16 +30,21 @@ class ItemResource(object):
         path_parts = path.split('/')
         del path_parts[4]
 
-        # TODO: Depends on PR #173 to enable
         # If there exists a Block ID in Metadata then remove
         # Storage Block ID and insert Metadata Block ID
         # Otherwise, assume the block_id is the what the Blocks
         # PUT requires
-        # metadata_block_id = deuce.metadata_driver.get_block_id(vault_id,
-        #                                                        block_id)
-        # if metadata_block_id is not None:
-        #   del path_parts[len(path_parts)-1]
-        #   path.append(metadata_block_id)
+        metadata_block_id = deuce.metadata_driver.get_block_metadata_id(
+            vault_id, block_id)
+
+        logger.info('Storage Block ID: {0}'.format(block_id))
+        logger.info('Metadata Block ID: {0}'.format(metadata_block_id))
+
+        if metadata_block_id is not None:
+            del path_parts[(len(path_parts) - 1)]
+            path.append(metadata_block_id)
+
+        resp.set_header('X-Block-ID', metadata_block_id)
 
         path = str('/').join(path_parts)
 
