@@ -5,6 +5,7 @@ import falcon
 import msgpack
 import os
 from random import randrange
+import uuid
 from mock import patch
 from deuce import conf
 from deuce.util.misc import set_qs, relative_uri
@@ -89,6 +90,8 @@ class TestBlocksController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_204)
         self.assertIn('x-block-reference-count', str(self.srmock.headers))
         self.assertIn('x-ref-modified', str(self.srmock.headers))
+        self.assertIn('x-storage-id', str(self.srmock.headers))
+        self.assertTrue(uuid.UUID(self.srmock.headers_dict['x-storage-id']))
 
     def test_put_invalid_block_id(self):
         path = self.get_block_path('invalid_block_id')

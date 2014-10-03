@@ -2,13 +2,18 @@ from deuce.tests import V1Base
 from deuce.drivers.metadatadriver import MetadataStorageDriver, GapError,\
     OverlapError, ConstraintError
 from deuce.drivers.sqlite import SqliteStorageDriver
+from deuce.drivers import BlockStorageDriver
 import random
 
 import deuce
+
 from mock import MagicMock
 
 
 class SqliteStorageDriverTest(V1Base):
+
+    def _genstorageid(self, blockid):
+        return BlockStorageDriver.storage_id(blockid)
 
     def create_driver(self):
         return SqliteStorageDriver()
@@ -105,6 +110,36 @@ class SqliteStorageDriverTest(V1Base):
         self.assertFalse(driver.has_file(vault_id, file_id))
         self.assertFalse(driver.is_finalized(vault_id, file_id))
 
+    def test_blockid_to_storageid(self):
+
+        driver = self.create_driver()
+        vault_id = self.create_vault_id()
+        block_id = self.create_block_id()
+        size = 1024
+
+        gen_storage_id = self._genstorageid(block_id)
+        driver.register_block(vault_id, block_id, gen_storage_id, size)
+
+        meta_storage_id = driver.get_block_storage_id(vault_id, block_id)
+        meta_block_id = driver.get_storage_block_id(vault_id, gen_storage_id)
+
+        self.assertEqual(gen_storage_id, meta_storage_id)
+        self.assertEqual(meta_block_id, block_id)
+
+        self.assertTrue(driver.has_block(vault_id, block_id))
+        driver.unregister_block(vault_id, block_id)
+        self.assertFalse(driver.has_block(vault_id, block_id))
+
+        bogus_storage_id = driver.get_block_storage_id(
+            vault_id,
+            self.create_block_id(b'bogus'))
+        self.assertIsNone(bogus_storage_id)
+
+        bogus_block_id = driver.get_storage_block_id(
+            vault_id,
+            self._genstorageid(self.create_block_id(b'bogus')))
+        self.assertIsNone(bogus_block_id)
+
     def test_block_crud(self):
         driver = self.create_driver()
 
@@ -128,7 +163,8 @@ class SqliteStorageDriverTest(V1Base):
         except:
             self.assertTrue(True)
 
-        driver.register_block(vault_id, block_id, size)
+        driver.register_block(vault_id, block_id, self._genstorageid(block_id),
+                              size)
 
         try:
             new_reftime = driver.get_block_ref_modified(vault_id, block_id)
@@ -143,7 +179,8 @@ class SqliteStorageDriverTest(V1Base):
                                                block_id)['blocksize'], size)
 
         # Call again, shouldn't throw
-        driver.register_block(vault_id, block_id, size)
+        driver.register_block(vault_id, block_id, self._genstorageid(block_id),
+                              size)
 
         driver.unregister_block(vault_id, block_id)
         self.assertFalse(driver.has_block(vault_id, block_id))
@@ -188,7 +225,9 @@ class SqliteStorageDriverTest(V1Base):
 
         self.assertEqual(driver.get_block_ref_count(vault_id, block_id), 0)
 
-        driver.register_block(vault_id, block_id, block_size)
+        driver.register_block(vault_id, block_id,
+                              self._genstorageid(block_id),
+                              block_size)
 
         self.assertEqual(driver.get_block_ref_count(vault_id, block_id), 0)
 
@@ -207,7 +246,9 @@ class SqliteStorageDriverTest(V1Base):
 
         driver.create_file(vault_id, file_id)
 
-        driver.register_block(vault_id, block_id, block_size)
+        driver.register_block(vault_id, block_id,
+                              self._genstorageid(block_id),
+                              block_size)
         self.assertTrue(driver.has_block(vault_id, block_id))
 
         # Should have refs until assigned, then it should have three
@@ -232,7 +273,9 @@ class SqliteStorageDriverTest(V1Base):
         block_size = 1024
 
         driver.create_file(vault_id, file_id)
-        driver.register_block(vault_id, block_id, block_size)
+        driver.register_block(vault_id, block_id,
+                              self._genstorageid(block_id),
+                              block_size)
         driver.assign_block(vault_id, file_id, block_id, 0)
 
         self.assertEqual(driver.get_block_ref_count(vault_id, block_id), 1)
@@ -266,7 +309,9 @@ class SqliteStorageDriverTest(V1Base):
             # Check the block references on a non-existent block. Should be 0
             self.assertEqual(driver.get_block_ref_count(vault_id, block_id), 0)
 
-            driver.register_block(vault_id, block_id, block_size)
+            driver.register_block(vault_id, block_id,
+                                  self._genstorageid(block_id),
+                                  block_size)
             self.assertEqual(driver.has_block(vault_id, block_id), True)
 
             # Check the block references for these blocks. They should all be 0
@@ -306,12 +351,16 @@ class SqliteStorageDriverTest(V1Base):
 
         # Create one block before assigning and one block after
 
-        driver.register_block(vault_id, 'block_a', 1024)
+        driver.register_block(vault_id, 'block_a',
+                              self._genstorageid('block_a'),
+                              1024)
 
         driver.assign_block(vault_id, file_id, 'block_a', 0)
         driver.assign_block(vault_id, file_id, 'block_b', 1024)
 
-        driver.register_block(vault_id, 'block_b', 1024)
+        driver.register_block(vault_id, 'block_b',
+                              self._genstorageid('block_b'),
+                              1024)
 
         self.assertEqual(driver.is_finalized(vault_id, file_id), False)
 
@@ -343,7 +392,9 @@ class SqliteStorageDriverTest(V1Base):
 
         # register all of the blocks
         for block_id, block_size, offset in blocklist:
-            driver.register_block(vault_id, block_id, block_size)
+            driver.register_block(vault_id, block_id,
+                                  self._genstorageid(block_id),
+                                  block_size)
 
         # Remove the first set of blocks, creating a gap at the beginning of
         # the file
@@ -395,7 +446,9 @@ class SqliteStorageDriverTest(V1Base):
 
         # register all of the blocks
         for block_id, block_size, offset in blocklist:
-            driver.register_block(vault_id, block_id, block_size)
+            driver.register_block(vault_id, block_id,
+                                  self._genstorageid(block_id),
+                                  block_size)
 
         random.shuffle(blocklist)
 
@@ -432,7 +485,9 @@ class SqliteStorageDriverTest(V1Base):
 
         # register all of the blocks
         for block_id, block_size, offset in blocklist:
-            driver.register_block(vault_id, block_id, block_size)
+            driver.register_block(vault_id, block_id,
+                                  self._genstorageid(block_id),
+                                  block_size)
 
         # Remove the last set of blocks, creating a gap at EOF
         missing_block = blocklist[-1]
@@ -474,7 +529,9 @@ class SqliteStorageDriverTest(V1Base):
 
         # register all of the blocks
         for block_id, block_size, offset in blocklist:
-            driver.register_block(vault_id, block_id, block_size)
+            driver.register_block(vault_id, block_id,
+                                  self._genstorageid(block_id),
+                                  block_size)
 
         random.shuffle(blocklist)
 
@@ -511,7 +568,9 @@ class SqliteStorageDriverTest(V1Base):
 
         # register all of the blocks
         for block_id, block_size, offset in blocklist:
-            driver.register_block(vault_id, block_id, block_size)
+            driver.register_block(vault_id, block_id,
+                                  self._genstorageid(block_id),
+                                  block_size)
 
         for block_id, block_size, offset in blocklist:
             driver.assign_block(vault_id, file_id, block_id, offset)
@@ -547,7 +606,9 @@ class SqliteStorageDriverTest(V1Base):
 
         # register all of the blocks
         for block_id, block_size, offset in blocklist:
-            driver.register_block(vault_id, block_id, block_size)
+            driver.register_block(vault_id, block_id,
+                                  self._genstorageid(block_id),
+                                  block_size)
 
         for block_id, block_size, offset in blocklist:
             driver.assign_block(vault_id, file_id, block_id, offset)
@@ -612,7 +673,9 @@ class SqliteStorageDriverTest(V1Base):
         block_data = list(zip(block_ids, block_sizes))
 
         for block_id, block_size in block_data:
-            driver.register_block(vault_id, block_id, block_size)
+            driver.register_block(vault_id, block_id,
+                                  self._genstorageid(block_id),
+                                  block_size)
 
         outblocks = list(driver.create_block_generator(vault_id))
 
@@ -637,7 +700,9 @@ class SqliteStorageDriverTest(V1Base):
 
         for block_id, block_size in block_data:
 
-            driver.register_block(vault_id, block_id, block_size)
+            driver.register_block(vault_id, block_id,
+                                  self._genstorageid(block_id),
+                                  block_size)
 
         marker = None
         limit = page_size + 1
