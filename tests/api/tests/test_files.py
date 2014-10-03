@@ -164,6 +164,20 @@ class TestFileAssignedBlocks(base.TestBase):
         self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0)
 
+    def test_get_unfinalized_file(self):
+        """Get a (unfinalized) file"""
+
+        resp = self.client.get_file(self.vaultname, self.fileid)
+        self.assertEqual(resp.status_code, 409,
+                         'Status code returned '
+                         '{0} . Expected 409'.format(resp.status_code))
+        self.assertHeaders(resp.headers, json=True)
+        resp_body = resp.json()
+        self.assertIn('title', resp_body)
+        self.assertEqual(resp_body['title'], 'Conflict')
+        self.assertIn('description', resp_body)
+        self.assertEqual(resp_body['description'], 'File not Finalized')
+
     def tearDown(self):
         super(TestFileAssignedBlocks, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
@@ -193,7 +207,7 @@ class TestFileMissingBlock(base.TestBase):
                                          alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 409,
                          'Status code for finalizing file '
-                         '{0} . Expected 413'.format(resp.status_code))
+                         '{0} . Expected 409'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         # The response will only list the first missing block
         resp_body = resp.json()
