@@ -276,12 +276,12 @@ class TestBlocksAssignedToFile(base.TestBase):
         """Delete one block assigned to a file"""
 
         resp = self.client.delete_block(self.vaultname, self.blockid)
-        self.assertEqual(resp.status_code, 412,
+        self.assertEqual(resp.status_code, 409,
                          'Status code returned: {0} . '
-                         'Expected 412'.format(resp.status_code))
+                         'Expected 409'.format(resp.status_code))
         resp_body = resp.json()
         self.assertIn('title', resp_body)
-        self.assertEqual(resp_body['title'], 'Precondition Failure')
+        self.assertEqual(resp_body['title'], 'Conflict')
         self.assertIn('description', resp_body)
         self.assertEqual(resp_body['description'],
                 '["Constraint Error: Block {0} has references"]'

@@ -213,13 +213,13 @@ class TestPopulatedVault(base.TestBase):
         """Delete a Vault that has some data. 1 block"""
 
         resp = self.client.delete_vault(self.vaultname)
-        self.assertEqual(resp.status_code, 412,
-                         'Status code returned for Delete Vault: {0} . '
-                         'Expected 412'.format(resp.status_code))
+        self.assertEqual(resp.status_code, 409,
+                         'Status code returned: {0} . '
+                         'Expected 409'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         resp_body = resp.json()
         self.assertIn('title', resp_body)
-        self.assertEqual(resp_body['title'], 'Precondition Failure')
+        self.assertEqual(resp_body['title'], 'Conflict')
         self.assertIn('description', resp_body)
         self.assertEqual(resp_body['description'], 'Vault cannot be deleted')
 
