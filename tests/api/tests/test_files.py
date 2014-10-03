@@ -206,7 +206,7 @@ class TestFileMissingBlock(base.TestBase):
         resp = self.client.finalize_file(filesize=self.filesize,
                                          alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 409,
-                         'Status code for finalizing file '
+                         'Status code returned: '
                          '{0} . Expected 409'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         # The response will only list the first missing block
@@ -244,7 +244,7 @@ class TestFileOverlappingBlock(base.TestBase):
         resp = self.client.finalize_file(filesize=self.filesize,
                                          alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 409,
-                         'Status code expected '
+                         'Status code returned: '
                          '{0} . Expected 409'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         # The response will only list the first overlapping block
@@ -444,7 +444,7 @@ class TestFinalizedFile(base.TestBase):
         self.assertHeaders(resp.headers, json=True)
         resp_body = json.loads(resp.content)
         self.assertIn('title', resp_body)
-        self.assertEqual(resp_body['title'], 'Invalid API request')
+        self.assertEqual(resp_body['title'], 'Conflict')
         self.assertIn('description', resp_body)
         self.assertEqual(resp_body['description'],
                          'Finalized file cannot be modified')
