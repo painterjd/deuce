@@ -47,6 +47,44 @@ class TestNoBlocksUploaded(base.TestBase):
         resp = self.client.delete_block(self.vaultname, self.blockid)
         self.assert_404_response(resp)
 
+    def test_upload_wrong_blockid(self):
+        """Upload a block with a wrong blockid"""
+
+        self.generate_block_data()
+        bad_blockid = sha.new('bad').hexdigest()
+        resp = self.client.upload_block(self.vaultname, bad_blockid,
+                                        self.block_data)
+        self.assertEqual(resp.status_code, 412,
+                         'Status code returned: '
+                         '{0} . Expected 412'.format(resp.status_code))
+        self.assertHeaders(resp.headers, json=True)
+        resp_body = resp.json()
+        self.assertIn('title', resp_body)
+        self.assertEqual(resp_body['title'], 'Precondition Failure')
+        self.assertIn('description', resp_body)
+        self.assertEqual(resp_body['description'],
+                         'hash error')
+
+    def test_upload_multiple_wrong_blockid(self):
+        """Upload a block with a wrong blockid"""
+
+        self.generate_block_data()
+        bad_blockid = sha.new('bad').hexdigest()
+        data = dict([(bad_blockid, self.block_data)])
+        msgpacked_data = msgpack.packb(data)
+        resp = self.client.upload_multiple_blocks(self.vaultname,
+                                                  msgpacked_data)
+        self.assertEqual(resp.status_code, 412,
+                         'Status code returned: '
+                         '{0} . Expected 412'.format(resp.status_code))
+        self.assertHeaders(resp.headers, json=True)
+        resp_body = resp.json()
+        self.assertIn('title', resp_body)
+        self.assertEqual(resp_body['title'], 'Precondition Failure')
+        self.assertIn('description', resp_body)
+        self.assertEqual(resp_body['description'],
+                         'hash error')
+
     def tearDown(self):
         super(TestNoBlocksUploaded, self).tearDown()
         self.client.delete_vault(self.vaultname)
