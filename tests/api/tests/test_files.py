@@ -410,6 +410,27 @@ class TestFinalizedFile(base.TestBase):
         self.assertHeaders(resp.headers, json=True)
         self.assertListEqual([self.fileid], resp.json())
 
+    def test_assign_block_finalized_file(self):
+        """Assign a block to a finalized file"""
+
+        block_list = list()
+        block_info = self.blocks[0]
+        block_list.append([block_info.Id, 0])
+
+        resp = self.client.assign_to_file(json.dumps(block_list),
+                                          alternate_url=self.fileurl)
+
+        self.assertEqual(resp.status_code, 409,
+                         'Status code returned: '
+                         '{0} . Expected 409'.format(resp.status_code))
+        self.assertHeaders(resp.headers, json=True)
+        resp_body = json.loads(resp.content)
+        self.assertIn('title', resp_body)
+        self.assertEqual(resp_body['title'], 'Invalid API request')
+        self.assertIn('description', resp_body)
+        self.assertEqual(resp_body['description'],
+                         'Finalized file cannot be modified')
+
     def tearDown(self):
         super(TestFinalizedFile, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
