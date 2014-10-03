@@ -58,7 +58,7 @@ class ItemResource(object):
 
             else:
                 logger.info('Vault [{0}] cannot be deleted'.format(vault_id))
-                raise errors.HTTPPreconditionFailed('Vault cannot be deleted')
+                raise errors.HTTPConflict('Vault cannot be deleted')
 
         else:
             logger.error('Vault [{0}] deletion failed; '

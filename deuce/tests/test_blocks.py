@@ -342,7 +342,7 @@ class TestBlocksController(ControllerTest):
         for block in block_list:
             response = self.simulate_delete(self.get_block_path(block),
                                             headers=self._hdrs)
-            self.assertEqual(self.srmock.status, falcon.HTTP_412)
+            self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
     def test_vault_error(self):
         from deuce.model import Vault
