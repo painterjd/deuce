@@ -37,14 +37,12 @@ class ItemResource(object):
         metadata_block_id = deuce.metadata_driver.get_block_metadata_id(
             vault_id, block_id)
 
-        logger.info('Storage Block ID: {0}'.format(block_id))
-        logger.info('Metadata Block ID: {0}'.format(metadata_block_id))
-
         if metadata_block_id is not None:
             del path_parts[(len(path_parts) - 1)]
             path_parts.append(metadata_block_id)
 
         resp.set_header('X-Block-ID', metadata_block_id)
+        resp.set_header('X-Storage-ID', block_id)
 
         path = str('/').join(path_parts)
 
