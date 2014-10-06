@@ -1,16 +1,16 @@
-from random import randrange
 import hashlib
-import os
 import json
+import os
+from random import randrange
 
 import falcon
 import mock
 from mock import patch
+from six.moves.urllib.parse import urlparse, parse_qs
+
 from deuce import conf
 from deuce.tests import ControllerTest
-from six.moves.urllib.parse import urlparse, parse_qs
 from deuce.util.misc import set_qs, relative_uri
-from deuce.util.misc import relative_uri
 
 
 class TestFiles(ControllerTest):
