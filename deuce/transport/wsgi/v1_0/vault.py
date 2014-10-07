@@ -1,14 +1,17 @@
-import falcon
+import json
 import six
 from six.moves.urllib.parse import urlparse, parse_qs
+
+from stoplight import validate
+
 from deuce.util import set_qs_on_url
 from deuce.model import Vault
 from deuce import conf
 import deuce.util.log as logging
 from deuce.transport.validation import *
 import deuce.transport.wsgi.errors as errors
+
 logger = logging.getLogger(__name__)
-import json
 
 
 class ItemResource(object):
@@ -68,8 +71,7 @@ class ItemResource(object):
 
 class CollectionResource(object):
 
-    @VaultMarkerRule
-    @LimitRule
+    @validate(req=RequestRule(VaultMarkerRule, LimitRule))
     def on_get(self, req, resp):
 
         # NOTE(TheSriram): get_param(param) automatically returns None

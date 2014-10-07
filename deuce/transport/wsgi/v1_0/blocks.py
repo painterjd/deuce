@@ -1,5 +1,5 @@
 import json
-
+from stoplight import validate
 import falcon
 import msgpack
 
@@ -10,6 +10,7 @@ from deuce.model import Block
 from deuce.model.exceptions import ConsistencyError
 from deuce.drivers.metadatadriver import ConstraintError
 from deuce.transport.validation import *
+
 import deuce.transport.wsgi.errors as errors
 import deuce.util.log as logging
 
@@ -164,9 +165,8 @@ class CollectionResource(object):
                          'for posting multiple blocks to {0}'.format(vault_id))
             raise errors.HTTPBadRequestBody("Request Body not well formed")
 
-    @validate(vault_id=VaultGetRule)
-    @BlockMarkerRule
-    @LimitRule
+    @validate(req=RequestRule(BlockMarkerRule, LimitRule),
+              vault_id=VaultGetRule)
     def on_get(self, req, resp, vault_id):
 
         vault = Vault.get(vault_id)
