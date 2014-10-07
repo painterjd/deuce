@@ -148,19 +148,3 @@ class TestValidationFuncs(TestCase):
 
         with self.assertRaises(ValidationFailed):
             v.val_limit()(None)
-
-    def test_rules(self):
-        # Tests each rule to ensure that empty and other
-        # cases work
-
-        rules = {v.VaultGetRule, v.VaultPutRule, v.BlockGetRule,
-                 v.FileGetRule, v.FilePostRuleNoneOk,
-                 v.BlockPutRuleNoneOk, v.FileMarkerRule, v.VaultMarkerRule,
-                 v.OffsetMarkerRule, v.BlockMarkerRule, v.LimitRule}
-
-        for rule in rules:
-            with self.assertRaises(ValidationFailed):
-                v.val_limit()('')
-
-            with self.assertRaises(ValidationFailed):
-                v.val_limit()(None)
