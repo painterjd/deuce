@@ -47,6 +47,6 @@ def public_endpoints():
         # Block Storage Endpoints
         ('/vaults/{vault_id}/storage/blocks',
          blockstorage.CollectionResource()),
-        ('/vaults/{vault_id}/storage/blocks/{block_id}',
+        ('/vaults/{vault_id}/storage/blocks/{storage_block_id}',
          blockstorage.ItemResource()),
     ]
