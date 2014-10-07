@@ -44,6 +44,16 @@ class HTTPBadRequestBody(falcon.HTTPBadRequest):
         super(HTTPBadRequestBody, self).__init__(self.TITLE, description)
 
 
+class HTTPConflict(falcon.HTTPConflict):
+
+    """Wraps falcon.HTTPConflict with a contextual title."""
+
+    TITLE = u'Conflict'
+
+    def __init__(self, description):
+        super(HTTPConflict, self).__init__(self.TITLE, description)
+
+
 class HTTPPreconditionFailed(falcon.HTTPPreconditionFailed):
 
     """Wraps HTTPPreconditionFailed with a contextual title."""

@@ -1,16 +1,16 @@
-from random import randrange
 import hashlib
-import os
 import json
+import os
+from random import randrange
 
 import falcon
 import mock
 from mock import patch
+from six.moves.urllib.parse import urlparse, parse_qs
+
 from deuce import conf
 from deuce.tests import ControllerTest
-from six.moves.urllib.parse import urlparse, parse_qs
 from deuce.util.misc import set_qs, relative_uri
-from deuce.util.misc import relative_uri
 
 
 class TestFiles(ControllerTest):
@@ -235,7 +235,7 @@ class TestFiles(ControllerTest):
 
         # Get unfinalized file.
         response = self.simulate_get(self._file_id, headers=hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_412)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Register 1.20 times of blocks into system.
         enough_num2 = int(1.2 * conf.api_configuration.max_returned_num)
@@ -261,7 +261,7 @@ class TestFiles(ControllerTest):
 
         # Get the file.
         response = self.simulate_get(self._file_id, headers=hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_412)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Failed Finalize file for block gap & overlap
 
@@ -269,7 +269,7 @@ class TestFiles(ControllerTest):
         failhdrs['x-file-length'] = '100'
         response = self.simulate_post(self._file_id,
                                       headers=failhdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_413)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Successfully finalize file
         good_hdrs = hdrs.copy()
@@ -279,7 +279,7 @@ class TestFiles(ControllerTest):
 
         # Error on trying to change Finalized file.
         response = self.simulate_post(self._file_id, body=data, headers=hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_400)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Get finalized file.
         response = self.simulate_get(self._file_id, headers=hdrs)

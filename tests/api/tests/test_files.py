@@ -189,17 +189,19 @@ class TestFileMissingBlock(base.TestBase):
     def test_finalize_file_missing_block(self):
         """Finalize a file with some blocks missing"""
 
-        # TODO: Revisit once issue 65 is resolved
         resp = self.client.finalize_file(filesize=self.filesize,
                                          alternate_url=self.fileurl)
-        self.assertEqual(resp.status_code, 413,
-                         'Status code for finalizing file '
-                         '{0} . Expected 413'.format(resp.status_code))
+        self.assertEqual(resp.status_code, 409,
+                         'Status code returned: '
+                         '{0} . Expected 409'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         # The response will only list the first missing block
-        resp_body = resp.content
+        resp_body = resp.json()
         expected = '"[{0}\\\\{1}] Gap in file {2} from {3}-{4}"'
-        self.assertEqual(resp_body, expected.format(
+        self.assertIn('title', resp_body)
+        self.assertEqual(resp_body['title'], 'Conflict')
+        self.assertIn('description', resp_body)
+        self.assertEqual(resp_body['description'], expected.format(
             self.client.default_headers['X-Project-Id'], self.vaultname,
             self.fileid, 30720, 30720 * 2))
 
@@ -222,20 +224,22 @@ class TestFileOverlappingBlock(base.TestBase):
         # Assign the files but set the offset to half the size of the block
         self.assign_all_blocks_to_file(offset_divisor=2)
 
-    def test_finalize_file_missing_block(self):
+    def test_finalize_file_overlapping_block(self):
         """Finalize a file with some blocks overlapping"""
 
-        # TODO: Revisit once issue 65 is resolved
         resp = self.client.finalize_file(filesize=self.filesize,
                                          alternate_url=self.fileurl)
-        self.assertEqual(resp.status_code, 413,
-                         'Status code for finalizing file '
-                         '{0} . Expected 413'.format(resp.status_code))
+        self.assertEqual(resp.status_code, 409,
+                         'Status code returned: '
+                         '{0} . Expected 409'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         # The response will only list the first overlapping block
-        resp_body = resp.content
+        resp_body = resp.json()
         expected = '"[{0}/{1}] Overlap at block {2} file {3} at [{4}-{5}]"'
-        self.assertEqual(resp_body, expected.format(
+        self.assertIn('title', resp_body)
+        self.assertEqual(resp_body['title'], 'Conflict')
+        self.assertIn('description', resp_body)
+        self.assertEqual(resp_body['description'], expected.format(
             self.client.default_headers['X-Project-Id'], self.vaultname,
             self.blocks[1].Id, self.fileid, 30720 / 2, 30720))
 
@@ -409,6 +413,27 @@ class TestFinalizedFile(base.TestBase):
                          '{0} . Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         self.assertListEqual([self.fileid], resp.json())
+
+    def test_assign_block_finalized_file(self):
+        """Assign a block to a finalized file"""
+
+        block_list = list()
+        block_info = self.blocks[0]
+        block_list.append([block_info.Id, 0])
+
+        resp = self.client.assign_to_file(json.dumps(block_list),
+                                          alternate_url=self.fileurl)
+
+        self.assertEqual(resp.status_code, 409,
+                         'Status code returned: '
+                         '{0} . Expected 409'.format(resp.status_code))
+        self.assertHeaders(resp.headers, json=True)
+        resp_body = json.loads(resp.content)
+        self.assertIn('title', resp_body)
+        self.assertEqual(resp_body['title'], 'Conflict')
+        self.assertIn('description', resp_body)
+        self.assertEqual(resp_body['description'],
+                         'Finalized file cannot be modified')
 
     def tearDown(self):
         super(TestFinalizedFile, self).tearDown()

@@ -1,16 +1,15 @@
-
-
-import os
-import io
-import shutil
-from swiftclient.exceptions import ClientException
+import atexit
+import datetime
 import hashlib
+import io
+import os
+import shutil
 import uuid
 
-import datetime
-import atexit
+from swiftclient.exceptions import ClientException
 
-container_path = '/tmp/swift_mocking'
+
+container_path = '/tmp/swift_mocking_{0}/'.format(str(uuid.uuid4()))
 
 
 def _clean_up_mocking():

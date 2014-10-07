@@ -1,124 +1,34 @@
 from unittest import TestCase
 
-from deuce.transport.validation import ValidationFailed
+from falcon import request
+from stoplight.exceptions import ValidationFailed
+
 from deuce.transport import validation as v
-import os
-
-# TODO: We probably want to move this to a
-# test helpers library
-
-VALIDATED_STR = 'validated'
 
 
 class MockRequest(object):
     pass
 
 
-class MockResponse(object):
-    pass
-
-request = MockRequest()
-response = MockResponse()
-
-
-@v.validation_function
-def is_upper(z):
-    """Simple validation function for testing purposes
-    that ensures that input is all caps
-    """
-    if z.upper() != z:
-        raise v.ValidationFailed('{0} no uppercase'.format(z))
-
-error_count = 0
-
-
-def abort(code):
-    global error_count
-    error_count = error_count + 1
-
-other_vals = dict()
-get_other_val = other_vals.get
-
-
-class DummyEndpoint(object):
-
-    # This should throw a ValidationProgrammingError
-    # when called because the user did not actually
-    # call validate_upper.
-
-    # Note: the lambda in this function can never actually be
-    # called, so we use no cover here
-    @v.validate(value=v.Rule(is_upper, lambda: abort(404)))  # pragma: no cover
-    def get_value_programming_error(self, value):
-        # This function body should never be
-        # callable since the validation error
-        # should not allow it to be called
-        assert False  # pragma: no cover
-
-    @v.validate(
-        value1=v.Rule(is_upper(), lambda: abort(404)),
-        value2=v.Rule(is_upper(), lambda: abort(404)),
-        value3=v.Rule(is_upper(), lambda: abort(404))
-    )  # pragma: no cover
-    def get_value_happy_path(self, value1, value2, value3):
-        return value1 + value2 + value3
-
-    @v.validate(
-        value1=v.Rule(is_upper(), lambda: abort(404)),
-        value2=v.Rule(is_upper(empty_ok=True), lambda: abort(404),
-                      get_other_val),
-    )  # pragma: no cover
-    def get_value_with_getter(self, value1):
-        global other_vals
-        return value1 + other_vals.get('value2')
-
-
-class TestValidationDecorator(TestCase):
-
-    def setUp(self):
-        self.ep = DummyEndpoint()
-
-    def test_programming_error(self):
-        with self.assertRaises(v.ValidationProgrammingError):
-            self.ep.get_value_programming_error('AT_ME')
-
-    def test_happy_path_and_validation_failure(self):
-        global error_count
-        # Should not throw
-        res = self.ep.get_value_happy_path('WHATEVER', 'HELLO', 'YES')
-        self.assertEqual('WHATEVERHELLOYES', res)
-
-        # Validation should have failed, and
-        # we should have seen a tick in the error count
-        oldcount = error_count
-        res = self.ep.get_value_happy_path('WHAtEVER', 'HELLO', 'YES')
-        self.assertEqual(oldcount + 1, error_count)
-
-        # Check passing a None value. This decorator does
-        # not permit none values.
-        oldcount = error_count
-        res = self.ep.get_value_happy_path(None, 'HELLO', 'YES')
-        self.assertEqual(oldcount + 1, error_count)
-
-    def test_getter(self):
-        global other_vals
-
-        other_vals['value2'] = 'HELLO'
-
-        # Now have our validation actually try to
-        # get those values
-
-        # This should succeed
-        res = self.ep.get_value_with_getter('TEST')
-        self.assertEqual('TESTHELLO', res)
-
-        # check empty_ok
-        other_vals['value2'] = ''
-        res = self.ep.get_value_with_getter('TEST')
-        self.assertEqual('TEST', res)
-
-
 class TestValidationFuncs(TestCase):
+
+    def test_request(self):
+        mock_env = {
+            'wsgi.errors': 'mock',
+            'wsgi.input': 'mock',
+            'REQUEST_METHOD': 'PUT',
+            'PATH_INFO': '/',
+            'SERVER_NAME': 'mock',
+            'SERVER_PORT': '8888',
+
+        }
+        positive_case = [request.Request(mock_env)]
+        for case in positive_case:
+            v.is_request(case)
+        negative_case = [MockRequest()]
+        for case in negative_case:
+            with self.assertRaises(ValidationFailed):
+                v.is_request(none_ok=True)(case)
 
     def test_vault_id(self):
 
@@ -258,24 +168,3 @@ class TestValidationFuncs(TestCase):
 
         with self.assertRaises(ValidationFailed):
             v.val_limit()(None)
-
-    def test_rules(self):
-        # Tests each rule to ensure that empty and other
-        # cases work
-
-        rules = {v.VaultGetRule, v.VaultPutRule,
-                 v.BlockGetRule, v.BlockPutRule,
-                 v.StorageBlockGetRule, v.StorageBlockPutRule,
-                 v.FileGetRule, v.FilePostRuleNoneOk,
-                 v.BlockGetRuleNoneOk, v.BlockPutRuleNoneOk,
-                 v.StorageBlockRuleGetNoneOk, v.StorageBlockRulePutNoneOk,
-                 v.FileMarkerRule, v.VaultMarkerRule,
-                 v.BlockMarkerRule, v.StorageBlockMarkerRule,
-                 v.OffsetMarkerRule, v.LimitRule}
-
-        for rule in rules:
-            with self.assertRaises(ValidationFailed):
-                v.val_limit()('')
-
-            with self.assertRaises(ValidationFailed):
-                v.val_limit()(None)

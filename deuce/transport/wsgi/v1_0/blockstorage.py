@@ -4,6 +4,7 @@ import falcon
 import msgpack
 import six
 from six.moves.urllib.parse import urlparse, parse_qs
+from stoplight import validate
 
 import deuce
 from deuce import conf
@@ -101,9 +102,8 @@ class ItemResource(object):
 
 class CollectionResource(object):
 
-    @validate(vault_id=VaultGetRule)
-    @StorageBlockMarkerRule
-    @LimitRule
+    @validate(req=RequestRule(StorageBlockMarkerRule, LimitRule),
+              vault_id=VaultGetRule)
     def on_get(self, req, resp, vault_id):
         """List the blocks in the vault from storage-alone
         """

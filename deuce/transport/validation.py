@@ -1,9 +1,7 @@
-
 import re
-import inspect
-from functools import wraps
-from collections import namedtuple
 
+import falcon
+from stoplight import Rule, ValidationFailed, validation_function
 
 from deuce.transport.wsgi import errors
 
@@ -19,142 +17,6 @@ OFFSET_REGEX = re.compile(
     '(?<![-.])\\b[0-9]+\\b(?!\\.[0-9])')
 LIMIT_REGEX = re.compile(
     '(?<![-.])\\b[0-9]+\\b(?!\\.[0-9])')
-
-ValidationRule = namedtuple('ValidationRule', 'vfunc errfunc getter')
-
-
-class ValidationFailed(ValueError):
-
-    """User input was inconsistent with API restrictions"""
-
-    def __init__(self, msg, *args, **kwargs):
-        msg = msg.format(*args, **kwargs)
-        super(ValidationFailed, self).__init__(msg)
-
-
-class ValidationProgrammingError(ValueError):
-
-    """Caller did not map validations correctly"""
-
-    def __init__(self, msg, *args, **kwargs):
-        msg = msg.format(*args, **kwargs)
-        super(ValidationProgrammingError, self).__init__(msg)
-
-
-def Rule(vfunc, on_error, getter=None):
-    """Constructs a single validation rule. A rule effectively
-    is saying "I want to validation this input using
-    this function and if validation fails I want this
-    to happen.
-
-    :param vfunc: The function used to validate this param
-    :param on_error: The function to call when an error is detected
-    :param value_src: The source from which the value can be
-        This function should take a value as a field name
-        as a single param.
-    """
-    return ValidationRule(vfunc=vfunc, errfunc=on_error, getter=getter)
-
-
-def validate(**rules):
-    """Falcon validation endpoint decorator
-
-    This decorator allows validation of input from user
-    API endpoints. This allows separation of business logic
-    and avoids convoluted validation logic.
-
-    Typical use is as follows:
-
-    @validate({'bird_id': val_bird_id(allow_none=True), 404)
-    def get_one(self, bird_id):
-        lookup_bird_data(bird_id)
-
-    In this example, bird_id will be passed to val_bird_id
-    and validated. If the validation function throws the
-    ValidationFailed exception, the specified code will be returned
-    in the response and the resultant function will never actually
-    be called.
-    """
-
-    def _validate(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-
-            funcparams = inspect.getargspec(f)
-
-            # Holds the list of validated values. Only
-            # these values are passed to the endpoint
-            outargs = dict()
-
-            # Create dictionary that maps parameters passed
-            # to their values passed
-            param_values = dict(zip(funcparams.args, args))
-
-            # Bring in kwargs so that we can validate as well
-            param_values.update(kwargs)
-
-            for param, rule in rules.items():
-
-                # Where can we get the value? It's either
-                # the getter on the rule or we default
-                # to verifying parameters.
-                getval = rule.getter or param_values.get
-
-                # Call the validation function, passing
-                # the value was retrieved from the getter
-                try:
-                    value = getval(param)
-
-                    # Ensure that this validation function
-                    # did not return a funciton. This
-                    # checks that the user did not forget to
-                    # execute the outer function of a closure
-                    # in the rule declaration
-                    resp = rule.vfunc(value)
-
-                    if inspect.isfunction(resp):
-                        msg = 'Validation function returned a function.'
-                        raise ValidationProgrammingError(msg)
-
-                    # If this is a param rule, add the
-                    # param to the list of out args
-                    if rule.getter is None:
-                        outargs[param] = value
-
-                except ValidationFailed as ex:
-                    # TODO: log this validaiton failure
-
-                    # TODO: should we call the error handler
-                    # with the value that failed to validate?
-                    rule.errfunc()
-                    return
-
-            return f(*args, **kwargs)
-        return wrapper
-    return _validate
-
-
-def validation_function(func):
-    """Decorator for creating a validation function"""
-    @wraps(func)
-    def inner(none_ok=False, empty_ok=False):
-        def wrapper(value):
-            if none_ok and value is None:
-                return
-
-            if not none_ok and value is None:
-                msg = 'None value not permitted'
-                raise ValidationFailed(msg)
-
-            if empty_ok and value == '':
-                return
-
-            if not empty_ok and value == '':
-                msg = 'Empty value not permitted'
-                raise ValidationFailed(msg)
-            func(value)
-        return wrapper
-    return inner
 
 
 @validation_function
@@ -198,134 +60,84 @@ def val_limit(value):
 
 
 @validation_function
-def val_none_value(value):
-    if value is not None:  # pragma: no cover
-        msg = 'Value must be None'
-        raise ValidationFailed(msg)
+def is_request(value):
+    if not isinstance(value, falcon.request.Request):
+        raise ValidationFailed('Input must be a request')
 
 
 def _abort(status_code):
     abort_errors = {
         400: errors.HTTPBadRequestAPI('Invalid Request'),
-        404: errors.HTTPNotFound
+        404: errors.HTTPNotFound,
+        500: errors.HTTPInternalServerError
     }
     raise abort_errors[status_code]
 
+
+class RequestRule(Rule):
+
+    def __init__(self, *nested_rules):
+        """Constructs a new Rule for validating requests. Any
+        nested rules needed for validating parts of the request
+        (such as headers, query string params, etc) should
+        also be passed in.
+
+        :param nested_rules: Any sub rules that also should be
+          used for validation
+        """
+        # If we get something that's not a request here,
+        # something bad happened in the server (i.e.
+        # maybe a programming error), so return a 500
+
+        # NOTE(TheSriram): One should not be creating a generic empty
+        # RequestRule, a list of rules always needs to be passed in as
+        # arguments.
+        # Example: RequestRule(OffsetMarkerRule, LimitRule)
+        Rule.__init__(self,
+                      vfunc=is_request(none_ok=True),  # pragma: no cover
+                      errfunc=lambda: _abort(500),
+                      nested_rules=list(nested_rules))
+
+
+class QueryStringRule(Rule):
+
+    def __init__(self, querystring_name, vfunc, errfunc):
+        getter = lambda req: req.get_param(querystring_name)
+        Rule.__init__(self, vfunc=vfunc, getter=getter, errfunc=errfunc)
 
 # parameter rules
 VaultGetRule = Rule(val_vault_id(), lambda: _abort(404))
 VaultPutRule = Rule(val_vault_id(), lambda: _abort(400))
 BlockGetRule = Rule(val_block_id(), lambda: _abort(404))
-BlockPutRule = Rule(val_block_id(), lambda: _abort(404))
+# BlockPutRule = Rule(val_block_id(), lambda: _abort(404))
 StorageBlockGetRule = Rule(val_storage_block_id(), lambda: _abort(404))
 StorageBlockPutRule = Rule(val_storage_block_id(), lambda: _abort(400))
 # BlockPostRule = Rule(val_vault_id(), lambda: _abort(400))
 FileGetRule = Rule(val_file_id(), lambda: _abort(404))
 FilePostRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(400))
-BlockGetRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(404))
+# BlockGetRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(404))
 BlockPutRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(400))
-StorageBlockRuleGetNoneOk = Rule(val_storage_block_id(none_ok=True),
-                                 lambda: _abort(404))
-StorageBlockRulePutNoneOk = Rule(val_storage_block_id(none_ok=True),
-                                 lambda: _abort(400))
-
+# StorageBlockRuleGetNoneOk = Rule(val_storage_block_id(none_ok=True),
+#                                 lambda: _abort(404))
+# StorageBlockRulePutNoneOk = Rule(val_storage_block_id(none_ok=True),
+#                                 lambda: _abort(400))
 
 # query string rules
+LimitRule = QueryStringRule("limit", val_limit(none_ok=True),
+                            lambda: _abort(404))
 
-def VaultMarkerRule(func):
-    @wraps(func)
-    def wrap(*args, **kwargs):
-        vaultmarker = Rule(
-            val_vault_id(
-                none_ok=True),
-            lambda: _abort(404),
-            lambda v: args[1].get_param(v))
+VaultMarkerRule = QueryStringRule("marker", val_vault_id(none_ok=True),
+                                  lambda: _abort(404))
 
-        @wraps(func)
-        @validate(marker=vaultmarker)
-        def validator(*args, **kwargs):
-            return func(*args, **kwargs)
-        validator(*args, **kwargs)
-    return wrap
+FileMarkerRule = QueryStringRule("marker", val_file_id(none_ok=True),
+                                 lambda: _abort(404))
 
+OffsetMarkerRule = QueryStringRule("marker", val_offset(none_ok=True),
+                                   lambda: _abort(404))
 
-def FileMarkerRule(func):
-    @wraps(func)
-    def wrap(*args, **kwargs):
-        filemarker = Rule(
-            val_file_id(
-                none_ok=True),
-            lambda: _abort(404),
-            lambda v: args[1].get_param(v))
+BlockMarkerRule = QueryStringRule("marker", val_block_id(none_ok=True),
+                                  lambda: _abort(404))
 
-        @wraps(func)
-        @validate(marker=filemarker)
-        def validator(*args, **kwargs):
-            return func(*args, **kwargs)
-        validator(*args, **kwargs)
-    return wrap
-
-
-def OffsetMarkerRule(func):
-    @wraps(func)
-    def wrap(*args, **kwargs):
-        offsetmarker = Rule(
-            val_offset(
-                none_ok=True),
-            lambda: _abort(404),
-            lambda v: args[1].get_param(v))
-
-        @wraps(func)
-        @validate(marker=offsetmarker)
-        def validator(*args, **kwargs):
-            return func(*args, **kwargs)
-        validator(*args, **kwargs)
-    return wrap
-
-
-def BlockMarkerRule(func):
-    @wraps(func)
-    def wrap(*args, **kwargs):
-        blockmarker = Rule(
-            val_block_id(
-                none_ok=True),
-            lambda: _abort(404),
-            lambda v: args[1].get_param(v))
-
-        @validate(marker=blockmarker)
-        def validator(*args, **kwargs):
-            return func(*args, **kwargs)
-        validator(*args, **kwargs)
-    return wrap
-
-
-def StorageBlockMarkerRule(func):
-    @wraps(func)
-    def wrap(*args, **kwargs):
-        blockmarker = Rule(
-            val_storage_block_id(
-                none_ok=True),
-            lambda: _abort(404),
-            lambda v: args[1].get_param(v))
-
-        @validate(marker=blockmarker)
-        def validator(*args, **kwargs):
-            return func(*args, **kwargs)
-        validator(*args, **kwargs)
-    return wrap
-
-
-def LimitRule(func):
-    @wraps(func)
-    def wrap(*args, **kwargs):
-        limitrule = Rule(
-            val_limit(
-                none_ok=True),
-            lambda: _abort(404),
-            lambda v: args[1].get_param(v))
-
-        @validate(limit=limitrule)
-        def validator(*args, **kwargs):
-            return func(*args, **kwargs)
-        validator(*args, **kwargs)
-    return wrap
+StorageBlockMarkerRule = QueryStringRule("marker",
+                                         val_storage_block_id(none_ok=True),
+                                         lambda: _abort(404))

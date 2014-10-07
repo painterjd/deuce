@@ -1,16 +1,17 @@
-import ddt
 import hashlib
 import json
-import falcon
-import msgpack
 import os
 from random import randrange
 import uuid
+
+import ddt
+import falcon
 from mock import patch
-from deuce import conf
-from deuce.util.misc import set_qs, relative_uri
+import msgpack
 from six.moves.urllib.parse import urlparse, parse_qs
 
+from deuce import conf
+from deuce.util.misc import set_qs, relative_uri
 from deuce.tests import ControllerTest
 
 
@@ -21,7 +22,6 @@ class TestBlocksController(ControllerTest):
         super(TestBlocksController, self).setUp()
 
         # Create a vault for us to work with
-
         vault_name = self.create_vault_id()
         self._vault_path = '/v1.0/vaults/{0}'.format(vault_name)
         self._blocks_path = '{0}/blocks'.format(self._vault_path)
@@ -220,7 +220,6 @@ class TestBlocksController(ControllerTest):
 
     @ddt.data(True, False)
     def test_put_and_list(self, async_status):
-
         # Test None block_id
         path = '{0}/'.format(self._blocks_path)
         data = os.urandom(100)
@@ -310,7 +309,6 @@ class TestBlocksController(ControllerTest):
 
     @ddt.data(True, False)
     def test_delete_blocks_with_references(self, finalize_status):
-
         # Create two files each consisting of 3 blocks of size 100 bytes
         file_ids = []
         for _ in range(2):
@@ -344,7 +342,7 @@ class TestBlocksController(ControllerTest):
         for block in block_list:
             response = self.simulate_delete(self.get_block_path(block),
                                             headers=self._hdrs)
-            self.assertEqual(self.srmock.status, falcon.HTTP_412)
+            self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
     def test_vault_error(self):
         from deuce.model import Vault
