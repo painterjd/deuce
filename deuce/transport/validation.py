@@ -109,18 +109,17 @@ class QueryStringRule(Rule):
 VaultGetRule = Rule(val_vault_id(), lambda: _abort(404))
 VaultPutRule = Rule(val_vault_id(), lambda: _abort(400))
 BlockGetRule = Rule(val_block_id(), lambda: _abort(404))
-# BlockPutRule = Rule(val_block_id(), lambda: _abort(404))
-StorageBlockGetRule = Rule(val_storage_block_id(), lambda: _abort(404))
-StorageBlockPutRule = Rule(val_storage_block_id(), lambda: _abort(400))
-# BlockPostRule = Rule(val_vault_id(), lambda: _abort(400))
+BlockPutRule = Rule(val_block_id(), lambda: _abort(400))
+BlockPostRule = Rule(val_block_id(), lambda: _abort(400))
 FileGetRule = Rule(val_file_id(), lambda: _abort(404))
+FilePutRule = Rule(val_file_id(), lambda: _abort(400))
+FilePostRule = Rule(val_file_id(), lambda: _abort(400))
+FileGetRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(404))
+FilePutRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(400))
 FilePostRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(400))
-# BlockGetRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(404))
+BlockGetRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(404))
 BlockPutRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(400))
-# StorageBlockRuleGetNoneOk = Rule(val_storage_block_id(none_ok=True),
-#                                 lambda: _abort(404))
-# StorageBlockRulePutNoneOk = Rule(val_storage_block_id(none_ok=True),
-#                                 lambda: _abort(400))
+BlockPostRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(400))
 
 # query string rules
 LimitRule = QueryStringRule("limit", val_limit(none_ok=True),
