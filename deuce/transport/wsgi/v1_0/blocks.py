@@ -1,13 +1,16 @@
 import json
-
+from stoplight import validate
 import falcon
 import msgpack
 
 from deuce import conf
 from deuce.util import set_qs_on_url
 from deuce.model import Vault
+from deuce.model import Block
+from deuce.model.exceptions import ConsistencyError
 from deuce.drivers.metadatadriver import ConstraintError
 from deuce.transport.validation import *
+
 import deuce.transport.wsgi.errors as errors
 import deuce.util.log as logging
 
@@ -15,6 +18,41 @@ logger = logging.getLogger(__name__)
 
 
 class ItemResource(object):
+    @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
+    def on_head(self, req, resp, vault_id, block_id):
+
+        """Checks for the existence of the block in the
+        metadata storage and if successful check for it in
+        the storage driver
+        if it fails we return a 502, otherwise we return
+        all other headers returned on
+            GET /v1.0/vaults/{vault_id}/blocks/{block_id}
+        """
+
+        vault = Vault.get(vault_id)
+
+        if not vault:
+            logger.error('Vault [{0}] does not exist'.format(vault_id))
+            raise errors.HTTPNotFound
+        try:
+            if not vault.has_block(block_id):
+                logger.error('block [{0}] does not exist'.format(block_id))
+                raise errors.HTTPNotFound
+            block = Block(vault_id, block_id)
+            ref_cnt = block.get_ref_count()
+            resp.set_header('X-Block-Reference-Count', str(ref_cnt))
+
+            ref_mod = block.get_ref_modified()
+            resp.set_header('X-Ref-Modified', str(ref_mod))
+
+            storage_id = block.get_storage_id()
+            resp.set_header('X-Storage-ID', str(storage_id))
+            resp.set_header('X-Block-ID', str(block_id))
+            resp.status = falcon.HTTP_204
+
+        except ConsistencyError as ex:
+            logger.error(ex)
+            raise errors.HTTPBadGateway(str(ex))
 
     @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
     def on_get(self, req, resp, vault_id, block_id):
@@ -40,6 +78,10 @@ class ItemResource(object):
         ref_mod = block.get_ref_modified()
         resp.set_header('X-Ref-Modified', str(ref_mod))
 
+        storage_id = block.get_storage_id()
+        resp.set_header('X-Storage-ID', str(storage_id))
+        resp.set_header('X-Block-ID', str(block_id))
+
         resp.stream = block.get_obj()
         resp.stream_len = block.get_block_length()
         resp.status = falcon.HTTP_200
@@ -54,8 +96,10 @@ class ItemResource(object):
         vault = Vault.get(vault_id)
 
         try:
-            retval = vault.put_block(
+            retval, storage_id = vault.put_block(
                 block_id, req.stream.read(), req.get_header('content-length'))
+            resp.set_header('X-Storage-ID', str(storage_id))
+            resp.set_header('X-Block-ID', str(block_id))
             resp.status = (
                 falcon.HTTP_201 if retval is True else falcon.HTTP_500)
             logger.info('block [{0}] added'.format(block_id))
@@ -79,7 +123,7 @@ class ItemResource(object):
 
         except ConstraintError as ex:
             logger.error(json.dumps(ex.args))
-            raise errors.HTTPPreconditionFailed(json.dumps(ex.args))
+            raise errors.HTTPConflict(json.dumps(ex.args))
 
         except Exception as ex:  # pragma: no cover
             logger.error(ex)
@@ -125,12 +169,11 @@ class CollectionResource(object):
                     raise errors.HTTPPreconditionFailed('hash error')
         except (TypeError, ValueError):
             logger.error('Request Body not well formed '
-                         'for posting muliple blocks to {0}'.format(vault_id))
+                         'for posting multiple blocks to {0}'.format(vault_id))
             raise errors.HTTPBadRequestBody("Request Body not well formed")
 
-    @validate(vault_id=VaultGetRule)
-    @BlockMarkerRule
-    @LimitRule
+    @validate(req=RequestRule(BlockMarkerRule, LimitRule),
+              vault_id=VaultGetRule)
     def on_get(self, req, resp, vault_id):
 
         vault = Vault.get(vault_id)
@@ -155,7 +198,7 @@ class CollectionResource(object):
         # Was the list truncated? See note above about +1
         truncated = len(responses) > 0 and len(responses) == limit + 1
 
-        outmarker = responses.pop().block_id if truncated else None
+        outmarker = responses.pop().metadata_block_id if truncated else None
 
         if outmarker:
             query_args = {'marker': outmarker}
@@ -163,4 +206,5 @@ class CollectionResource(object):
             returl = set_qs_on_url(req.url, query_args)
             resp.set_header("X-Next-Batch", returl)
 
-        resp.body = json.dumps([response.block_id for response in responses])
+        resp.body = json.dumps([response.metadata_block_id
+                                for response in responses])

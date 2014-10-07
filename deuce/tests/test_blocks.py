@@ -1,15 +1,17 @@
-import ddt
 import hashlib
 import json
-import falcon
-import msgpack
 import os
 from random import randrange
+import uuid
+
+import ddt
+import falcon
 from mock import patch
-from deuce import conf
-from deuce.util.misc import set_qs, relative_uri
+import msgpack
 from six.moves.urllib.parse import urlparse, parse_qs
 
+from deuce import conf
+from deuce.util.misc import set_qs, relative_uri
 from deuce.tests import ControllerTest
 
 
@@ -20,7 +22,6 @@ class TestBlocksController(ControllerTest):
         super(TestBlocksController, self).setUp()
 
         # Create a vault for us to work with
-
         self.vault_name = self.create_vault_id()
 
         self._hdrs = {"x-project-id": self.create_project_id()}
@@ -54,6 +55,43 @@ class TestBlocksController(ControllerTest):
         response = self.simulate_get(path, headers=self._hdrs)
 
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_head_invalid_block_id(self):
+        path = self.get_block_path(self.vault_name, 'invalid_block_id')
+        response = self.simulate_get(path, headers=self._hdrs)
+
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_head_non_existent_block_id(self):
+        path = self.get_block_path(self.vault_name, self.calc_sha1(b'mock'))
+        response = self.simulate_head(path, headers=self._hdrs)
+
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_head_inconsistent_metadata_block_id(self):
+        from deuce.model import Vault
+        with patch.object(Vault, '_storage_has_block', return_value=False):
+            block_list = self.helper_create_blocks(1, async=True)
+            path = self.get_block_path(self.vault_name, block_list[0])
+            self.simulate_head(path, headers=self._hdrs)
+            self.assertEqual(self.srmock.status, falcon.HTTP_502)
+
+    def test_head_block_nonexistent_vault(self):
+        self.simulate_head('/v1.0/vaults/mock/blocks/'
+                           + self.calc_sha1(b'mock'), headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_head_block(self):
+        block_list = self.helper_create_blocks(1, async=True)
+        path = self.get_block_path(self.vault_name, block_list[0])
+        self.simulate_head(path, headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_204)
+        self.assertIn('x-block-reference-count', str(self.srmock.headers))
+        self.assertIn('x-ref-modified', str(self.srmock.headers))
+        self.assertIn('x-storage-id', str(self.srmock.headers))
+        self.assertTrue(uuid.UUID(self.srmock.headers_dict['x-storage-id']))
+        self.assertIn('x-block-id', str(self.srmock.headers))
+        self.assertEqual(block_list[0], self.srmock.headers_dict['x-block-id'])
 
     def test_put_invalid_block_id(self):
         path = self.get_block_path(self.vault_name, 'invalid_block_id')
@@ -186,7 +224,6 @@ class TestBlocksController(ControllerTest):
 
     @ddt.data(True, False)
     def test_put_and_list(self, async_status):
-
         # Test None block_id
         path = '{0}/'.format(self.get_blocks_path(self.vault_name))
         data = os.urandom(100)
@@ -277,7 +314,6 @@ class TestBlocksController(ControllerTest):
 
     @ddt.data(True, False)
     def test_delete_blocks_with_references(self, finalize_status):
-
         # Create two files each consisting of 3 blocks of size 100 bytes
         file_ids = []
         for _ in range(2):
@@ -294,9 +330,7 @@ class TestBlocksController(ControllerTest):
         block_list = self.helper_create_blocks(3, singleblocksize=True)
 
         offsets = [x * 100 for x in range(3)]
-        meta_info = [{'id': block, 'size': 100, 'offset': offset}
-                     for block, offset in zip(block_list, offsets)]
-        data = {"blocks": meta_info}
+        data = list(zip(block_list, offsets))
 
         hdrs = {'content-type': 'application/x-deuce-block-list'}
         hdrs.update(self._hdrs)
@@ -315,7 +349,7 @@ class TestBlocksController(ControllerTest):
             response = self.simulate_delete(
                 self.get_block_path(self.vault_name, block),
                 headers=self._hdrs)
-            self.assertEqual(self.srmock.status, falcon.HTTP_412)
+            self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
     def test_vault_error(self):
         from deuce.model import Vault

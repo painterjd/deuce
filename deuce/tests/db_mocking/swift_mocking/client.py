@@ -1,16 +1,15 @@
-
-
-import os
-import io
-import shutil
-from swiftclient.exceptions import ClientException
+import atexit
+import datetime
 import hashlib
+import io
+import os
+import shutil
 import uuid
 
-import datetime
-import atexit
+from swiftclient.exceptions import ClientException
 
-container_path = '/tmp/swift_mocking'
+
+container_path = '/tmp/swift_mocking_{0}/'.format(str(uuid.uuid4()))
 
 
 def _clean_up_mocking():
@@ -32,7 +31,7 @@ def _get_vault_block_path(vault_id):
 
 
 def _get_block_path(vault_id, block_id):
-    if block_id.startswith('blocks/'):
+    if str(block_id).startswith('blocks/'):
         vault_path = _get_vault_path(vault_id)
         return os.path.join(vault_path, str(block_id))
     else:

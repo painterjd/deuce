@@ -5,6 +5,7 @@ from utils.schema import auth
 
 from collections import namedtuple
 
+import base64
 import json
 import jsonschema
 import msgpack
@@ -36,7 +37,7 @@ class TestBase(fixtures.BaseTestFixture):
         cls.auth_config = config.authConfig()
         cls.auth_token = None
         cls.storage_config = config.storageConfig()
-        cls.storage_url = ''
+        cls.service_catalog_b64 = ''
         cls.tenantid = None
         cls.region = cls.storage_config.region
         if cls.config.use_auth:
@@ -49,11 +50,11 @@ class TestBase(fixtures.BaseTestFixture):
             cls.tenantid = cls.a_resp.entity.regions[cls.region]['tenantId']
             url_type = 'internalURL' if cls.storage_config.internal_url \
                 else 'publicURL'
-            cls.storage_url = cls.a_resp.entity.regions[cls.region][url_type]
+            cls.service_catalog_b64 = base64.b64encode(cls.a_resp.content)
         cls.client = client.BaseDeuceClient(cls.config.base_url,
                                             cls.config.version,
                                             cls.auth_token,
-                                            cls.storage_url,
+                                            cls.service_catalog_b64,
                                             cls.tenantid)
 
         cls.vaults = []
@@ -315,16 +316,14 @@ class TestBase(fixtures.BaseTestFixture):
 
         for index in blocks:
             block_info = self.blocks[index]
-            block_list.append({'id': block_info.Id,
-                               'size': len(block_info.Data), 'offset': offset})
+            block_list.append([block_info.Id, offset])
             if offset_divisor:
                 offset += len(block_info.Data) / offset_divisor
             else:
                 offset += len(block_info.Data)
             self.blocks_size += len(block_info.Data)
 
-        block_dict = {'blocks': block_list}
-        resp = self.client.assign_to_file(json.dumps(block_dict),
+        resp = self.client.assign_to_file(json.dumps(block_list),
                                           alternate_url=file_url)
         return 200 == resp.status_code
 

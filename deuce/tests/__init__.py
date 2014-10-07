@@ -1,28 +1,31 @@
 from abc import ABCMeta, abstractmethod
+import hashlib
+import os
+import shutil
 import unittest
-from falcon import testing as ftest
+import uuid
+
 import falcon
-from deuce.transport.wsgi import v1_0
+from falcon import testing as ftest
+import six
+from six.moves.urllib.parse import urlparse, parse_qs
+
 import deuce
+from deuce.transport.wsgi import v1_0
 from deuce.transport.wsgi.driver import Driver
 import deuce.util.log as logging
 from deuce.util.misc import relative_uri
-import os
-import hashlib
-import uuid
-import six
-from six.moves.urllib.parse import urlparse, parse_qs
 
-
-import six
-from six.moves.urllib.parse import urlparse, parse_qs
 __all__ = ['V1Base']
-
-import shutil
 
 
 class DummyContextObject(object):
     pass
+
+
+test_disk_storage_location = '/tmp/block_storage_{0}'.format(str(uuid.uuid4()))
+test_mongodb_location = '/tmp/deuce_mongo_unittest_vaultmeta_{0}.db'.format(
+    str(uuid.uuid4()))
 
 
 def setUp():
@@ -30,8 +33,8 @@ def setUp():
         Unit tests environment setup.
         Called only once at the beginning.
     """
-    if not os.path.exists('/tmp/block_storage'):
-        os.mkdir('/tmp/block_storage')
+    if not os.path.exists(test_disk_storage_location):
+        os.mkdir(test_disk_storage_location)
 
     logging.setup()
 
@@ -42,19 +45,15 @@ def tearDown():
         Called only once at the end.
     """
     deuce.conf = None
-    shutil.rmtree('/tmp/block_storage')
 
-    # Always remove the database so that we can start over on
-    # test execution
-    # Drop sqlite DB
-    if os.path.exists('/tmp/deuce_sqlite_unittest_vaultmeta.db'):
-        os.remove('/tmp/deuce_sqlite_unittest_vaultmeta.db')
+    shutil.rmtree(test_disk_storage_location)
 
 
 class TestBase(unittest.TestCase):
 
     def setUp(self):
         super(TestBase, self).setUp()
+
         import deuce
         deuce.context = DummyContextObject()
         deuce.context.project_id = self.create_project_id()
@@ -62,6 +61,14 @@ class TestBase(unittest.TestCase):
         deuce.context.openstack.auth_token = self.create_auth_token()
         deuce.context.openstack.swift = DummyContextObject()
         deuce.context.openstack.swift.storage_url = 'storage.url'
+
+        # Override the storage locations
+        # This is required for environments that run multiple tests
+        # at the same time, e.g. tox -e py34 in one shell and
+        # tox -e py33 in another shell simultaneously, f.e Jenkins
+        deuce.conf.block_storage_driver.options.path = \
+            test_disk_storage_location
+
         self.app = Driver().app
         self.srmock = ftest.StartResponseMock()
         self.headers = {}
@@ -85,6 +92,9 @@ class TestBase(unittest.TestCase):
         sha1 = hashlib.sha1()
         sha1.update(data or os.urandom(2048))
         return sha1.hexdigest()
+
+    def create_storage_block_id(self):
+        return '{0:}'.format(str(uuid.uuid4()))
 
     def create_vault_id(self):
         """Creates a dummy vault ID. This could be
@@ -158,19 +168,24 @@ class V1Base(TestBase):
 
     def setUp(self):
         super(V1Base, self).setUp()
-        from deuce import conf
-        if conf.metadata_driver.mongodb.testing.is_mocking:
-            conf.metadata_driver.mongodb.db_module = \
-                'deuce.tests.db_mocking.mongodb_mocking'
-            conf.metadata_driver.mongodb.FileBlockReadSegNum = 10
-            conf.metadata_driver.mongodb.maxFileBlockSegNum = 30
+        # Override the storage locations
+        # This is required for environments that run multiple tests
+        # at the same time, e.g. tox -e py34 in one shell and
+        # tox -e py33 in another shell simultaneously, f.e Jenkins
+        deuce.conf.metadata_driver.mongodb.db_file = test_mongodb_location
 
-        if conf.metadata_driver.cassandra.testing.is_mocking:
-            conf.metadata_driver.cassandra.db_module = \
+        if deuce.conf.metadata_driver.mongodb.testing.is_mocking:
+            deuce.conf.metadata_driver.mongodb.db_module = \
+                'deuce.tests.db_mocking.mongodb_mocking'
+            deuce.conf.metadata_driver.mongodb.FileBlockReadSegNum = 10
+            deuce.conf.metadata_driver.mongodb.maxFileBlockSegNum = 30
+
+        if deuce.conf.metadata_driver.cassandra.testing.is_mocking:
+            deuce.conf.metadata_driver.cassandra.db_module = \
                 'deuce.tests.mock_cassandra'
 
-        if conf.block_storage_driver.swift.testing.is_mocking:
-            conf.block_storage_driver.swift.swift_module = \
+        if deuce.conf.block_storage_driver.swift.testing.is_mocking:
+            deuce.conf.block_storage_driver.swift.swift_module = \
                 'deuce.tests.db_mocking.swift_mocking'
 
 
@@ -323,6 +338,7 @@ class ControllerTest(V1Base):
 
     def helper_store_blocks(self, vaultid, block_data):
 
+        storage_list = []
         # Put each one of the generated blocks on the
         # size
         for size, data, sha1 in block_data:
@@ -337,3 +353,8 @@ class ControllerTest(V1Base):
 
             response = self.simulate_put(path, headers=headers,
                                          body=data)
+            self.assertIn('x-storage-id', self.srmock.headers_dict)
+            storage_list.append(
+                (sha1, self.srmock.headers_dict['x-storage-id'])
+            )
+        return storage_list

@@ -1,232 +1,612 @@
 from unittest import TestCase
+import uuid
 
-from deuce.transport.validation import ValidationFailed
+from falcon import request
+from stoplight import validate
+from stoplight.exceptions import ValidationFailed
+
 from deuce.transport import validation as v
-import os
-
-# TODO: We probably want to move this to a
-# test helpers library
-
-VALIDATED_STR = 'validated'
+from deuce.transport.wsgi import errors
 
 
 class MockRequest(object):
     pass
 
 
-class MockResponse(object):
-    pass
+class TestRulesBase(TestCase):
 
-request = MockRequest()
-response = MockResponse()
+    @staticmethod
+    def build_request(params=None):
+        """Build a request object to use for testing
 
+        :param params: list of tuples containing the name and value pairs
+                       for parameters to add to the QUERY_STRING
+        """
+        mock_env = {
+            'wsgi.errors': 'mock',
+            'wsgi.input': 'mock',
+            'REQUEST_METHOD': 'PUT',
+            'PATH_INFO': '/',
+            'SERVER_NAME': 'mock',
+            'SERVER_PORT': '8888',
+            'QUERY_STRING': None
+        }
 
-@v.validation_function
-def is_upper(z):
-    """Simple validation function for testing purposes
-    that ensures that input is all caps
-    """
-    if z.upper() != z:
-        raise v.ValidationFailed('{0} no uppercase'.format(z))
+        if params is not None:
+            for param in params:
+                name = param[0]
+                value = param[1]
 
-error_count = 0
+                param_set = '{0}='.format(name)
+                if value is not None and len(value):
+                    param_set = '{0}={1}'.format(name, value)
 
+                if mock_env['QUERY_STRING'] is None:
+                    mock_env['QUERY_STRING'] = param_set
+                else:
+                    mock_env['QUERY_STRING'] = '{1}{0}{2}'.format(
+                        separator, mock_env['QUERY_STRING'], param_set)
 
-def abort(code):
-    global error_count
-    error_count = error_count + 1
+        if mock_env['QUERY_STRING'] is None:
+            del mock_env['QUERY_STRING']
 
-other_vals = dict()
-get_other_val = other_vals.get
+        return request.Request(mock_env)
 
+    def cases_with_none_okay(self):
 
-class DummyEndpoint(object):
+        positive_cases = self.__class__.positive_cases[:]
+        positive_cases.append(None)
 
-    # This should throw a ValidationProgrammingError
-    # when called because the user did not actually
-    # call validate_upper.
+        negative_cases = self.__class__.negative_cases[:]
+        while negative_cases.count(None):
+            negative_cases.remove(None)
+        while negative_cases.count(''):
+            negative_cases.remove('')
 
-    # Note: the lambda in this function can never actually be
-    # called, so we use no cover here
-    @v.validate(value=v.Rule(is_upper, lambda: abort(404)))  # pragma: no cover
-    def get_value_programming_error(self, value):
-        # This function body should never be
-        # callable since the validation error
-        # should not allow it to be called
-        assert False  # pragma: no cover
-
-    @v.validate(
-        value1=v.Rule(is_upper(), lambda: abort(404)),
-        value2=v.Rule(is_upper(), lambda: abort(404)),
-        value3=v.Rule(is_upper(), lambda: abort(404))
-    )  # pragma: no cover
-    def get_value_happy_path(self, value1, value2, value3):
-        return value1 + value2 + value3
-
-    @v.validate(
-        value1=v.Rule(is_upper(), lambda: abort(404)),
-        value2=v.Rule(is_upper(empty_ok=True), lambda: abort(404),
-                      get_other_val),
-    )  # pragma: no cover
-    def get_value_with_getter(self, value1):
-        global other_vals
-        return value1 + other_vals.get('value2')
+        return (positive_cases, negative_cases)
 
 
-class TestValidationDecorator(TestCase):
+class TestRequests(TestRulesBase):
 
-    def setUp(self):
-        self.ep = DummyEndpoint()
+    def test_request(self):
 
-    def test_programming_error(self):
-        with self.assertRaises(v.ValidationProgrammingError):
-            self.ep.get_value_programming_error('AT_ME')
+        positive_case = [TestRulesBase.build_request()]
 
-    def test_happy_path_and_validation_failure(self):
-        global error_count
-        # Should not throw
-        res = self.ep.get_value_happy_path('WHATEVER', 'HELLO', 'YES')
-        self.assertEqual('WHATEVERHELLOYES', res)
+        negative_case = [MockRequest()]
 
-        # Validation should have failed, and
-        # we should have seen a tick in the error count
-        oldcount = error_count
-        res = self.ep.get_value_happy_path('WHAtEVER', 'HELLO', 'YES')
-        self.assertEqual(oldcount + 1, error_count)
+        for case in positive_case:
+            v.is_request(case)
 
-        # Check passing a None value. This decorator does
-        # not permit none values.
-        oldcount = error_count
-        res = self.ep.get_value_happy_path(None, 'HELLO', 'YES')
-        self.assertEqual(oldcount + 1, error_count)
-
-    def test_getter(self):
-        global other_vals
-
-        other_vals['value2'] = 'HELLO'
-
-        # Now have our validation actually try to
-        # get those values
-
-        # This should succeed
-        res = self.ep.get_value_with_getter('TEST')
-        self.assertEqual('TESTHELLO', res)
-
-        # check empty_ok
-        other_vals['value2'] = ''
-        res = self.ep.get_value_with_getter('TEST')
-        self.assertEqual('TEST', res)
+        for case in negative_case:
+            with self.assertRaises(ValidationFailed):
+                v.is_request(none_ok=True)(case)
 
 
-class TestValidationFuncs(TestCase):
+class TestVaultRules(TestRulesBase):
+
+    positive_cases = [
+        'a',
+        '0',
+        '__vault_id____',
+        '-_-_-_-_-_-_-_-',
+        'snake_case_is_ok',
+        'So-are-hyphonated-names',
+        'a' * v.VAULT_ID_MAX_LEN
+    ]
+
+    negative_cases = [
+        '',  # empty case should raise
+        '.', '!', '@', '#', '$', '%',
+        '^', '&', '*', '[', ']', '/',
+        '@#$@#$@#^@%$@#@#@#$@!!!@$@$@',
+        '\\', 'a' * (v.VAULT_ID_MAX_LEN + 1),
+        None
+    ]
+
+    @validate(vault_id=v.VaultGetRule)
+    def utilize_get_vault_id(self, vault_id):
+        return True
+
+    @validate(vault_id=v.VaultPutRule)
+    def utilize_put_vault_id(self, vault_id):
+        return True
+
+    @validate(req=v.RequestRule(v.VaultMarkerRule))
+    def utilize_request(self, req, raiseme=False):
+        if raiseme:
+            raise RuntimeError('QUERY_STRING: {0}'.format(req.query_string))
+        else:
+            return True
 
     def test_vault_id(self):
 
-        positive_cases = [
-            'a',
-            '0',
-            '__vault_id____',
-            '-_-_-_-_-_-_-_-',
-            'snake_case_is_ok',
-            'So-are-hyphonated-names',
-            'a' * v.VAULT_ID_MAX_LEN
-        ]
-
-        for name in positive_cases:
+        for name in self.__class__.positive_cases:
             v.val_vault_id(name)
 
-        negative_cases = [
-            '',  # empty case should raise
-            '.', '!', '@', '#', '$', '%',
-            '^', '&', '*', '[', ']', '/',
-            '@#$@#$@#^@%$@#@#@#$@!!!@$@$@',
-            '\\', 'a' * (v.VAULT_ID_MAX_LEN + 1)
-        ]
-
-        for name in negative_cases:
+        for name in self.__class__.negative_cases:
             with self.assertRaises(ValidationFailed):
                 v.val_vault_id()(name)
 
+    def test_vault_get(self):
+
+        for p_case in self.__class__.positive_cases:
+            self.assertTrue(self.utilize_get_vault_id(p_case))
+
+        for case in self.__class__.negative_cases:
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_get_vault_id(case)
+
+    def test_vault_get(self):
+
+        for p_case in self.__class__.positive_cases:
+            self.assertTrue(self.utilize_put_vault_id(p_case))
+
+        for case in self.__class__.negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_put_vault_id(case)
+
+    def test_vault_id_marker(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for vault_id in positive_cases:
+            vault_id_req = TestRulesBase.build_request(params=[('marker',
+                                                                vault_id)])
+            self.assertTrue(self.utilize_request(vault_id_req))
+
+        # We currently skip the negative test for the VaultMarkerRule
+        # due to the nature of the negative cases for the Vault Name.
+        # Leaving the code in below should we figure out a good way to
+        # capture the data for the URL encoding.
+        #
+        # Note: It is not a failure of build_request()'s QUERY_STRING building
+        #   but a miss-match between it, urllib.parse.urlencode(), and Falcon.
+        #   Use of urllib.parse.urlencode() has other issues here as well.
+        #
+        # for vault_id in negative_cases:
+        #    vault_id_req = TestRulesBase.build_request(params=[('marker',
+        #                                                        vault_id)])
+        #    with self.assertRaises(errors.HTTPNotFound):
+        #        self.utilize_request(vault_id_req, raiseme=True)
+
+
+class TestMetadataBlockRules(TestRulesBase):
+
+    positive_cases = [
+        'da39a3ee5e6b4b0d3255bfef95601890afd80709',
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        'ffffffffffffffffffffffffffffffffffffffff',
+        'a' * 40,
+    ]
+
+    negative_cases = [
+        '',
+        '.',
+        'a', '0', 'f', 'F', 'z', '#', '$', '?',
+        'a39a3ee5e6b4b0d3255bfef95601890afd80709',  # one char short
+        'da39a3ee5e6b4b0d3255bfef95601890afd80709a',  # one char long
+        'DA39A3EE5E6B4B0D3255BFEF95601890AFD80709',
+        'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+        'AaaAaaAaaaaAaAaaaAaaaaaaaAAAAaaaaAaaaaaa' * 2,
+        'AaaAaaAaaaaAaAaaaAaaaaaaaAAAAaaaaAaaaaaa' * 3,
+        'AaaAaaAaaaaAaAaaaAaaaaaaaAAAAaaaaAaaaaaa' * 4,
+        None
+    ]
+
+    @validate(metadata_block_id=v.BlockGetRule)
+    def utilize_get_metadata_block_get(self, metadata_block_id):
+        return True
+
+    @validate(metadata_block_id=v.BlockPutRule)
+    def utilize_put_metadata_block_id(self, metadata_block_id):
+        return True
+
+    @validate(metadata_block_id=v.BlockPostRule)
+    def utilize_post_metadata_block_id(self, metadata_block_id):
+        return True
+
+    @validate(metadata_block_id=v.BlockGetRuleNoneOk)
+    def utilize_get_metadata_block_get_none_okay(self, metadata_block_id):
+        return True
+
+    @validate(metadata_block_id=v.BlockPutRuleNoneOk)
+    def utilize_put_metadata_block_id_none_okay(self, metadata_block_id):
+        return True
+
+    @validate(metadata_block_id=v.BlockPostRuleNoneOk)
+    def utilize_post_metadata_block_id_none_okay(self, metadata_block_id):
+        return True
+
+    @validate(req=v.RequestRule(v.BlockMarkerRule))
+    def utilize_request(self, req, raiseme=False):
+        if raiseme:
+            raise RuntimeError('QUERY_STRING: {0}'.format(req.query_string))
+        else:
+            return True
+
     def test_block_id(self):
 
-        positive_cases = [
-            'da39a3ee5e6b4b0d3255bfef95601890afd80709',
-            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-            'ffffffffffffffffffffffffffffffffffffffff',
-            'a' * 40,
-        ]
-
-        for blockid in positive_cases:
+        for blockid in self.__class__.positive_cases:
             v.val_block_id(blockid)
 
-        negative_cases = [
-            '',
-            '.',
-            'a', '0', 'f', 'F', 'z', '#', '$', '?',
-            'a39a3ee5e6b4b0d3255bfef95601890afd80709',  # one char short
-            'da39a3ee5e6b4b0d3255bfef95601890afd80709a',  # one char long
-            'DA39A3EE5E6B4B0D3255BFEF95601890AFD80709',
-            'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
-            'AaaAaaAaaaaAaAaaaAaaaaaaaAAAAaaaaAaaaaaa' * 2,
-            'AaaAaaAaaaaAaAaaaAaaaaaaaAAAAaaaaAaaaaaa' * 3,
-            'AaaAaaAaaaaAaAaaaAaaaaaaaAAAAaaaaAaaaaaa' * 4
-        ]
+        for blockid in self.__class__.negative_cases:
+            with self.assertRaises(v.ValidationFailed):
+                v.val_block_id()(blockid)
+
+    def test_get_block_id(self):
+
+        for blockid in self.__class__.positive_cases:
+            self.utilize_get_metadata_block_get(blockid)
+
+        for blockid in self.__class__.negative_cases:
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_get_metadata_block_get(blockid)
+
+    def test_put_block_id(self):
+
+        for blockid in self.__class__.positive_cases:
+            self.utilize_put_metadata_block_id(blockid)
+
+        for blockid in self.__class__.negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_put_metadata_block_id(blockid)
+
+    def test_get_block_id_none_okay(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for blockid in positive_cases:
+            self.utilize_get_metadata_block_get_none_okay(blockid)
 
         for blockid in negative_cases:
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_get_metadata_block_get_none_okay(blockid)
+
+    def test_put_block_id_none_okay(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for blockid in positive_cases:
+            self.utilize_put_metadata_block_id_none_okay(blockid)
+
+        for blockid in negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_put_metadata_block_id_none_okay(blockid)
+
+    def test_post_block_id(self):
+
+        for blockid in self.__class__.positive_cases:
+            self.utilize_post_metadata_block_id(blockid)
+
+        for blockid in self.__class__.negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_post_metadata_block_id(blockid)
+
+    def test_post_block_id_none_okay(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for blockid in positive_cases:
+            self.utilize_post_metadata_block_id_none_okay(blockid)
+
+        for blockid in negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_post_metadata_block_id_none_okay(blockid)
+
+    def test_block_id_marker(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for block_id in positive_cases:
+            block_id_req = TestRulesBase.build_request(params=[('marker',
+                                                                block_id)])
+            self.assertTrue(self.utilize_request(block_id_req))
+
+        for block_id in negative_cases:
+            block_id_req = TestRulesBase.build_request(params=[('marker',
+                                                                block_id)])
+
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_request(block_id_req, raiseme=True)
+
+
+class TestStorageBlockRules(TestRulesBase):
+
+    positive_cases = [str(uuid.uuid4()) for _ in range(0, 1000)]
+
+    negative_cases = [
+        '',
+        'e7bf692b-ec7b-40ad-b0d1-45ce6798fb6z',  # note trailing z
+        str(uuid.uuid4()).upper(),  # Force case sensitivity
+        None
+    ]
+
+    @validate(storage_block_id=v.StorageBlockGetRule)
+    def utilize_get_storage_block_get(self, storage_block_id):
+        return True
+
+    @validate(storage_block_id=v.StorageBlockPutRule)
+    def utilize_put_storage_block_id(self, storage_block_id):
+        return True
+
+    @validate(storage_block_id=v.StorageBlockRuleGetNoneOk)
+    def utilize_get_storage_block_get_none_okay(self, storage_block_id):
+        return True
+
+    @validate(storage_block_id=v.StorageBlockRulePutNoneOk)
+    def utilize_put_storage_block_id_none_okay(self, storage_block_id):
+        return True
+
+    @validate(req=v.RequestRule(v.StorageBlockMarkerRule))
+    def utilize_request(self, req, raiseme=False):
+        if raiseme:
+            raise RuntimeError('QUERY_STRING: {0}'.format(req.query_string))
+        else:
+            return True
+
+    def test_storage_storage_block_id(self):
+
+        for storage_id in self.__class__.positive_cases:
+            v.val_storage_block_id(storage_id)
+
+        for storage_id in self.__class__.negative_cases:
             with self.assertRaises(ValidationFailed):
-                v.val_block_id()(blockid)
+                v.val_storage_block_id()(storage_id)
+
+    def test_get_storage_block_id(self):
+
+        for storage_id in self.__class__.positive_cases:
+            self.utilize_get_storage_block_get(storage_id)
+
+        for storage_id in self.__class__.negative_cases:
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_get_storage_block_get(storage_id)
+
+    def test_put_storage_block_id(self):
+
+        for storage_id in self.__class__.positive_cases:
+            self.utilize_put_storage_block_id(storage_id)
+
+        for storage_id in self.__class__.negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_put_storage_block_id(storage_id)
+
+    def test_get_storage_block_id_none_okay(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for storage_id in positive_cases:
+            self.utilize_get_storage_block_get_none_okay(storage_id)
+
+        for storage_id in negative_cases:
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_get_storage_block_get_none_okay(storage_id)
+
+    def test_put_storage_block_id_none_okay(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for storage_id in positive_cases:
+            self.utilize_put_storage_block_id_none_okay(storage_id)
+
+        for storage_id in negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_put_storage_block_id_none_okay(storage_id)
+
+    def test_storage_block_id_marker(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for storage_id in positive_cases:
+            storage_id_req = TestRulesBase.build_request(params=[('marker',
+                                                                storage_id)])
+            self.assertTrue(self.utilize_request(storage_id_req))
+
+        for storage_id in negative_cases:
+            storage_id_req = TestRulesBase.build_request(params=[('marker',
+                                                                storage_id)])
+
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_request(storage_id_req, raiseme=True)
+
+
+class TestFileRules(TestRulesBase):
+
+    # Let's try try to append some UUIds and check for faileus
+    positive_cases = [str(uuid.uuid4()) for _ in range(0, 1000)]
+
+    negative_cases = [
+        '',
+        'e7bf692b-ec7b-40ad-b0d1-45ce6798fb6z',  # note trailing z
+        str(uuid.uuid4()).upper(),  # Force case sensitivity
+        None
+    ]
+
+    @validate(file_id=v.FileGetRule)
+    def utilize_file_id_get(self, file_id):
+        return True
+
+    @validate(file_id=v.FilePutRule)
+    def utilize_file_id_put(self, file_id):
+        return True
+
+    @validate(file_id=v.FilePostRule)
+    def utilize_file_id_post(self, file_id):
+        return True
+
+    @validate(file_id=v.FileGetRuleNoneOk)
+    def utilize_file_id_get_none_okay(self, file_id):
+        return True
+
+    @validate(file_id=v.FilePutRuleNoneOk)
+    def utilize_file_id_put_none_okay(self, file_id):
+        return True
+
+    @validate(file_id=v.FilePostRuleNoneOk)
+    def utilize_file_id_post_none_okay(self, file_id):
+        return True
+
+    @validate(req=v.RequestRule(v.FileMarkerRule))
+    def utilize_request(self, req, raiseme=False):
+        if raiseme:
+            raise RuntimeError('QUERY_STRING: {0}'.format(req.query_string))
+        else:
+            return True
 
     def test_file_id(self):
 
-        import uuid
-
-        # Let's try try to append some UUIds and check for faileus
-        positive_cases = [str(uuid.uuid4()) for _ in range(0, 1000)]
-
-        for fileid in positive_cases:
+        for fileid in self.__class__.positive_cases:
             v.val_file_id(fileid)
 
-        negative_cases = [
-            '',
-            'e7bf692b-ec7b-40ad-b0d1-45ce6798fb6z',  # note trailing z
-            str(uuid.uuid4()).upper()  # Force case sensitivity
-        ]
-
-        for fileid in negative_cases:
+        for fileid in self.__class__.negative_cases:
             with self.assertRaises(ValidationFailed):
                 v.val_file_id()(fileid)
 
-    def test_offset(self):
-        positive_cases = [
-            '0', '1', '2', '3', '55', '100',
-            '101010', '99999999999999999999999999999'
-        ]
+    def test_get_file_id(self):
 
-        for offset in positive_cases:
+        for file_id in self.__class__.positive_cases:
+            self.utilize_file_id_get(file_id)
+
+        for file_id in self.__class__.negative_cases:
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_file_id_get(file_id)
+
+    def test_put_file_id(self):
+
+        for file_id in self.__class__.positive_cases:
+            self.utilize_file_id_put(file_id)
+
+        for file_id in self.__class__.negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_file_id_put(file_id)
+
+    def test_post_file_id(self):
+
+        for file_id in self.__class__.positive_cases:
+            self.utilize_file_id_post(file_id)
+
+        for file_id in self.__class__.negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_file_id_post(file_id)
+
+    def test_get_file_id_none_okay(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for file_id in positive_cases:
+            self.utilize_file_id_get_none_okay(file_id)
+
+        for file_id in negative_cases:
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_file_id_get_none_okay(file_id)
+
+    def test_put_file_id_none_okay(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for file_id in positive_cases:
+            self.utilize_file_id_put_none_okay(file_id)
+
+        for file_id in negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_file_id_put_none_okay(file_id)
+
+    def test_post_file_id_none_okay(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for file_id in positive_cases:
+            self.utilize_file_id_post_none_okay(file_id)
+
+        for file_id in negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_file_id_post_none_okay(file_id)
+
+    def test_file_id_marker(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for file_id in positive_cases:
+            file_id_req = TestRulesBase.build_request(params=[('marker',
+                                                               file_id)])
+            self.assertTrue(self.utilize_request(file_id_req))
+
+        for file_id in negative_cases:
+            file_id_req = TestRulesBase.build_request(params=[('marker',
+                                                               file_id)])
+
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_request(file_id_req, raiseme=True)
+
+
+class TestOffsetRules(TestRulesBase):
+
+    positive_cases = [
+        '0', '1', '2', '3', '55', '100',
+        '101010', '99999999999999999999999999999'
+    ]
+
+    negative_cases = [
+        '-1', '-23', 'O', 'zero', 'one', '-999', '1.0', '1.3',
+        '0.0000000000001',
+        None
+    ]
+
+    @validate(req=v.RequestRule(v.OffsetMarkerRule))
+    def utilize_request(self, req, raiseme=False):
+        if raiseme:
+            raise RuntimeError('QUERY_STRING: {0}'.format(req.query_string))
+        else:
+            return True
+
+    def test_offset(self):
+
+        for offset in self.__class__.positive_cases:
             v.val_offset()(offset)
 
-        negative_cases = [
-            '-1', '-23', 'O', 'zero', 'one', '-999', '1.0', '1.3',
-            '0.0000000000001'
-        ]
-
-        for offset in negative_cases:
+        for offset in self.__class__.negative_cases:
             with self.assertRaises(ValidationFailed):
                 v.val_offset()(offset)
 
-    def test_limit(self):
-        positive_cases = [
-            '0', '100', '100000000', '100'
-        ]
+    def test_offset_marker(self):
 
-        for limit in positive_cases:
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for offset in positive_cases:
+            offset_req = TestRulesBase.build_request(params=[('marker',
+                                                              offset)])
+            self.assertTrue(self.utilize_request(offset_req))
+
+        for offset in negative_cases:
+            offset_req = TestRulesBase.build_request(params=[('marker',
+                                                              offset)])
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_request(offset_req, raiseme=True)
+
+
+class TestLimitRules(TestRulesBase):
+
+    positive_cases = [
+        '0', '100', '100000000', '100'
+    ]
+
+    negative_cases = [
+        '-1', 'blah', None
+    ]
+
+    @validate(req=v.RequestRule(v.LimitRule))
+    def utilize_request(self, req, raiseme=False):
+        if raiseme:
+            raise RuntimeError('QUERY_STRING: {0}'.format(req.query_string))
+        else:
+            return True
+
+    def test_limit(self):
+
+        for limit in self.__class__.positive_cases:
             v.val_limit()(limit)
 
-        negative_cases = [
-            '-1', 'blah', None
-        ]
-
-        for limit in negative_cases:
+        for limit in self.__class__.negative_cases:
             with self.assertRaises(ValidationFailed):
                 v.val_limit()(limit)
 
@@ -239,18 +619,17 @@ class TestValidationFuncs(TestCase):
         with self.assertRaises(ValidationFailed):
             v.val_limit()(None)
 
-    def test_rules(self):
-        # Tests each rule to ensure that empty and other
-        # cases work
+    def test_limit_marker(self):
 
-        rules = {v.VaultGetRule, v.VaultPutRule, v.BlockGetRule,
-                 v.FileGetRule, v.FilePostRuleNoneOk,
-                 v.BlockPutRuleNoneOk, v.FileMarkerRule, v.VaultMarkerRule,
-                 v.OffsetMarkerRule, v.BlockMarkerRule, v.LimitRule}
+        positive_cases, negative_cases = self.cases_with_none_okay()
 
-        for rule in rules:
-            with self.assertRaises(ValidationFailed):
-                v.val_limit()('')
+        for limit in positive_cases:
+            limit_req = TestRulesBase.build_request(params=[('limit',
+                                                             limit)])
+            self.assertTrue(self.utilize_request(limit_req))
 
-            with self.assertRaises(ValidationFailed):
-                v.val_limit()(None)
+        for limit in negative_cases:
+            limit_req = TestRulesBase.build_request(params=[('limit',
+                                                             limit)])
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_request(limit_req, raiseme=True)

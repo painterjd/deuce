@@ -1,6 +1,6 @@
 import json
 
-import falcon
+from stoplight import validate
 
 from deuce.util import set_qs_on_url
 from deuce.model import Vault
@@ -14,9 +14,8 @@ logger = logging.getLogger(__name__)
 
 class CollectionResource(object):
 
-    @validate(vault_id=VaultGetRule, file_id=FileGetRule)
-    @OffsetMarkerRule
-    @LimitRule
+    @validate(req=RequestRule(OffsetMarkerRule, LimitRule),
+              vault_id=VaultGetRule, file_id=FileGetRule)
     def on_get(self, req, resp, vault_id, file_id):
 
         vault = Vault.get(vault_id)

@@ -4,6 +4,7 @@ import falcon
 import msgpack
 import six
 from six.moves.urllib.parse import urlparse, parse_qs
+from stoplight import validate
 
 import deuce
 from deuce import conf
@@ -19,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 class ItemResource(object):
 
-    @validate(vault_id=VaultPutRule, block_id=BlockPutRuleNoneOk)
-    def on_put(self, req, resp, vault_id, block_id):
+    @validate(vault_id=VaultPutRule, storage_block_id=StorageBlockPutRule)
+    def on_put(self, req, resp, vault_id, storage_block_id):
         """Note: This does not support PUT as it is read-only + DELETE
         """
         # PUT operations must go to /vaults/{vaultid}/blocks
@@ -30,16 +31,19 @@ class ItemResource(object):
         path_parts = path.split('/')
         del path_parts[4]
 
-        # TODO: Depends on PR #173 to enable
         # If there exists a Block ID in Metadata then remove
         # Storage Block ID and insert Metadata Block ID
         # Otherwise, assume the block_id is the what the Blocks
         # PUT requires
-        # metadata_block_id = deuce.metadata_driver.get_block_id(vault_id,
-        #                                                        block_id)
-        # if metadata_block_id is not None:
-        #   del path_parts[len(path_parts)-1]
-        #   path.append(metadata_block_id)
+        metadata_block_id = deuce.metadata_driver.get_block_metadata_id(
+            vault_id, storage_block_id)
+
+        if metadata_block_id is not None:
+            del path_parts[(len(path_parts) - 1)]
+            path_parts.append(metadata_block_id)
+
+        resp.set_header('X-Block-ID', metadata_block_id)
+        resp.set_header('X-Storage-ID', storage_block_id)
 
         path = str('/').join(path_parts)
 
@@ -59,46 +63,47 @@ class ItemResource(object):
             'This is read-only access. Uploads must go to {0:}'.format(
                 block_url))
 
-    @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
-    def on_get(self, req, resp, vault_id, block_id):
+    @validate(vault_id=VaultGetRule, storage_block_id=StorageBlockGetRule)
+    def on_get(self, req, resp, vault_id, storage_block_id):
         """Returns a specific block from storage alone"""
         storage = BlockStorage(vault_id)
 
         assert storage is not None
 
-        block = storage.get_block(block_id)
+        block = storage.get_block(storage_block_id)
 
         if block is None:
-            logger.error('block [{0}] does not exist'.format(block_id))
+            logger.error('block [{0}] does not exist'.format(storage_block_id))
             raise errors.HTTPNotFound
 
         ref_cnt = block.get_ref_count()
         resp.set_header('X-Block-Reference-Count', str(ref_cnt))
 
-        ref_mod = block.get_ref_modified()
-        resp.set_header('X-Ref-Modified', str(ref_mod))
+        # TODO:
+        # ref_mod = block.get_ref_modified()
+        # resp.set_header('X-Ref-Modified', str(ref_mod))
 
         resp.stream = block.get_obj()
         resp.stream_len = block.get_block_length()
         resp.status = falcon.HTTP_200
         resp.content_type = 'application/octet-stream'
 
-    @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
-    def on_head(self, req, resp, vault_id, block_id):
+    @validate(vault_id=VaultGetRule, storage_block_id=StorageBlockGetRule)
+    def on_head(self, req, resp, vault_id, storage_block_id):
         """Returns the block data from storage alone"""
         storage = BlockStorage(vault_id)
 
         assert storage is not None
 
-        block_info = storage.head_block(block_id)
-        # for k in block_info.keys():
-        #    resp.set_headers(k, block_info[k])
+        storage_block_info = storage.head_block(storage_block_id)
+        # for k in storage_block_info.keys():
+        #    resp.set_headers(k, storage_block_info[k])
 
         # resp.status = falcon.HTTP_204
 
-    @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
-    def on_delete(self, req, resp, vault_id, block_id):
-        """Deletes a block_id from a given vault_id in
+    @validate(vault_id=VaultGetRule, storage_block_id=StorageBlockGetRule)
+    def on_delete(self, req, resp, vault_id, storage_block_id):
+        """Deletes a storage_block_id from a given vault_id in
         the storage after verifying it does not exist
         in metadata (due diligence applies)
         """
@@ -106,15 +111,14 @@ class ItemResource(object):
 
         assert storage is not None
 
-        block = storage.delete_block(block_id)
+        block = storage.delete_block(storage_block_id)
         # resp.status = falcon.HTTP_204
 
 
 class CollectionResource(object):
 
-    @validate(vault_id=VaultGetRule)
-    @BlockMarkerRule
-    @LimitRule
+    @validate(req=RequestRule(StorageBlockMarkerRule, LimitRule),
+              vault_id=VaultGetRule)
     def on_get(self, req, resp, vault_id):
         """List the blocks in the vault from storage-alone
         """
@@ -130,16 +134,16 @@ class CollectionResource(object):
         # We actually fetch the user's requested
         # limit +1 to detect if the list is being
         # truncated or not.
-        blocks = BlockStorage.get_blocks_generator(inmarker, limit + 1)
+        storage_blocks = BlockStorage.get_blocks_generator(inmarker, limit + 1)
 
         # List the blocks into JSON and return.
         # TODO: figure out a way to stream this back(??)
-        # responses = list(blocks)
+        # responses = list(storage_blocks)
 
         # Was the list truncated? See note above about +1
         # truncated = len(responses) > 0 and len(responses) == limit + 1
 
-        # outmarker = responses.pop().block_id if truncated else None
+        # outmarker = responses.pop().storage_block_id if truncated else None
 
         # if outmarker:
         #    query_args = {'marker': outmarker}
@@ -147,4 +151,5 @@ class CollectionResource(object):
         #    returl = set_qs_on_url(req.url, query_args)
         #    resp.set_header("X-Next-Batch", returl)
 
-        # resp.body = json.dumps([response.block_id for response in responses])
+        # resp.body = json.dumps([response.storage_block_id
+        #                         for response in responses])

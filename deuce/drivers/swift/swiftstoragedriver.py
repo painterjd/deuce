@@ -108,32 +108,34 @@ class SwiftStorageDriver(BlockStorageDriver):
 
             mdhash.update(blockdata)
             mdetag = mdhash.hexdigest()
+            storageid = self.storage_id(block_id)
             ret_etag = self.Conn.put_object(
                 url=deuce.context.openstack.swift.storage_url,
                 token=deuce.context.openstack.auth_token,
                 container=vault_id,
-                name=str(block_id),
+                name=storageid,
                 contents=blockdata,
                 content_length=str(len(blockdata)),
                 etag=mdetag,
                 response_dict=response)
-            return response['status'] == 201 \
-                and ret_etag == mdetag
+            return (response['status'] == 201
+                    and ret_etag == mdetag, storageid)
         except ClientException:
             return False
 
     def store_async_block(self, vault_id, block_ids, blockdatas):
         try:
             response = dict()
+            storage_ids = [self.storage_id(block_id) for block_id in block_ids]
             rets = self.Conn.put_async_object(
                 url=deuce.context.openstack.swift.storage_url,
                 token=deuce.context.openstack.auth_token,
                 container=vault_id,
-                names=[str(block_id) for block_id in block_ids],
+                names=storage_ids,
                 contents=blockdatas,
                 etag=True,
                 response_dict=response)
-            return response['status'] == 201
+            return (response['status'] == 201, storage_ids)
         except ClientException:
             return False
 
