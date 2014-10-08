@@ -9,8 +9,10 @@ from deuce.transport.wsgi import errors
 VAULT_ID_MAX_LEN = 128
 VAULT_ID_REGEX = re.compile('^[a-zA-Z0-9_\-]+$')
 BLOCK_ID_REGEX = re.compile('\\b[0-9a-f]{40}\\b')
-FILE_ID_REGEX = re.compile(
+UUID_REGEX = re.compile(
     '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+FILE_ID_REGEX = UUID_REGEX
+STORAGE_BLOCK_ID_REGEX = UUID_REGEX
 OFFSET_REGEX = re.compile(
     '(?<![-.])\\b[0-9]+\\b(?!\\.[0-9])')
 LIMIT_REGEX = re.compile(
@@ -101,9 +103,17 @@ class QueryStringRule(Rule):
 VaultGetRule = Rule(val_vault_id(), lambda: _abort(404))
 VaultPutRule = Rule(val_vault_id(), lambda: _abort(400))
 BlockGetRule = Rule(val_block_id(), lambda: _abort(404))
+BlockPutRule = Rule(val_block_id(), lambda: _abort(400))
+BlockPostRule = Rule(val_block_id(), lambda: _abort(400))
 FileGetRule = Rule(val_file_id(), lambda: _abort(404))
+FilePutRule = Rule(val_file_id(), lambda: _abort(400))
+FilePostRule = Rule(val_file_id(), lambda: _abort(400))
+FileGetRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(404))
+FilePutRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(400))
 FilePostRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(400))
+BlockGetRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(404))
 BlockPutRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(400))
+BlockPostRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(400))
 
 # query string rules
 LimitRule = QueryStringRule("limit", val_limit(none_ok=True),
