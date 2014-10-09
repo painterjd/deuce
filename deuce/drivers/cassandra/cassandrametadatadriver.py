@@ -1,5 +1,6 @@
 
 import importlib
+import datetime
 import six
 import uuid
 
@@ -167,8 +168,7 @@ CQL_REGISTER_BLOCK = '''
     INSERT INTO blocks
     (projectid, vaultid, blockid, storageid, blocksize, reftime)
     VALUES (%(projectid)s, %(vaultid)s, %(blockid)s, %(storageid)s,
-    %(blocksize)s,
-      unixTimeStampOf(now()))
+    %(blocksize)s, %(reftime)s)
 '''
 
 CQL_UNREGISTER_BLOCK = '''
@@ -195,7 +195,7 @@ CQL_GET_BLOCK_REF_COUNT = '''
 
 CQL_UPDATE_REF_TIME = '''
     UPDATE blocks
-    SET reftime = unixTimeStampOf(now())
+    SET reftime = %(reftime)s
     WHERE projectid = %(projectid)s
     AND vaultid = %(vaultid)s
     AND blockid = %(blockid)s
@@ -652,12 +652,12 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
     def register_block(self, vault_id, block_id, storage_id, blocksize):
         if not self.has_block(vault_id, block_id):
-
             args = dict(
                 projectid=deuce.context.project_id,
                 vaultid=vault_id,
                 blockid=block_id,
                 storageid=uuid.UUID(storage_id),
+                reftime=int(datetime.datetime.utcnow().timestamp()),
                 blocksize=int(blocksize)
             )
 
@@ -707,6 +707,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
             projectid=deuce.context.project_id,
             vaultid=vault_id,
             blockid=block_id,
+            reftime=int(datetime.datetime.utcnow().timestamp())
         )
         self._session.execute(CQL_UPDATE_REF_TIME, reftime_args)
 
