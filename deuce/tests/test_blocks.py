@@ -112,6 +112,17 @@ class TestBlocksController(ControllerTest):
         response = self.simulate_put(path, headers=headers, body=data)
         self.assertEqual(self.srmock.status, falcon.HTTP_412)
 
+    def test_put_happy_case(self):
+
+        block_list = self.helper_create_blocks(num_blocks=1)
+        self.assertEqual(len(block_list), 1)
+
+        self.assertEqual(self.srmock.status, falcon.HTTP_201)
+        self.assertIn('x-storage-id', self.srmock.headers_dict)
+        self.assertIn('x-block-id', self.srmock.headers_dict)
+        self.assertEqual(block_list[0], self.srmock.headers_dict['x-block-id'])
+        self.assertNotEqual(0, self.srmock.headers_dict['x-storage-id'])
+
     def test_post_invalid_block_id(self):
         path = self.get_block_path(self.vault_name,
                                    self.get_blocks_path(self.vault_name))

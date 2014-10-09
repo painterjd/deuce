@@ -134,14 +134,132 @@ class TestBlockStorageController(ControllerTest):
                                      headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_501)
 
-    def test_head_block(self):
+    def test_head_block_in_nonexistent_vault(self):
+        block_id = self.create_storage_block_id()
+
+        block_path = self.get_storage_block_path(self.create_vault_id(),
+                                                 block_id)
+
+        response = self.simulate_head(block_path,
+                                      headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_head_block_nonexistent_block(self):
         block_id = self.create_storage_block_id()
 
         block_path = self.get_storage_block_path(self.vault_name, block_id)
 
         response = self.simulate_head(block_path,
                                       headers=self._hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_501)
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_head_orphaned_block(self):
+        block_list, block_data = self.helper_create_blocks(num_blocks=1)
+        self.assertEqual(len(block_list), 1)
+
+        size, data, sha1 = zip(*block_data)
+
+        block_path = self.get_block_path(self.vault_name, sha1[0])
+
+        upload_headers = {}
+        upload_headers.update(self._hdrs)
+        upload_headers.update({
+            "Content-Type": "application/octet-stream",
+            "Content-Length": str(size[0]),
+        })
+
+        # Upload the block twice, orphaning the second block
+        upload_first = self.simulate_put(block_path,
+                                         headers=upload_headers,
+                                         body=data[0])
+        self.assertEqual(self.srmock.status, falcon.HTTP_201)
+        first_storage_id = self.srmock.headers_dict['x-storage-id']
+        first_block_id = self.srmock.headers_dict['x-block-id']
+
+        upload_second = self.simulate_put(block_path,
+                                          headers=upload_headers,
+                                         body=data[0])
+        self.assertEqual(self.srmock.status, falcon.HTTP_201)
+        second_storage_id = self.srmock.headers_dict['x-storage-id']
+        second_block_id = self.srmock.headers_dict['x-block-id']
+
+        # Verify we got the same block id but different storage ids
+        self.assertEqual(first_block_id, second_block_id)
+        self.assertNotEqual(first_storage_id, second_storage_id)
+
+        # Get the storage id from the orphaned second block
+        storage_id = second_storage_id
+
+        storage_block_path = self.get_storage_block_path(self.vault_name,
+                                                         storage_id)
+        # Now try to head the orphaned block
+        response = self.simulate_head(storage_block_path,
+                                      headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_204)
+
+        self.assertIn('x-block-size', self.srmock.headers_dict)
+        self.assertEqual(str(size[0]),
+                         self.srmock.headers_dict['x-block-size'])
+
+        self.assertIn('x-storage-id', self.srmock.headers_dict)
+        self.assertEqual(storage_id, self.srmock.headers_dict['x-storage-id'])
+
+        self.assertIn('x-block-id', self.srmock.headers_dict)
+        self.assertEqual('None', self.srmock.headers_dict['x-block-id'])
+
+        self.assertIn('x-ref-modified', self.srmock.headers_dict)
+        self.assertEqual('None', self.srmock.headers_dict['x-ref-modified'])
+
+        self.assertIn('x-block-reference-count', self.srmock.headers_dict)
+        self.assertEqual('0',
+                         self.srmock.headers_dict['x-block-reference-count'])
+
+    def test_head_happy_path(self):
+        block_list, block_data = self.helper_create_blocks(num_blocks=1)
+        self.assertEqual(len(block_list), 1)
+
+        size, data, sha1 = zip(*block_data)
+
+        block_path = self.get_block_path(self.vault_name, sha1[0])
+
+        upload_headers = {}
+        upload_headers.update(self._hdrs)
+        upload_headers.update({
+            "Content-Type": "application/octet-stream",
+            "Content-Length": str(size[0]),
+        })
+
+        upload = self.simulate_put(block_path,
+                                   headers=upload_headers,
+                                   body=data[0])
+        self.assertEqual(self.srmock.status, falcon.HTTP_201)
+
+        # Get the storage id from the orphaned second block
+        storage_id = self.srmock.headers_dict['x-storage-id']
+
+        storage_block_path = self.get_storage_block_path(self.vault_name,
+                                                         storage_id)
+        # Now try to head the block
+        response = self.simulate_head(storage_block_path,
+                                      headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_204)
+
+        self.assertIn('x-storage-id', self.srmock.headers_dict)
+        self.assertEqual(storage_id, self.srmock.headers_dict['x-storage-id'])
+
+        self.assertIn('x-block-id', self.srmock.headers_dict)
+        self.assertEqual(sha1[0], self.srmock.headers_dict['x-block-id'])
+
+        self.assertIn('x-ref-modified', self.srmock.headers_dict)
+        self.assertNotEqual('None', self.srmock.headers_dict['x-ref-modified'])
+
+        self.assertIn('x-block-reference-count', self.srmock.headers_dict)
+        self.assertEqual('0',
+                         self.srmock.headers_dict['x-block-reference-count'])
+
+        self.assertIn('x-block-size', self.srmock.headers_dict)
+        self.assertEqual(str(size[0]),
+                         self.srmock.headers_dict['x-block-size'])
 
     def test_get_block_invalid_block(self):
         block_id = self.create_storage_block_id()
@@ -152,8 +270,9 @@ class TestBlockStorageController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
     def test_get_block_bad_vault(self):
+        storage_block_id = self.create_storage_block_id()
         block_path = self.get_storage_block_path(self.create_vault_id(),
-                                                 self.create_block_id())
+                                                 storage_block_id)
         response = self.simulate_get(block_path, headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
