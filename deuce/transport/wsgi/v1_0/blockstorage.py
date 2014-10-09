@@ -79,9 +79,8 @@ class ItemResource(object):
         ref_cnt = block.get_ref_count()
         resp.set_header('X-Block-Reference-Count', str(ref_cnt))
 
-        # TODO:
-        # ref_mod = block.get_ref_modified()
-        # resp.set_header('X-Ref-Modified', str(ref_mod))
+        ref_mod = block.get_ref_modified()
+        resp.set_header('X-Ref-Modified', str(ref_mod))
 
         resp.stream = block.get_obj()
         resp.stream_len = block.get_block_length()

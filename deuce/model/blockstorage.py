@@ -14,8 +14,8 @@ class BlockStorage(object):
         self.Vault = Vault.get(vault_id)
 
     def get_metadata_id(self, storage_block_id):
-        return deuce.metadata_driver.get_block_storage_id(self.vault_id,
-                                                          storage_block_id)
+        return deuce.metadata_driver.get_block_metadata_id(self.vault_id,
+                                                           storage_block_id)
 
     def delete_block(self, storage_block_id):
         # TODO: Implement this, error from here is just temporary
