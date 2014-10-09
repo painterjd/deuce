@@ -2,6 +2,7 @@ from cafe.drivers.unittest import fixtures
 from utils import config
 from utils import client
 from utils.schema import auth
+from utils.schema import deuce_schema
 
 from collections import namedtuple
 
@@ -175,13 +176,52 @@ class TestBase(fixtures.BaseTestFixture):
             self.assertIn('marker', query, msg)
             self.assertIn('limit', query, msg)
 
+    def _assert_empty_response(self, resp, code):
+        """Validation of empty responses"""
+
+        self.assertEqual(resp.status_code, code,
+                         'Status code returned: {0} . '
+                         'Expected {1}'.format(resp.status_code, code))
+        self.assertHeaders(resp.headers, contentlength=0)
+        self.assertEqual(len(resp.content), 0)
+
+    def _assert_json_response(self, resp, code):
+        """Validation of json responses"""
+
+        self.assertEqual(resp.status_code, code,
+                         'Status code returned: {0} . '
+                         'Expected {1}'.format(resp.status_code, code))
+        self.assertHeaders(resp.headers, json=True)
+
     def assert_404_response(self, resp):
         """Basic validation of a 404 response"""
 
-        self.assertEqual(resp.status_code, 404,
-                         'Status code returned: {0} . '
-                         'Expected 404'.format(resp.status_code))
-        self.assertHeaders(resp.headers, contentlength=0)
+        self._assert_empty_response(resp, 404)
+
+    def assert_201_response(self, resp):
+        """Basic validation of a 201 response"""
+
+        self._assert_empty_response(resp, 201)
+
+    def assert_200_response(self, resp):
+        """Basic validation of a 200 response"""
+
+        self._assert_json_response(resp, 200)
+
+    def assert_204_response(self, resp):
+        """Basic validation of a 204 response"""
+
+        self._assert_empty_response(resp, 204)
+
+    def assert_409_response(self, resp):
+        """Basic validation of a 409 response"""
+
+        self._assert_json_response(resp, 409)
+
+    def assert_412_response(self, resp):
+        """Basic validation of a 412 response"""
+
+        self._assert_json_response(resp, 412)
 
     def _create_empty_vault(self, vaultname=None, size=50):
         """
