@@ -1,3 +1,4 @@
+import uuid
 
 from deuce import conf
 
@@ -158,6 +159,39 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             return length
         else:
             return 0
+
+    def get_block_storage_id(self, vault_id, block_id):
+        """Retrieve storage id for a given block id"""
+        self._blocks.ensure_index([('projectid', 1),
+                                  ('vaultid', 1), ('blockid', 1)])
+        args = {
+            'projectid': deuce.context.project_id,
+            'vaultid': vault_id,
+            'blockid': block_id
+        }
+
+        res = self._blocks.find_one(args)
+        if res:
+            return str(res.get('storageid'))
+        else:
+            return None
+
+    def get_block_metadata_id(self, vault_id, storage_id):
+        """Retrieve block id for a given storage id"""
+        self._blocks.ensure_index([('projectid', 1),
+                                  ('vaultid', 1),
+                                  ('storageid', 1)])
+        args = {
+            'projectid': deuce.context.project_id,
+            'vaultid': vault_id,
+            'storageid': uuid.UUID(storage_id)
+        }
+
+        res = self._blocks.find_one(args)
+        if res:
+            return str(res.get('blockid'))
+        else:
+            return None
 
     def has_file(self, vault_id, file_id):
         self._files.ensure_index([('projectid', 1),
@@ -482,12 +516,13 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         args['reftime'] = int(datetime.datetime.utcnow().timestamp())
         self._blocks.update(args, args, upsert=False)
 
-    def register_block(self, vault_id, block_id, blocksize):
+    def register_block(self, vault_id, block_id, storage_id, blocksize):
         if not self.has_block(vault_id, block_id):
             args = {
                 'projectid': deuce.context.project_id,
                 'vaultid': vault_id,
                 'blockid': str(block_id),
+                'storageid': uuid.UUID(storage_id),
                 'blocksize': blocksize,
                 'reftime': int(datetime.datetime.utcnow().timestamp())
             }

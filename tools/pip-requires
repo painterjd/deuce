@@ -4,5 +4,6 @@ falcon
 msgpack-python
 pymongo
 six
+stoplight
 python-swiftclient
 python-logstash

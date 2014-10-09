@@ -1,16 +1,16 @@
-from random import randrange
 import hashlib
-import os
 import json
+import os
+from random import randrange
 
 import falcon
 import mock
 from mock import patch
+from six.moves.urllib.parse import urlparse, parse_qs
+
 from deuce import conf
 from deuce.tests import ControllerTest
-from six.moves.urllib.parse import urlparse, parse_qs
 from deuce.util.misc import set_qs, relative_uri
-from deuce.util.misc import relative_uri
 
 
 class TestFiles(ControllerTest):
@@ -205,19 +205,16 @@ class TestFiles(ControllerTest):
 
         hdrs = {'content-type': 'application/x-deuce-block-list'}
         hdrs.update(self._hdrs)
-        data = "{\"blocks\":["
         enough_num = int(conf.api_configuration.max_returned_num)
 
         # Register enough_num of blocks into system.
         block_list, blocks_data = self.helper_create_blocks(
             num_blocks=enough_num)
-        for cnt in range(0, enough_num):
-            data = data + '{' + '\"id\": \"{0}\", \"size\": \"100\", \
-                \"offset\": \"{1}\"'.format(
-                str(block_list[cnt]), str(cnt * 100)) + '}'
-            if cnt < enough_num - 1:
-                data = data + ','
-        data = data + ']}'
+
+        # NOTE(TheSriram): data is list of lists of the form:
+        # [[blockid, offset], [blockid, offset]]
+        data = json.dumps([[block_list[cnt], cnt * 100]
+                 for cnt in range(0, enough_num)])
 
         response = self.simulate_post(self._distractor_file_id,
                                       body=data, headers=hdrs)
@@ -238,21 +235,18 @@ class TestFiles(ControllerTest):
 
         # Get unfinalized file.
         response = self.simulate_get(self._file_id, headers=hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_412)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Register 1.20 times of blocks into system.
-        data2 = "{\"blocks\":["
         enough_num2 = int(1.2 * conf.api_configuration.max_returned_num)
 
         block_list2, blocks_data2 = self.helper_create_blocks(num_blocks=(
             enough_num2 - enough_num))
-        for cnt in range(enough_num, enough_num2):
-            data2 = data2 + '{' + '\"id\": \"{0}\", \"size\": \"100\", \
-                \"offset\": \"{1}\"'.format(str(block_list2[cnt - enough_num]),
-                                            str(cnt * 100)) + '}'
-            if cnt < enough_num2 - 1:
-                data2 = data2 + ','
-        data2 = data2 + ']}'
+
+        # NOTE(TheSriram): data2 is list of lists of the form:
+        # [[blockid, offset], [blockid, offset]]
+        data2 = json.dumps([[block_list2[cnt - enough_num], cnt * 100]
+                 for cnt in range(enough_num, enough_num2)])
 
         response = self.simulate_post(self._file_id, body=data2, headers=hdrs)
         self.assertGreater(len(response[0].decode()), 2)
@@ -267,7 +261,7 @@ class TestFiles(ControllerTest):
 
         # Get the file.
         response = self.simulate_get(self._file_id, headers=hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_412)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Failed Finalize file for block gap & overlap
 
@@ -275,7 +269,7 @@ class TestFiles(ControllerTest):
         failhdrs['x-file-length'] = '100'
         response = self.simulate_post(self._file_id,
                                       headers=failhdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_413)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Successfully finalize file
         good_hdrs = hdrs.copy()
@@ -285,7 +279,7 @@ class TestFiles(ControllerTest):
 
         # Error on trying to change Finalized file.
         response = self.simulate_post(self._file_id, body=data, headers=hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_400)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Get finalized file.
         response = self.simulate_get(self._file_id, headers=hdrs)

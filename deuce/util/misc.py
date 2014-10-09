@@ -1,6 +1,3 @@
-
-# Find the
-
 try:  # pragma: no cover
     import six.moves.urllib.parse as parse
 except ImportError:  # pragma: no cover

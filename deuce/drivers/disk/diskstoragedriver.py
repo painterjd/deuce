@@ -88,23 +88,25 @@ class DiskStorageDriver(BlockStorageDriver):
             return False
 
     def store_block(self, vault_id, block_id, blockdata):
-        path = self._get_block_path(vault_id, block_id)
+        storageid = self.storage_id(block_id)
+        path = self._get_block_path(vault_id, storageid)
 
         with open(path, 'wb') as outfile:
             outfile.write(blockdata)
 
-        return True
+        return (True, storageid)
 
     def store_async_block(self, vault_id, block_ids, blockdatas):
         results = []
-        for block_id, blockdata in zip(block_ids, blockdatas):
-            path = self._get_block_path(vault_id, block_id)
+        storage_ids = [self.storage_id(block_id) for block_id in block_ids]
+        for storageid, blockdata in zip(storage_ids, blockdatas):
+            path = self._get_block_path(vault_id, storageid)
 
             with open(path, 'wb') as outfile:
                 outfile.write(blockdata)
                 results.append(True)
 
-        return True
+        return (True, storage_ids)
 
     def block_exists(self, vault_id, block_id):
         path = self._get_block_path(vault_id, block_id)

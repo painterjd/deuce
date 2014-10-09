@@ -13,6 +13,17 @@ class HTTPInternalServerError(falcon.HTTPInternalServerError):
             self.TITLE, description=description, **kwargs)
 
 
+class HTTPBadGateway(falcon.HTTPBadGateway):
+
+    """Wraps falcon.HTTPServiceUnavailable"""
+
+    TITLE = u'Bad Gateway'
+
+    def __init__(self, description):
+        super(HTTPBadGateway, self).__init__(
+            self.TITLE, description=description)
+
+
 class HTTPBadRequestAPI(falcon.HTTPBadRequest):
 
     """Wraps falcon.HTTPBadRequest with a contextual title."""
@@ -31,6 +42,16 @@ class HTTPBadRequestBody(falcon.HTTPBadRequest):
 
     def __init__(self, description):
         super(HTTPBadRequestBody, self).__init__(self.TITLE, description)
+
+
+class HTTPConflict(falcon.HTTPConflict):
+
+    """Wraps falcon.HTTPConflict with a contextual title."""
+
+    TITLE = u'Conflict'
+
+    def __init__(self, description):
+        super(HTTPConflict, self).__init__(self.TITLE, description)
 
 
 class HTTPPreconditionFailed(falcon.HTTPPreconditionFailed):

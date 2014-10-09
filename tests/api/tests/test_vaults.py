@@ -213,13 +213,13 @@ class TestPopulatedVault(base.TestBase):
         """Delete a Vault that has some data. 1 block"""
 
         resp = self.client.delete_vault(self.vaultname)
-        self.assertEqual(resp.status_code, 412,
-                         'Status code returned for Delete Vault: {0} . '
-                         'Expected 412'.format(resp.status_code))
+        self.assertEqual(resp.status_code, 409,
+                         'Status code returned: {0} . '
+                         'Expected 409'.format(resp.status_code))
         self.assertHeaders(resp.headers, json=True)
         resp_body = resp.json()
         self.assertIn('title', resp_body)
-        self.assertEqual(resp_body['title'], 'Precondition Failure')
+        self.assertEqual(resp_body['title'], 'Conflict')
         self.assertIn('description', resp_body)
         self.assertEqual(resp_body['description'], 'Vault cannot be deleted')
 
@@ -301,6 +301,16 @@ class TestListVaults(base.TestBase):
         self.assertEqual(len(self.vaultids), value * pages,
                          'Discrepancy between the list of vaults returned '
                          'and the vaults uploaded {0}'.format(self.vaultids))
+
+    def test_list_vault_bad_marker(self):
+        """Request a Vault List with a bad marker"""
+
+        while True:
+            bad_marker = self.id_generator(50)
+            if bad_marker not in self.vaults:
+                break
+        resp = self.client.list_of_vaults(marker=bad_marker)
+        self.assert_404_response(resp)
 
     def tearDown(self):
         super(TestListVaults, self).tearDown()

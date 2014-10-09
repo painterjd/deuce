@@ -1,4 +1,3 @@
-
 from deuce import conf
 import deuce
 import importlib
@@ -43,6 +42,7 @@ schemas.append([
         projectid TEXT NOT NULL,
         vaultid TEXT NOT NULL,
         blockid TEXT NOT NULL,
+        storageid TEXT NOT NULL,
         size INTEGER NOT NULL,
         reftime DATETIME NOT NULL,
         PRIMARY KEY(projectid, vaultid, blockid)
@@ -161,6 +161,22 @@ SQL_GET_ALL_BLOCKS = '''
     LIMIT :limit
 '''
 
+SQL_GET_STORAGE_ID = '''
+    SELECT storageid
+    FROM blocks
+    WHERE projectid = :projectid
+    AND vaultid = :vaultid
+    AND blockid = :blockid
+'''
+
+SQL_GET_BLOCK_ID = '''
+    SELECT blockid
+    FROM blocks
+    WHERE projectid = :projectid
+    AND vaultid = :vaultid
+    AND storageid = :storageid
+'''
+
 SQL_GET_COUNT_ALL_BLOCKS = '''
     SELECT COUNT(DISTINCT(blockid))
     FROM blocks
@@ -213,8 +229,9 @@ SQL_ASSIGN_BLOCK_TO_FILE = '''
 
 SQL_REGISTER_BLOCK = '''
     INSERT INTO blocks
-    (projectid, vaultid, blockid, size, reftime)
-    VALUES (:projectid, :vaultid, :blockid, :blocksize, strftime('%s', 'now'))
+    (projectid, vaultid, blockid, storageid, size, reftime)
+    VALUES (:projectid, :vaultid, :blockid, :storageid, :blocksize,
+    strftime('%s', 'now'))
 '''
 
 SQL_UNREGISTER_BLOCK = '''
@@ -418,6 +435,36 @@ class SqliteStorageDriver(MetadataStorageDriver):
             return row[0]
         except StopIteration:
             return 0
+
+    def get_block_storage_id(self, vault_id, block_id):
+        """Retrieve storage id for a given block id"""
+        args = {
+            'projectid': deuce.context.project_id,
+            'vaultid': vault_id,
+            'blockid': block_id
+        }
+
+        res = self._conn.execute(SQL_GET_STORAGE_ID, args)
+        try:
+            row = next(res)
+            return str(row[0])
+        except StopIteration:
+            return None
+
+    def get_block_metadata_id(self, vault_id, storage_id):
+        """Retrieve block id for a given storage id"""
+        args = {
+            'projectid': deuce.context.project_id,
+            'vaultid': vault_id,
+            'storageid': storage_id
+        }
+
+        res = self._conn.execute(SQL_GET_BLOCK_ID, args)
+        try:
+            row = next(res)
+            return str(row[0])
+        except StopIteration:
+            return None
 
     def has_file(self, vault_id, file_id):
         args = {
@@ -628,13 +675,14 @@ class SqliteStorageDriver(MetadataStorageDriver):
 
         self._conn.commit()
 
-    def register_block(self, vault_id, block_id, blocksize):
+    def register_block(self, vault_id, block_id, storage_id, blocksize):
         if not self.has_block(vault_id, block_id):
             args = {
                 'projectid': deuce.context.project_id,
                 'vaultid': vault_id,
                 'blockid': block_id,
-                'blocksize': int(blocksize)
+                'blocksize': int(blocksize),
+                'storageid': storage_id
             }
 
             self._conn.execute(SQL_REGISTER_BLOCK, args)

@@ -1,11 +1,13 @@
-from random import randrange
 import hashlib
-import os
 import json
+import os
+from random import randrange
 
 import falcon
 import mock
 from mock import patch
+
+from deuce import conf
 from deuce.tests import ControllerTest
 from deuce.util.misc import relative_uri
 
@@ -129,7 +131,6 @@ class TestVaults(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
     def test_vault_deletion(self):
-
         # 1. Delete non-existent vault
         vault_name = self.create_vault_id()
         vault_path = '/v1.0/vaults/{0}'.format(vault_name)
@@ -176,7 +177,7 @@ class TestVaults(ControllerTest):
         # Delete the vault
         response = self.simulate_delete(vault_path,
                                         headers=self._hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_412)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Delete the dummy block
 
@@ -251,7 +252,7 @@ class TestVaults(ControllerTest):
 
         # Delete should fail.
         response = self.simulate_delete(vault_path, headers=self._hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_412)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
     def test_vault_error(self):
         from deuce.model import Vault
