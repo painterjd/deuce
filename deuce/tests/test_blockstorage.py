@@ -1,14 +1,7 @@
 import ddt
 import hashlib
-import json
 import falcon
-import msgpack
 import os
-from random import randrange
-from mock import patch
-from deuce import conf
-from deuce.util.misc import set_qs, relative_uri
-from six.moves.urllib.parse import urlparse, parse_qs
 
 from deuce.tests import ControllerTest
 
@@ -34,18 +27,12 @@ class TestBlockStorageController(ControllerTest):
         self.helper_delete_vault(self.vault_name, self._hdrs)
         super(TestBlockStorageController, self).tearDown()
 
-    def get_storage_block_path(self, storage_block_id):
-        return '{0:}/{1:}'.format(self._block_storage_path, storage_block_id)
-
-    def get_block_path(self, block_id):
-        return '{0:}/{1:}'.format(self._blocks_path, block_id)
-
     def test_put_block_nonexistant_block(self):
         # No block already in metadata/storage
 
         block_id = self.create_storage_block_id()
 
-        block_path = self.get_storage_block_path(block_id)
+        block_path = self.get_storage_block_path(self.vault_name, block_id)
 
         response = self.simulate_put(block_path,
                                      headers=self._hdrs)
@@ -64,7 +51,8 @@ class TestBlockStorageController(ControllerTest):
         upload_block_id = self.calc_sha1(upload_data)
 
         # Upload it to Deuce in the correct method (via blocks/{sha1})
-        upload_block_path = self.get_block_path(upload_block_id)
+        upload_block_path = self.get_block_path(self.vault_name,
+                                                upload_block_id)
         upload_headers = self._hdrs
         upload_headers.update({
             "Content-Type": "application/octet-stream",
@@ -82,7 +70,7 @@ class TestBlockStorageController(ControllerTest):
         # Now try to upload it via the Storage Blocks method
         storage_block_id = self.srmock.headers_dict['x-storage-id']
         block_path = self.get_storage_block_path(
-            storage_block_id)
+            self.vault_name, storage_block_id)
 
         response = self.simulate_put(block_path,
                                      headers=upload_headers,
@@ -110,7 +98,8 @@ class TestBlockStorageController(ControllerTest):
 
         block_path = 'http://localhost{0}/{1}'.format(self._blocks_path,
                                                       block_id)
-        storage_block_path = self.get_storage_block_path(block_id)
+        storage_block_path = self.get_storage_block_path(
+            self.vault_name, block_id)
 
         response = self.simulate_put(storage_block_path,
                                      headers=self._hdrs)
@@ -126,9 +115,8 @@ class TestBlockStorageController(ControllerTest):
         self.assertEqual(block_path, block_location)
 
     def test_list_blocks_bad_vault(self):
-        vault_path = '/v1.0/vaults/{0}'.format(self.create_vault_id())
-        storage_path = '{0:}/storage'.format(vault_path)
-        block_storage_path = '{0:}/blocks'.format(storage_path)
+        block_storage_path = self.get_storage_blocks_path(
+            self.create_vault_id())
         response = self.simulate_get(block_storage_path,
                                      headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
@@ -149,26 +137,54 @@ class TestBlockStorageController(ControllerTest):
     def test_head_block(self):
         block_id = self.create_storage_block_id()
 
-        block_path = self.get_storage_block_path(block_id)
+        block_path = self.get_storage_block_path(self.vault_name, block_id)
 
         response = self.simulate_head(block_path,
                                       headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_501)
 
-    def test_get_block(self):
+    def test_get_block_invalid_block(self):
         block_id = self.create_storage_block_id()
 
-        block_path = self.get_storage_block_path(block_id)
+        block_path = self.get_storage_block_path(self.vault_name, block_id)
 
-        response = self.simulate_get(block_path,
-                                     headers=self._hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_501)
+        response = self.simulate_get(block_path, headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_get_block_bad_vault(self):
+        block_path = self.get_storage_block_path(self.create_vault_id(),
+                                                 self.create_block_id())
+        response = self.simulate_get(block_path, headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_get_block(self):
+        block_list, block_data = self.helper_create_blocks(num_blocks=1)
+        self.assertEqual(len(block_list), 1)
+
+        storage_list = self.helper_store_blocks(self.vault_name, block_data)
+        self.assertEqual(len(storage_list), 1)
+
+        block_path = self.get_storage_block_path(
+            self.vault_name, storage_list[0][1])
+
+        response = self.simulate_get(block_path, headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_200)
+        # TODO: self.assertIn('x-ref-modified', str(self.srmock.headers))
+        self.assertIn('x-block-reference-count', str(self.srmock.headers))
+        self.assertEqual(
+            int(self.srmock.headers_dict['x-block-reference-count']),
+            0)
+
+        response_body = [resp for resp in response]
+        bindata = response_body[0]
+        z = hashlib.sha1()
+        z.update(bindata)
+        self.assertEqual(z.hexdigest(), block_list[0])
 
     def test_delete_block(self):
         block_id = self.create_storage_block_id()
 
-        block_path = self.get_storage_block_path(block_id)
+        block_path = self.get_storage_block_path(self.vault_name, block_id)
 
-        response = self.simulate_delete(block_path,
-                                        headers=self._hdrs)
+        response = self.simulate_delete(block_path, headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_501)
