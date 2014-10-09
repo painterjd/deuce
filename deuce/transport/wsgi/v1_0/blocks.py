@@ -47,6 +47,7 @@ class ItemResource(object):
 
             storage_id = block.get_storage_id()
             resp.set_header('X-Storage-ID', str(storage_id))
+            resp.set_header('X-Block-ID', str(block_id))
             resp.status = falcon.HTTP_204
 
         except ConsistencyError as ex:
@@ -77,6 +78,10 @@ class ItemResource(object):
         ref_mod = block.get_ref_modified()
         resp.set_header('X-Ref-Modified', str(ref_mod))
 
+        storage_id = block.get_storage_id()
+        resp.set_header('X-Storage-ID', str(storage_id))
+        resp.set_header('X-Block-ID', str(block_id))
+
         resp.stream = block.get_obj()
         resp.stream_len = vault.get_block_length(block_id)
         resp.status = falcon.HTTP_200
@@ -91,8 +96,10 @@ class ItemResource(object):
         vault = Vault.get(vault_id)
 
         try:
-            retval = vault.put_block(
+            retval, storage_id = vault.put_block(
                 block_id, req.stream.read(), req.get_header('content-length'))
+            resp.set_header('X-Storage-ID', str(storage_id))
+            resp.set_header('X-Block-ID', str(block_id))
             resp.status = (
                 falcon.HTTP_201 if retval is True else falcon.HTTP_500)
             logger.info('block [{0}] added'.format(block_id))

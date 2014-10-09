@@ -1,4 +1,5 @@
 import falcon
+import falcon.status_codes as status
 
 
 class HTTPInternalServerError(falcon.HTTPInternalServerError):
@@ -7,9 +8,9 @@ class HTTPInternalServerError(falcon.HTTPInternalServerError):
 
     TITLE = u'Service temporarily unavailable'
 
-    def __init__(self, description):
+    def __init__(self, description, **kwargs):
         super(HTTPInternalServerError, self).__init__(
-            self.TITLE, description=description)
+            self.TITLE, description=description, **kwargs)
 
 
 class HTTPBadGateway(falcon.HTTPBadGateway):
@@ -69,3 +70,27 @@ class HTTPNotFound(falcon.HTTPNotFound):
 
     def __init__(self):
         super(HTTPNotFound, self).__init__()
+
+
+class HTTPNotImplemented(falcon.HTTPError):
+
+    """Derives NotImplemented from falcon.HTTPError"""
+
+    TITLE = u'Not Implemented'
+
+    def __init__(self, description):
+        super(HTTPNotImplemented, self).__init__(status.HTTP_501,
+                                                 self.TITLE,
+                                                 description,
+                                                 code=501)
+
+
+class HTTPMethodNotAllowed(falcon.HTTPMethodNotAllowed):
+
+    """Wraps falcon.HTTPMethodNotAllowed"""
+
+    TITLE = u'Method Not Allowed'
+
+    def __init__(self, allowed_method, description):
+        super(HTTPMethodNotAllowed, self).__init__(allowed_method,
+                                                   description=description)

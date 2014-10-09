@@ -36,6 +36,12 @@ def val_block_id(value):
 
 
 @validation_function
+def val_storage_block_id(value):
+    if not STORAGE_BLOCK_ID_REGEX.match(value):
+        raise ValidationFailed('Invalid Storage Block ID {0}'.format(value))
+
+
+@validation_function
 def val_file_id(value):
     if not FILE_ID_REGEX.match(value):
         raise ValidationFailed('Invalid File ID {0}'.format(value))
@@ -105,6 +111,8 @@ VaultPutRule = Rule(val_vault_id(), lambda: _abort(400))
 BlockGetRule = Rule(val_block_id(), lambda: _abort(404))
 BlockPutRule = Rule(val_block_id(), lambda: _abort(400))
 BlockPostRule = Rule(val_block_id(), lambda: _abort(400))
+StorageBlockGetRule = Rule(val_storage_block_id(), lambda: _abort(404))
+StorageBlockPutRule = Rule(val_storage_block_id(), lambda: _abort(400))
 FileGetRule = Rule(val_file_id(), lambda: _abort(404))
 FilePutRule = Rule(val_file_id(), lambda: _abort(400))
 FilePostRule = Rule(val_file_id(), lambda: _abort(400))
@@ -114,6 +122,10 @@ FilePostRuleNoneOk = Rule(val_file_id(none_ok=True), lambda: _abort(400))
 BlockGetRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(404))
 BlockPutRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(400))
 BlockPostRuleNoneOk = Rule(val_block_id(none_ok=True), lambda: _abort(400))
+StorageBlockRuleGetNoneOk = Rule(val_storage_block_id(none_ok=True),
+                                 lambda: _abort(404))
+StorageBlockRulePutNoneOk = Rule(val_storage_block_id(none_ok=True),
+                                 lambda: _abort(400))
 
 # query string rules
 LimitRule = QueryStringRule("limit", val_limit(none_ok=True),
@@ -130,3 +142,7 @@ OffsetMarkerRule = QueryStringRule("marker", val_offset(none_ok=True),
 
 BlockMarkerRule = QueryStringRule("marker", val_block_id(none_ok=True),
                                   lambda: _abort(404))
+
+StorageBlockMarkerRule = QueryStringRule("marker",
+                                         val_storage_block_id(none_ok=True),
+                                         lambda: _abort(404))

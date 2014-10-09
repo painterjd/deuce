@@ -68,7 +68,7 @@ class Vault(object):
         deuce.metadata_driver.register_block(
             self.id, block_id, retval[1], data_len)
 
-        return retval[0]
+        return retval
 
     def put_async_block(self, block_ids, blockdatas):
         block_ids = [block_id.decode() for block_id in block_ids]

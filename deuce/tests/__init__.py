@@ -93,6 +93,9 @@ class TestBase(unittest.TestCase):
         sha1.update(data or os.urandom(2048))
         return sha1.hexdigest()
 
+    def create_storage_block_id(self):
+        return '{0:}'.format(str(uuid.uuid4()))
+
     def create_vault_id(self):
         """Creates a dummy vault ID. This could be
         anything, but for ease-of-use we just make it

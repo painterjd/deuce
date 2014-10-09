@@ -1,5 +1,4 @@
 from unittest import TestCase
-import urllib.parse
 import uuid
 
 from falcon import request
@@ -309,6 +308,106 @@ class TestMetadataBlockRules(TestRulesBase):
 
             with self.assertRaises(errors.HTTPNotFound):
                 self.utilize_request(block_id_req, raiseme=True)
+
+
+class TestStorageBlockRules(TestRulesBase):
+
+    positive_cases = [str(uuid.uuid4()) for _ in range(0, 1000)]
+
+    negative_cases = [
+        '',
+        'e7bf692b-ec7b-40ad-b0d1-45ce6798fb6z',  # note trailing z
+        str(uuid.uuid4()).upper(),  # Force case sensitivity
+        None
+    ]
+
+    @validate(storage_block_id=v.StorageBlockGetRule)
+    def utilize_get_storage_block_get(self, storage_block_id):
+        return True
+
+    @validate(storage_block_id=v.StorageBlockPutRule)
+    def utilize_put_storage_block_id(self, storage_block_id):
+        return True
+
+    @validate(storage_block_id=v.StorageBlockRuleGetNoneOk)
+    def utilize_get_storage_block_get_none_okay(self, storage_block_id):
+        return True
+
+    @validate(storage_block_id=v.StorageBlockRulePutNoneOk)
+    def utilize_put_storage_block_id_none_okay(self, storage_block_id):
+        return True
+
+    @validate(req=v.RequestRule(v.StorageBlockMarkerRule))
+    def utilize_request(self, req, raiseme=False):
+        if raiseme:
+            raise RuntimeError('QUERY_STRING: {0}'.format(req.query_string))
+        else:
+            return True
+
+    def test_storage_storage_block_id(self):
+
+        for storage_id in self.__class__.positive_cases:
+            v.val_storage_block_id(storage_id)
+
+        for storage_id in self.__class__.negative_cases:
+            with self.assertRaises(ValidationFailed):
+                v.val_storage_block_id()(storage_id)
+
+    def test_get_storage_block_id(self):
+
+        for storage_id in self.__class__.positive_cases:
+            self.utilize_get_storage_block_get(storage_id)
+
+        for storage_id in self.__class__.negative_cases:
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_get_storage_block_get(storage_id)
+
+    def test_put_storage_block_id(self):
+
+        for storage_id in self.__class__.positive_cases:
+            self.utilize_put_storage_block_id(storage_id)
+
+        for storage_id in self.__class__.negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_put_storage_block_id(storage_id)
+
+    def test_get_storage_block_id_none_okay(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for storage_id in positive_cases:
+            self.utilize_get_storage_block_get_none_okay(storage_id)
+
+        for storage_id in negative_cases:
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_get_storage_block_get_none_okay(storage_id)
+
+    def test_put_storage_block_id_none_okay(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for storage_id in positive_cases:
+            self.utilize_put_storage_block_id_none_okay(storage_id)
+
+        for storage_id in negative_cases:
+            with self.assertRaises(errors.HTTPBadRequestAPI):
+                self.utilize_put_storage_block_id_none_okay(storage_id)
+
+    def test_storage_block_id_marker(self):
+
+        positive_cases, negative_cases = self.cases_with_none_okay()
+
+        for storage_id in positive_cases:
+            storage_id_req = TestRulesBase.build_request(params=[('marker',
+                                                                storage_id)])
+            self.assertTrue(self.utilize_request(storage_id_req))
+
+        for storage_id in negative_cases:
+            storage_id_req = TestRulesBase.build_request(params=[('marker',
+                                                                storage_id)])
+
+            with self.assertRaises(errors.HTTPNotFound):
+                self.utilize_request(storage_id_req, raiseme=True)
 
 
 class TestFileRules(TestRulesBase):

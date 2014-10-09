@@ -92,6 +92,8 @@ class TestBlocksController(ControllerTest):
         self.assertIn('x-ref-modified', str(self.srmock.headers))
         self.assertIn('x-storage-id', str(self.srmock.headers))
         self.assertTrue(uuid.UUID(self.srmock.headers_dict['x-storage-id']))
+        self.assertIn('x-block-id', str(self.srmock.headers))
+        self.assertEqual(block_list[0], self.srmock.headers_dict['x-block-id'])
 
     def test_put_invalid_block_id(self):
         path = self.get_block_path('invalid_block_id')
