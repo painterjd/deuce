@@ -1,7 +1,9 @@
 from tests.api import base
+from tests.api.utils.schema import deuce_schema
 
 import ddt
 import json
+import jsonschema
 import os
 import sha
 import uuid
@@ -40,13 +42,10 @@ class TestCreateFile(base.TestBase):
         """Create a file"""
 
         resp = self.client.create_file(self.vaultname)
-        self.assertEqual(resp.status_code, 201,
-                         'Status code for creating a file is '
-                         '{0} . Expected 201'.format(resp.status_code))
-        self.assertHeaders(resp.headers, contentlength=0)
+        self.assert_201_response(resp)
+
         self.assertIn('location', resp.headers)
         self.assertUrl(resp.headers['location'], filepath=True)
-        self.assertEqual(len(resp.content), 0)
 
     def tearDown(self):
         super(TestCreateFile, self).tearDown()
@@ -74,11 +73,11 @@ class TestFileBlockUploaded(base.TestBase):
         resp = self.client.assign_to_file(json.dumps(block_list),
                                           alternate_url=self.fileurl)
 
-        self.assertEqual(resp.status_code, 200,
-                         'Status code for assigning blocks to files '
-                         '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        resp_body = json.loads(resp.content)
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.block_list)
+
         self.assertListEqual(resp_body, [])
 
     def test_assign_missing_block_to_file(self):
@@ -92,11 +91,11 @@ class TestFileBlockUploaded(base.TestBase):
         resp = self.client.assign_to_file(json.dumps(block_list),
                                           alternate_url=self.fileurl)
 
-        self.assertEqual(resp.status_code, 200,
-                         'Status code for assigning blocks to files '
-                         '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        resp_body = json.loads(resp.content)
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.block_list)
+
         self.assertListEqual(resp_body, [blockid])
 
     def tearDown(self):
@@ -121,8 +120,8 @@ class TestEmptyFile(base.TestBase):
         resp = self.client.finalize_file(filesize=0,
                                          alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 200,
-                         'Status code for finalizing file '
-                         '{0} . Expected 200'.format(resp.status_code))
+                         'Status code returned: {0} . '
+                         'Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0)
 
@@ -131,11 +130,12 @@ class TestEmptyFile(base.TestBase):
         finalized"""
 
         resp = self.client.list_of_files(vaultname=self.vaultname)
-        self.assertEqual(resp.status_code, 200,
-                         'Status code for getting the list of all files '
-                         '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        self.assertListEqual(resp.json(), [])
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.file_list)
+
+        self.assertListEqual(resp_body, [])
 
     def tearDown(self):
         super(TestEmptyFile, self).tearDown()
@@ -159,8 +159,8 @@ class TestFileAssignedBlocks(base.TestBase):
         resp = self.client.finalize_file(filesize=self.filesize,
                                          alternate_url=self.fileurl)
         self.assertEqual(resp.status_code, 200,
-                         'Status code for finalizing file '
-                         '{0} . Expected 200'.format(resp.status_code))
+                         'Status code returned: {0} . '
+                         'Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, contentlength=0)
         self.assertEqual(len(resp.content), 0)
 
@@ -168,14 +168,12 @@ class TestFileAssignedBlocks(base.TestBase):
         """Get a (unfinalized) file"""
 
         resp = self.client.get_file(self.vaultname, self.fileid)
-        self.assertEqual(resp.status_code, 409,
-                         'Status code returned '
-                         '{0} . Expected 409'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
+        self.assert_409_response(resp)
+
         resp_body = resp.json()
-        self.assertIn('title', resp_body)
+        jsonschema.validate(resp_body, deuce_schema.error)
+
         self.assertEqual(resp_body['title'], 'Conflict')
-        self.assertIn('description', resp_body)
         self.assertEqual(resp_body['description'], 'File not Finalized')
 
     def tearDown(self):
@@ -205,16 +203,14 @@ class TestFileMissingBlock(base.TestBase):
 
         resp = self.client.finalize_file(filesize=self.filesize,
                                          alternate_url=self.fileurl)
-        self.assertEqual(resp.status_code, 409,
-                         'Status code returned: '
-                         '{0} . Expected 409'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
+        self.assert_409_response(resp)
+
         # The response will only list the first missing block
         resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.error)
+
         expected = '"[{0}\\\\{1}] Gap in file {2} from {3}-{4}"'
-        self.assertIn('title', resp_body)
         self.assertEqual(resp_body['title'], 'Conflict')
-        self.assertIn('description', resp_body)
         self.assertEqual(resp_body['description'], expected.format(
             self.client.default_headers['X-Project-Id'], self.vaultname,
             self.fileid, 30720, 30720 * 2))
@@ -243,16 +239,14 @@ class TestFileOverlappingBlock(base.TestBase):
 
         resp = self.client.finalize_file(filesize=self.filesize,
                                          alternate_url=self.fileurl)
-        self.assertEqual(resp.status_code, 409,
-                         'Status code returned: '
-                         '{0} . Expected 409'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
+        self.assert_409_response(resp)
+
         # The response will only list the first overlapping block
         resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.error)
+
         expected = '"[{0}/{1}] Overlap at block {2} file {3} at [{4}-{5}]"'
-        self.assertIn('title', resp_body)
         self.assertEqual(resp_body['title'], 'Conflict')
-        self.assertIn('description', resp_body)
         self.assertEqual(resp_body['description'], expected.format(
             self.client.default_headers['X-Project-Id'], self.vaultname,
             self.blocks[1].Id, self.fileid, 30720 / 2, 30720))
@@ -287,11 +281,12 @@ class TestListBlocksOfFile(base.TestBase):
         """List multiple blocks (20) assigned to the file"""
 
         resp = self.client.list_of_blocks_in_file(self.vaultname, self.fileid)
-        self.assertEqual(resp.status_code, 200,
-                         'Status code for getting the list of blocks of a '
-                         'file {0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        self.assertBlocksInResponse(resp)
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.block_list_of_file)
+
+        self.assertBlocksInResponse(resp_body)
         self.assertEqual(len(self.blockids_offsets), 0,
                          'Discrepancy between the list of blocks returned '
                          'and the blocks associated to the file')
@@ -305,11 +300,12 @@ class TestListBlocksOfFile(base.TestBase):
         skipped_blockids_offsets = self.blockids_offsets[:value]
         resp = self.client.list_of_blocks_in_file(self.vaultname, self.fileid,
                                                   marker=markerid)
-        self.assertEqual(resp.status_code, 200,
-                         'Status code for getting the list of blocks of a '
-                         'file {0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        self.assertBlocksInResponse(resp)
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.block_list_of_file)
+
+        self.assertBlocksInResponse(resp_body)
         self.assertEqual(self.blockids_offsets, skipped_blockids_offsets,
                          'Discrepancy between the list of blocks returned '
                          'and the blocks associated to the file')
@@ -344,21 +340,22 @@ class TestListBlocksOfFile(base.TestBase):
             else:
                 resp = self.client.list_of_blocks_in_file(alternate_url=url)
 
-            self.assertEqual(resp.status_code, 200,
-                             'Status code for getting the list of blocks of '
-                             'a file {0} . '
-                             'Expected 200'.format(resp.status_code))
-            self.assertHeaders(resp.headers, json=True)
+            self.assert_200_response(resp)
+
             if i < 20 / value - (1 + pages):
                 self.assertIn('x-next-batch', resp.headers)
                 url = resp.headers['x-next-batch']
                 self.assertUrl(url, fileblock=True, nextlist=True)
             else:
                 self.assertNotIn('x-next-batch', resp.headers)
-            self.assertEqual(len(resp.json()), value,
+
+            resp_body = resp.json()
+            jsonschema.validate(resp_body, deuce_schema.block_list_of_file)
+
+            self.assertEqual(len(resp_body), value,
                              'Number of block ids returned is not {0} . '
-                             'Returned {1}'.format(value, len(resp.json())))
-            self.assertBlocksInResponse(resp)
+                             'Returned {1}'.format(value, len(resp_body)))
+            self.assertBlocksInResponse(resp_body)
         self.assertEqual(len(self.blockids_offsets), value * pages,
                          'Discrepancy between the list of blocks returned '
                          'and the blocks associated to the file')
@@ -366,7 +363,7 @@ class TestListBlocksOfFile(base.TestBase):
     def assertBlocksInResponse(self, response):
         """Check the block information returned in the response"""
 
-        for id_offset in response.json():
+        for id_offset in response:
             self.assertIn(id_offset[0], self.blockids)
             i = self.blockids.index(id_offset[0])
             self.assertEqual(id_offset[0], self.blockids_offsets[i][0])
@@ -398,8 +395,8 @@ class TestFinalizedFile(base.TestBase):
 
         resp = self.client.get_file(self.vaultname, self.fileid)
         self.assertEqual(resp.status_code, 200,
-                         'Status code for getting a file is '
-                         '{0} . Expected 200'.format(resp.status_code))
+                         'Status code returned: {0} . '
+                         'Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, binary=True,
                            contentlength=self.filesize)
         filedata = ''
@@ -412,21 +409,18 @@ class TestFinalizedFile(base.TestBase):
         """Delete a (finalized) file"""
 
         resp = self.client.delete_file(self.vaultname, self.fileid)
-        self.assertEqual(resp.status_code, 204,
-                         'Status code for deleting a file is '
-                         '{0} . Expected 204'.format(resp.status_code))
-        self.assertHeaders(resp.headers, contentlength=0)
-        self.assertEqual(len(resp.content), 0)
+        self.assert_204_response(resp)
 
     def test_list_finalized_file(self):
         """Get list of files with only one file that is finalized"""
 
         resp = self.client.list_of_files(vaultname=self.vaultname)
-        self.assertEqual(resp.status_code, 200,
-                         'Status code for getting the list of all files '
-                         '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        self.assertListEqual([self.fileid], resp.json())
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.file_list)
+
+        self.assertListEqual([self.fileid], resp_body)
 
     def test_assign_block_finalized_file(self):
         """Assign a block to a finalized file"""
@@ -438,14 +432,12 @@ class TestFinalizedFile(base.TestBase):
         resp = self.client.assign_to_file(json.dumps(block_list),
                                           alternate_url=self.fileurl)
 
-        self.assertEqual(resp.status_code, 409,
-                         'Status code returned: '
-                         '{0} . Expected 409'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        resp_body = json.loads(resp.content)
-        self.assertIn('title', resp_body)
+        self.assert_409_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.error)
+
         self.assertEqual(resp_body['title'], 'Conflict')
-        self.assertIn('description', resp_body)
         self.assertEqual(resp_body['description'],
                          'Finalized file cannot be modified')
 
@@ -479,11 +471,12 @@ class TestMultipleFinalizedFiles(base.TestBase):
         """List multiple files (20)"""
 
         resp = self.client.list_of_files(vaultname=self.vaultname)
-        self.assertEqual(resp.status_code, 200,
-                         'Status code for getting the list of all files '
-                         '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        self.assertListEqual(resp.json(), sorted(self.file_ids))
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.file_list)
+
+        self.assertListEqual(resp_body, sorted(self.file_ids))
 
     @ddt.data(2, 4, 5, 10)
     def test_list_multiple_files_marker(self, value):
@@ -494,11 +487,12 @@ class TestMultipleFinalizedFiles(base.TestBase):
         requested_list_files = sorted_list_files[value:]
         resp = self.client.list_of_files(vaultname=self.vaultname,
                                          marker=markerid)
-        self.assertEqual(resp.status_code, 200,
-                         'Status code for getting the list of all files '
-                         '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        self.assertListEqual(resp.json(), requested_list_files)
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.file_list)
+
+        self.assertListEqual(resp_body, requested_list_files)
 
     @ddt.data(2, 4, 5, 10)
     def test_list_files_limit(self, value):
@@ -528,20 +522,22 @@ class TestMultipleFinalizedFiles(base.TestBase):
             else:
                 resp = self.client.list_of_files(alternate_url=url)
 
-            self.assertEqual(resp.status_code, 200,
-                             'Status code for listing all files is '
-                             '{0} . Expected 200'.format(resp.status_code))
-            self.assertHeaders(resp.headers, json=True)
+            self.assert_200_response(resp)
+
             if i < 20 / value - (1 + pages):
                 self.assertIn('x-next-batch', resp.headers)
                 url = resp.headers['x-next-batch']
                 self.assertUrl(url, files=True, nextlist=True)
             else:
                 self.assertNotIn('x-next-batch', resp.headers)
-            self.assertEqual(len(resp.json()), value,
+
+            resp_body = resp.json()
+            jsonschema.validate(resp_body, deuce_schema.file_list)
+
+            self.assertEqual(len(resp_body), value,
                              'Number of file ids returned is not {0} . '
-                             'Returned {1}'.format(value, len(resp.json())))
-            for fileid in resp.json():
+                             'Returned {1}'.format(value, len(resp_body)))
+            for fileid in resp_body:
                 self.assertIn(fileid, self.file_ids)
                 self.file_ids.remove(fileid)
         self.assertEqual(len(self.file_ids), value * pages,
