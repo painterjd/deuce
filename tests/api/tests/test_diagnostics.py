@@ -11,22 +11,13 @@ class TestDiagnostics(base.TestBase):
         """Ping"""
 
         resp = self.client.ping()
-        self.assertEqual(resp.status_code, 204,
-                         'Status code returned for Ping: {0} . '
-                         'Expected 204'.format(resp.status_code))
-        self.assertHeaders(resp.headers)
-        self.assertEqual(len(resp.content), 0,
-                         'Response Content was not empty. Content: '
-                         '{0}'.format(resp.content))
+        self.assert_204_response(resp)
 
     def test_health(self):
         """Health"""
 
         resp = self.client.health()
-        self.assertEqual(resp.status_code, 200,
-                         'Status code returned for Health: {0} . '
-                         'Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
+        self.assert_200_response(resp)
 
         # TODO: Add additional response.content validation
         resp_body = resp.json()

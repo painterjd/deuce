@@ -1,6 +1,8 @@
 from tests.api import base
+from tests.api.utils.schema import deuce_schema
 
 import ddt
+import jsonschema
 import msgpack
 import os
 import sha
@@ -16,11 +18,12 @@ class TestNoBlocksUploaded(base.TestBase):
         """List blocks for an empty vault"""
 
         resp = self.client.list_of_blocks(self.vaultname)
-        self.assertEqual(resp.status_code, 200,
-                         'Status code for listing all blocks is'
-                         ' {0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        self.assertListEqual(resp.json(), [],
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.block_list)
+
+        self.assertListEqual(resp_body, [],
                              'Response to List Blocks for an empty vault '
                              'should be an empty list []')
 
@@ -54,16 +57,13 @@ class TestNoBlocksUploaded(base.TestBase):
         bad_blockid = sha.new('bad').hexdigest()
         resp = self.client.upload_block(self.vaultname, bad_blockid,
                                         self.block_data)
-        self.assertEqual(resp.status_code, 412,
-                         'Status code returned: '
-                         '{0} . Expected 412'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
+        self.assert_412_response(resp)
+
         resp_body = resp.json()
-        self.assertIn('title', resp_body)
+        jsonschema.validate(resp_body, deuce_schema.error)
+
         self.assertEqual(resp_body['title'], 'Precondition Failure')
-        self.assertIn('description', resp_body)
-        self.assertEqual(resp_body['description'],
-                         'hash error')
+        self.assertEqual(resp_body['description'], 'hash error')
 
     def test_upload_multiple_wrong_blockid(self):
         """Upload a block with a wrong blockid"""
@@ -74,14 +74,12 @@ class TestNoBlocksUploaded(base.TestBase):
         msgpacked_data = msgpack.packb(data)
         resp = self.client.upload_multiple_blocks(self.vaultname,
                                                   msgpacked_data)
-        self.assertEqual(resp.status_code, 412,
-                         'Status code returned: '
-                         '{0} . Expected 412'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
+        self.assert_412_response(resp)
+
         resp_body = resp.json()
-        self.assertIn('title', resp_body)
+        jsonschema.validate(resp_body, deuce_schema.error)
+
         self.assertEqual(resp_body['title'], 'Precondition Failure')
-        self.assertIn('description', resp_body)
         self.assertEqual(resp_body['description'],
                          'hash error')
 
@@ -104,13 +102,7 @@ class TestUploadBlocks(base.TestBase):
         self.generate_block_data(size=value)
         resp = self.client.upload_block(self.vaultname, self.blockid,
                                         self.block_data)
-        self.assertEqual(resp.status_code, 201,
-                         'Status code for uploading a block is '
-                         '{0} . Expected 201'.format(resp.status_code))
-        self.assertHeaders(resp.headers, contentlength=0)
-        self.assertEqual(len(resp.content), 0,
-                         'Response Content was not empty. Content: '
-                         '{0}'.format(resp.content))
+        self.assert_201_response(resp)
 
     @ddt.data(1, 3, 10, 32)
     def test_upload_multiple_blocks(self, value):
@@ -121,13 +113,7 @@ class TestUploadBlocks(base.TestBase):
         msgpacked_data = msgpack.packb(data)
         resp = self.client.upload_multiple_blocks(self.vaultname,
                                                   msgpacked_data)
-        self.assertEqual(resp.status_code, 201,
-                         'Status code for uploading multiple blocks is '
-                         '{0} . Expected 201'.format(resp.status_code))
-        self.assertHeaders(resp.headers, contentlength=0)
-        self.assertEqual(len(resp.content), 0,
-                         'Response Content was not empty. Content: '
-                         '{0}'.format(resp.content))
+        self.assert_201_response(resp)
 
     def tearDown(self):
         super(TestUploadBlocks, self).tearDown()
@@ -147,11 +133,12 @@ class TestBlockUploaded(base.TestBase):
         """List a single block"""
 
         resp = self.client.list_of_blocks(self.vaultname)
-        self.assertEqual(resp.status_code, 200,
-                         'Status code for listing all blocks is '
-                         '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        self.assertListEqual(resp.json(), [self.blockid],
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.block_list)
+
+        self.assertListEqual(resp_body, [self.blockid],
                              'Response for List Blocks should have 1 item')
 
     def test_get_one_block(self):
@@ -159,8 +146,8 @@ class TestBlockUploaded(base.TestBase):
 
         resp = self.client.get_block(self.vaultname, self.blockid)
         self.assertEqual(resp.status_code, 200,
-                         'Status code for getting data of a block is '
-                         '{0} . Expected 200'.format(resp.status_code))
+                         'Status code returned: {0} . '
+                         'Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, binary=True,
                            lastmodified=True,
                            contentlength=len(self.block_data))
@@ -174,8 +161,8 @@ class TestBlockUploaded(base.TestBase):
 
         resp = self.client.block_head(self.vaultname, self.blockid)
         self.assertEqual(resp.status_code, 204,
-                         'Status code returned is '
-                         '{0} . Expected 204'.format(resp.status_code))
+                         'Status code returned: {0} . '
+                         'Expected 204'.format(resp.status_code))
         self.assertHeaders(resp.headers,
                            lastmodified=True,
                            contentlength=0)
@@ -187,13 +174,7 @@ class TestBlockUploaded(base.TestBase):
         """Delete one block"""
 
         resp = self.client.delete_block(self.vaultname, self.blockid)
-        self.assertEqual(resp.status_code, 204,
-                         'Status code for deleting a block is '
-                         '{0} . Expected 204'.format(resp.status_code))
-        self.assertHeaders(resp.headers, contentlength=0)
-        self.assertEqual(len(resp.content), 0,
-                         'Response Content was not empty. Content: '
-                         '{0}'.format(resp.content))
+        self.assert_204_response(resp)
 
     def tearDown(self):
         super(TestBlockUploaded, self).tearDown()
@@ -216,13 +197,14 @@ class TestListBlocks(base.TestBase):
         """List multiple blocks (20)"""
 
         resp = self.client.list_of_blocks(self.vaultname)
-        self.assertEqual(resp.status_code, 200,
-                         'Status code for listing all blocks is '
-                         '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        self.assertListEqual(sorted(resp.json()), sorted(self.blockids),
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.block_list)
+
+        self.assertListEqual(sorted(resp_body), sorted(self.blockids),
                              'Response for List Blocks'
-                             ' {0} {1}'.format(self.blockids, resp.json()))
+                             ' {0} {1}'.format(self.blockids, resp_body))
 
     @ddt.data(2, 4, 5, 10)
     def test_list_multiple_blocks_marker(self, value):
@@ -231,13 +213,14 @@ class TestListBlocks(base.TestBase):
         sorted_block_list = sorted(self.blockids)
         markerid = sorted_block_list[value]
         resp = self.client.list_of_blocks(self.vaultname, marker=markerid)
-        self.assertEqual(resp.status_code, 200,
-                         'Status code for listing all blocks is '
-                         '{0} . Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
-        self.assertListEqual(sorted(resp.json()), sorted_block_list[value:],
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.block_list)
+
+        self.assertListEqual(sorted(resp_body), sorted_block_list[value:],
                              'Response for List Blocks'
-                             ' {0} {1}'.format(self.blockids, resp.json()))
+                             ' {0} {1}'.format(self.blockids, resp_body))
 
     @ddt.data(2, 4, 5, 10)
     def test_list_blocks_limit(self, value):
@@ -267,20 +250,22 @@ class TestListBlocks(base.TestBase):
             else:
                 resp = self.client.list_of_blocks(alternate_url=url)
 
-            self.assertEqual(resp.status_code, 200,
-                             'Status code for listing all blocks is '
-                             '{0} . Expected 200'.format(resp.status_code))
-            self.assertHeaders(resp.headers, json=True)
+            self.assert_200_response(resp)
+
             if i < 20 / value - (1 + pages):
                 self.assertIn('x-next-batch', resp.headers)
                 url = resp.headers['x-next-batch']
                 self.assertUrl(url, blocks=True, nextlist=True)
             else:
                 self.assertNotIn('x-next-batch', resp.headers)
-            self.assertEqual(len(resp.json()), value,
+
+            resp_body = resp.json()
+            jsonschema.validate(resp_body, deuce_schema.block_list)
+
+            self.assertEqual(len(resp_body), value,
                              'Number of block ids returned is not {0} . '
-                             'Returned {1}'.format(value, len(resp.json())))
-            for blockid in resp.json():
+                             'Returned {1}'.format(value, len(resp_body)))
+            for blockid in resp_body:
                 self.assertIn(blockid, self.blockids)
                 self.blockids.remove(blockid)
         self.assertEqual(len(self.blockids), value * pages,
@@ -314,13 +299,12 @@ class TestBlocksAssignedToFile(base.TestBase):
         """Delete one block assigned to a file"""
 
         resp = self.client.delete_block(self.vaultname, self.blockid)
-        self.assertEqual(resp.status_code, 409,
-                         'Status code returned: {0} . '
-                         'Expected 409'.format(resp.status_code))
+        self.assert_409_response(resp)
+
         resp_body = resp.json()
-        self.assertIn('title', resp_body)
+        jsonschema.validate(resp_body, deuce_schema.error)
+
         self.assertEqual(resp_body['title'], 'Conflict')
-        self.assertIn('description', resp_body)
         self.assertEqual(resp_body['description'],
                 '["Constraint Error: Block {0} has references"]'
                 ''.format(self.blockid))
@@ -369,8 +353,8 @@ class TestBlocksReferenceCount(base.TestBase):
 
         resp = self.client.get_block(self.vaultname, self.blockid)
         self.assertEqual(resp.status_code, 200,
-                         'Status code for getting data of a block is '
-                         '{0} . Expected 200'.format(resp.status_code))
+                         'Status code returned: {0} . '
+                         'Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, binary=True,
                            lastmodified=True,
                            contentlength=len(self.block_data))
@@ -397,8 +381,8 @@ class TestBlocksReferenceCount(base.TestBase):
 
         resp = self.client.block_head(self.vaultname, self.blockid)
         self.assertEqual(resp.status_code, 204,
-                         'Status code is '
-                         '{0} . Expected 204'.format(resp.status_code))
+                         'Status code returned: {0} . '
+                         'Expected 204'.format(resp.status_code))
         self.assertHeaders(resp.headers,
                            lastmodified=True,
                            contentlength=0)
