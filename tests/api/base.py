@@ -223,6 +223,13 @@ class TestBase(fixtures.BaseTestFixture):
 
         self._assert_json_response(resp, 412)
 
+    def assert_uuid5(self, value):
+        """Validate the value is a uuid5"""
+
+        self.assertRegexpMatches(value,
+                r'^[a-z0-9]{8}\-[a-z0-9]{4}\-5[a-z0-9]{3}\-[ab89]'
+                '[a-z0-9]{3}\-[a-z0-9]{12}$')
+
     def _create_empty_vault(self, vaultname=None, size=50):
         """
         Test Setup Helper: Creates an empty vault
@@ -273,6 +280,7 @@ class TestBase(fixtures.BaseTestFixture):
         self.generate_block_data(block_data, size)
         resp = self.client.upload_block(self.vaultname, self.blockid,
                                         self.block_data)
+        self.storageid = resp.headers['x-storage-id']
         return 201 == resp.status_code
 
     def upload_block(self, block_data=None, size=30720):
