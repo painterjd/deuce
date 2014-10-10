@@ -165,19 +165,6 @@ class TestBlockStorageController(ControllerTest):
                                      headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_501)
 
-    def test_delete_storage_block_zero_references(self):
-        block_id = self.create_block_id(b'mock')
-        response = self.simulate_put(self.get_block_path(block_id),
-                                     headers=self._hdrs,
-                                     body=b'mock')
-        storage_block_id = self.srmock.headers_dict['x-storage-id']
-
-        storage_block_path = self.get_storage_block_path(storage_block_id)
-
-        response = self.simulate_delete(storage_block_path,
-                                        headers=self._hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_204)
-
     def test_delete_storage_non_existent(self):
         storage_block_id = self.create_storage_block_id()
 

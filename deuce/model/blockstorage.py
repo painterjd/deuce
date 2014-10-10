@@ -1,8 +1,6 @@
-import datetime
 import deuce
 from deuce.model import Block
 from deuce.model import Vault
-from deuce.model import exceptions
 from deuce.util import log as logging
 from deuce.drivers.metadatadriver import ConstraintError
 import deuce.transport.wsgi.errors as errors
@@ -25,7 +23,7 @@ class BlockStorage(object):
         block = Block(self.vault_id, block_id) if block_id else None
         ref_count = block.get_ref_count() if block else None
 
-        if block is None or (ref_count == 0):
+        if block is None:
 
             return deuce.storage_driver.delete_block(self.vault_id,
                                                      storage_block_id)
