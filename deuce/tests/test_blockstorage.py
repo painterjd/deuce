@@ -214,6 +214,10 @@ class TestBlockStorageController(ControllerTest):
         self.assertEqual('0',
                          self.srmock.headers_dict['x-block-reference-count'])
 
+        self.assertIn('x-block-orphaned', self.srmock.headers_dict)
+        self.assertEqual(str(True),
+                         self.srmock.headers_dict['x-block-orphaned'])
+
     def test_head_happy_path(self):
         block_list, block_data = self.helper_create_blocks(num_blocks=1)
         self.assertEqual(len(block_list), 1)
@@ -260,6 +264,10 @@ class TestBlockStorageController(ControllerTest):
         self.assertIn('x-block-size', self.srmock.headers_dict)
         self.assertEqual(str(size[0]),
                          self.srmock.headers_dict['x-block-size'])
+
+        self.assertIn('x-block-orphaned', self.srmock.headers_dict)
+        self.assertEqual(str(False),
+                         self.srmock.headers_dict['x-block-orphaned'])
 
     def test_get_block_invalid_block(self):
         block_id = self.create_storage_block_id()

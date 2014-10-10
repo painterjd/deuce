@@ -115,6 +115,8 @@ class ItemResource(object):
                         str(storage_block_info['id']['metadata']))
         resp.set_header('X-Block-Size',
                         str(storage_block_info['length']))
+        resp.set_header('X-Block-Orphaned',
+                        str(storage_block_info['orphaned']))
 
         resp.status = falcon.HTTP_204
 

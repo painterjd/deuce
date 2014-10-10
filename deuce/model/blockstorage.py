@@ -53,7 +53,8 @@ class BlockStorage(object):
                 'storage': storage_block_id,
                 'metadata': None
             },
-            'length': 0
+            'length': 0,
+            'orphaned': True,
         }
 
         # Block exists in some form...
@@ -65,6 +66,7 @@ class BlockStorage(object):
                 block.get_ref_modified()
             storage_block_info['id']['metadata'] = block.metadata_block_id
             storage_block_info['length'] = block.get_block_length()
+            storage_block_info['orphaned'] = False
 
         else:
             # Block exists in only in storage (orphaned)
