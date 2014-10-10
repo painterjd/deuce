@@ -71,7 +71,21 @@ class ItemResource(object):
         assert storage is not None
 
         block = storage.get_block(storage_block_id)
-        # TODO: Finish this
+
+        if block is None:
+            logger.error('block [{0}] does not exist'.format(storage_block_id))
+            raise errors.HTTPNotFound
+
+        ref_cnt = block.get_ref_count()
+        resp.set_header('X-Block-Reference-Count', str(ref_cnt))
+
+        ref_mod = block.get_ref_modified()
+        resp.set_header('X-Ref-Modified', str(ref_mod))
+
+        resp.stream = block.get_obj()
+        resp.stream_len = block.get_block_length()
+        resp.status = falcon.HTTP_200
+        resp.content_type = 'application/octet-stream'
 
     @validate(vault_id=VaultGetRule, storage_block_id=StorageBlockGetRule)
     def on_head(self, req, resp, vault_id, storage_block_id):
@@ -117,7 +131,7 @@ class CollectionResource(object):
         """List the blocks in the vault from storage-alone
         """
         vault = Vault.get(vault_id)
-        if not vault:
+        if vault is None:
             logger.error('Vault [{0}] does not exist'.format(vault_id))
             raise errors.HTTPNotFound
 

@@ -1,5 +1,8 @@
 from tests.api import base
+from tests.api.utils.schema import deuce_schema
+
 import ddt
+import jsonschema
 import urlparse
 import time
 
@@ -13,13 +16,7 @@ class TestNoVaultsCreated(base.TestBase):
         """Head of a vault that has not been created"""
 
         resp = self.client.vault_head(self.id_generator(50))
-        self.assertEqual(resp.status_code, 404,
-                         'Status code returned: {0} . '
-                         'Expected 404'.format(resp.status_code))
-        self.assertHeaders(resp.headers, contentlength=0)
-        self.assertEqual(len(resp.content), 0,
-                         'Response Content was not empty. Content: '
-                         '{0}'.format(resp.content))
+        self.assert_404_response(resp)
 
     def test_get_missing_vault(self):
         """Get a vault that has not been created"""
@@ -49,13 +46,7 @@ class TestCreateVaults(base.TestBase):
 
         self.vaultname = self.id_generator(size)
         resp = self.client.create_vault(self.vaultname)
-        self.assertEqual(resp.status_code, 201,
-                         'Status code returned for Create Vault: {0} . '
-                         'Expected 201'.format(resp.status_code))
-        self.assertHeaders(resp.headers, contentlength=0)
-        self.assertEqual(len(resp.content), 0,
-                         'Response Content was not empty. Content: '
-                         '{0}'.format(resp.content))
+        self.assert_201_response(resp)
 
     def tearDown(self):
         super(TestCreateVaults, self).tearDown()
@@ -73,13 +64,10 @@ class TestEmptyVault(base.TestBase):
         """Get an individual vault. Get the statistics for a vault"""
 
         resp = self.client.get_vault(self.vaultname)
-        self.assertEqual(resp.status_code, 200,
-                         'Status code returned for Get Vault: {0} . '
-                         'Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
+        self.assert_200_response(resp)
+
         resp_body = resp.json()
-        self.assertIn('storage', resp_body)
-        self.assertIn('metadata', resp_body)
+        jsonschema.validate(resp_body, deuce_schema.vault_statistics)
 
         storage = resp_body['storage']
         self.assertEqual(storage['block-count'], 0)
@@ -96,9 +84,6 @@ class TestEmptyVault(base.TestBase):
             self.assertEqual(storage['internal'], {})
 
         meta = resp_body['metadata']
-        self.assertIn('files', meta)
-        self.assertIn('internal', meta)
-        self.assertIn('blocks', meta)
 
         meta_files = meta['files']
         self.assertEqual(meta_files['count'], 0)
@@ -112,25 +97,13 @@ class TestEmptyVault(base.TestBase):
         """Delete a Vault"""
 
         resp = self.client.delete_vault(self.vaultname)
-        self.assertEqual(resp.status_code, 204,
-                         'Status code returned for Delete Vault: {0} . '
-                         'Expected 204'.format(resp.status_code))
-        self.assertHeaders(resp.headers, contentlength=0)
-        self.assertEqual(len(resp.content), 0,
-                         'Response Content was not empty. Content: '
-                         '{0}'.format(resp.content))
+        self.assert_204_response(resp)
 
     def test_vault_head(self):
         """Head of an individual vault"""
 
         resp = self.client.vault_head(self.vaultname)
-        self.assertEqual(resp.status_code, 204,
-                         'Status code returned for Vault HEAD: {0} . '
-                         'Expected 204'.format(resp.status_code))
-        self.assertHeaders(resp.headers, contentlength=0)
-        self.assertEqual(len(resp.content), 0,
-                         'Response Content was not empty. Content: '
-                         '{0}'.format(resp.content))
+        self.assert_204_response(resp)
 
     def tearDown(self):
         super(TestEmptyVault, self).tearDown()
@@ -165,11 +138,11 @@ class TestVaultWithBlocksFiles(base.TestBase):
         """Get the statistics of a populated vault"""
 
         resp = self.client.get_vault(self.vaultname)
-        self.assertEqual(resp.status_code, 200,
-                         'Status code returned for Get Vault: {0} . '
-                         'Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
+        self.assert_200_response(resp)
+
         resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.vault_statistics)
+
         storage = resp_body['storage']
         self.assertEqual(storage['block-count'], 20)
         self.assertEqual(storage['total-size'], 30720 * 20)
@@ -213,14 +186,12 @@ class TestPopulatedVault(base.TestBase):
         """Delete a Vault that has some data. 1 block"""
 
         resp = self.client.delete_vault(self.vaultname)
-        self.assertEqual(resp.status_code, 409,
-                         'Status code returned: {0} . '
-                         'Expected 409'.format(resp.status_code))
-        self.assertHeaders(resp.headers, json=True)
+        self.assert_409_response(resp)
+
         resp_body = resp.json()
-        self.assertIn('title', resp_body)
+        jsonschema.validate(resp_body, deuce_schema.error)
+
         self.assertEqual(resp_body['title'], 'Conflict')
-        self.assertIn('description', resp_body)
         self.assertEqual(resp_body['description'], 'Vault cannot be deleted')
 
     def tearDown(self):
@@ -241,12 +212,13 @@ class TestListVaults(base.TestBase):
 
     def check_vaultids_in_resp(self, vaultids, response):
         resp_body = response.json()
+        jsonschema.validate(resp_body, deuce_schema.vault_list)
+
         for vaultid in resp_body.keys():
             # check that the vaultid was among the created ones
             self.assertIn(vaultid, vaultids)
             vaultids.remove(vaultid)
             # check the url in the response
-            self.assertIn('url', resp_body[vaultid])
             vault_url = resp_body[vaultid]['url']
             self.assertUrl(vault_url, vaultspath=True)
             vault_url = urlparse.urlparse(vault_url)
@@ -281,10 +253,8 @@ class TestListVaults(base.TestBase):
             else:
                 resp = self.client.list_of_vaults(alternate_url=url)
 
-            self.assertEqual(resp.status_code, 200,
-                             'Status code for listing all vaults is '
-                             '{0} . Expected 200'.format(resp.status_code))
-            self.assertHeaders(resp.headers, json=True)
+            self.assert_200_response(resp)
+
             resp_body = resp.json()
             if len(resp_body.keys()) == value:
                 if 'x-next-batch' in resp.headers:
@@ -295,6 +265,7 @@ class TestListVaults(base.TestBase):
             else:
                 self.assertNotIn('x-next-batch', resp.headers)
                 finished = True
+
             self.check_vaultids_in_resp(self.vaultids, resp)
             if finished:
                 break

@@ -723,7 +723,10 @@ class SqliteStorageDriver(MetadataStorageDriver):
 
         query_res = self._conn.execute(SQL_GET_REF_TIME, args)
 
-        return next(query_res)[0]
+        try:
+            return next(query_res)[0]
+        except:
+            return 0
 
     def get_health(self):
         try:

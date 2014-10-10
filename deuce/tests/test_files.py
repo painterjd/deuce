@@ -225,7 +225,7 @@ class TestFiles(ControllerTest):
         # assert len(response.body) > 2
 
         # Put the blocks to storage.
-        self.helper_store_blocks(blocks_data)
+        self.helper_store_blocks(self.vault_id, blocks_data)
 
         # Add the same blocks to FILES again, resp is empty.
         response = self.simulate_post(self._file_id, body=data, headers=hdrs)
@@ -253,7 +253,7 @@ class TestFiles(ControllerTest):
         # assert len(response.body) > 2
 
         # Put the blocks to storage.
-        self.helper_store_blocks(blocks_data2)
+        self.helper_store_blocks(self.vault_id, blocks_data2)
 
         # Add blocks. resp will be empty.
         response = self.simulate_post(self._file_id, body=data2, headers=hdrs)

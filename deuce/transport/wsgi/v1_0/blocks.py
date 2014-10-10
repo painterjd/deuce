@@ -83,7 +83,7 @@ class ItemResource(object):
         resp.set_header('X-Block-ID', str(block_id))
 
         resp.stream = block.get_obj()
-        resp.stream_len = vault.get_block_length(block_id)
+        resp.stream_len = block.get_block_length()
         resp.status = falcon.HTTP_200
         resp.content_type = 'application/octet-stream'
 
@@ -198,7 +198,7 @@ class CollectionResource(object):
         # Was the list truncated? See note above about +1
         truncated = len(responses) > 0 and len(responses) == limit + 1
 
-        outmarker = responses.pop().block_id if truncated else None
+        outmarker = responses.pop().metadata_block_id if truncated else None
 
         if outmarker:
             query_args = {'marker': outmarker}
@@ -206,4 +206,5 @@ class CollectionResource(object):
             returl = set_qs_on_url(req.url, query_args)
             resp.set_header("X-Next-Batch", returl)
 
-        resp.body = json.dumps([response.block_id for response in responses])
+        resp.body = json.dumps([response.metadata_block_id
+                                for response in responses])
