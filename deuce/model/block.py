@@ -6,9 +6,9 @@ import os
 
 class Block(object):
 
-    def __init__(self, vault_id, block_id, obj=None):
+    def __init__(self, vault_id, metadata_block_id, obj=None):
         self.vault_id = vault_id
-        self.block_id = block_id
+        self.metadata_block_id = metadata_block_id
         self._fileobj = obj
 
     def get_obj(self):
@@ -22,15 +22,22 @@ class Block(object):
         """Returns the number of references to this block
         """
         return deuce.metadata_driver.get_block_ref_count(
-            self.vault_id, self.block_id)
+            self.vault_id, self.metadata_block_id)
 
     def get_ref_modified(self):
         """Returns the last modification time of this block
         """
         return deuce.metadata_driver.get_block_ref_modified(
-            self.vault_id, self.block_id)
+            self.vault_id, self.metadata_block_id)
+
+    def get_block_length(self):
+        """Returns the length of this block from storage
+        """
+        storage_id = self.get_storage_id()
+        return deuce.storage_driver.get_block_object_length(
+            self.vault_id, storage_id)
 
     def get_storage_id(self):
         """Returns the storage id for a given block"""
-        return deuce.metadata_driver.get_block_storage_id(self.vault_id,
-                                                          self.block_id)
+        return deuce.metadata_driver.get_block_storage_id(
+            self.vault_id, self.metadata_block_id)

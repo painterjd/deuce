@@ -129,11 +129,6 @@ class Vault(object):
 
         return Block(self.id, block_id, obj) if obj else None
 
-    def get_block_length(self, block_id):
-        storage_id = self._get_storage_id(block_id)
-        return deuce.storage_driver.get_block_object_length(
-            self.id, storage_id)
-
     def get_blocks_generator(self, block_ids):
         storage_ids = [
             self._get_storage_id(block_id) for block_id in block_ids]

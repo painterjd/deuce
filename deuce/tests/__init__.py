@@ -273,8 +273,36 @@ class ControllerTest(V1Base):
     def tearDown(self):
         super(ControllerTest, self).tearDown()
 
-    def get_block_path(self, blockid):
-        return '{0}/{1}'.format(self._blocks_path, blockid)
+    def get_vault_path(self, vaultid):
+        return '/v1.0/vaults/{0}'.format(vaultid)
+
+    def get_blocks_path(self, vaultid):
+        return '{0}/blocks'.format(self.get_vault_path(vaultid))
+
+    def get_block_path(self, vaultid, blockid):
+        return '{0}/{1}'.format(self.get_blocks_path(vaultid),
+                                blockid)
+
+    def get_files_path(self, vaultid):
+        return '{0}/files'.format(self.get_vault_path(vaultid))
+
+    def get_file_path(self, vaultid, fileid):
+        return '{0}/files/{1}'.format(self.get_vault_path(vaultid), fileid)
+
+    def get_fileblock_path(self, vaultid, fileid, blockid):
+        return '{0}/files/{1}/{2}'.format(self.get_vault_path(vaultid),
+                                          fileid,
+                                          blockid)
+
+    def get_storage_path(self, vaultid):
+        return '{0:}/storage'.format(self.get_vault_path(vaultid))
+
+    def get_storage_blocks_path(self, vaultid):
+        return '{0:}/blocks'.format(self.get_storage_path(vaultid))
+
+    def get_storage_block_path(self, vaultid, block_id):
+        return '{0:}/{1:}'.format(self.get_storage_blocks_path(vaultid),
+                                  block_id)
 
     def helper_create_vault(self, vault_name, hdrs):
         vault_path = '/v1.0/vaults/{0}'.format(vault_name)
@@ -308,12 +336,13 @@ class ControllerTest(V1Base):
 
         return block_list, block_data
 
-    def helper_store_blocks(self, block_data):
+    def helper_store_blocks(self, vaultid, block_data):
 
+        storage_list = []
         # Put each one of the generated blocks on the
         # size
         for size, data, sha1 in block_data:
-            path = self.get_block_path(sha1)
+            path = self.get_block_path(vaultid, sha1)
 
             headers = {
                 "Content-Type": "application/octet-stream",
@@ -324,3 +353,8 @@ class ControllerTest(V1Base):
 
             response = self.simulate_put(path, headers=headers,
                                          body=data)
+            self.assertIn('x-storage-id', self.srmock.headers_dict)
+            storage_list.append(
+                (sha1, self.srmock.headers_dict['x-storage-id'])
+            )
+        return storage_list
