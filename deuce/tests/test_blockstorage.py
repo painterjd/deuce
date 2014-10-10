@@ -186,7 +186,6 @@ class TestBlockStorageController(ControllerTest):
     def test_delete_storage_non_existent(self):
         storage_block_id = self.create_storage_block_id()
 
-
         storage_block_path = self.get_storage_block_path(self.vault_name,
                                                          storage_block_id)
 
@@ -235,4 +234,3 @@ class TestBlockStorageController(ControllerTest):
         response = self.simulate_delete(storage_block_path,
                                         headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_204)
-
