@@ -18,6 +18,9 @@ class Response(object):
             fut.set_result(content)
             self.content.read = mock.Mock(return_value=fut)
 
+    def decode(self):
+        return self.content.decode()
+
 
 class Content(object):
 
@@ -26,6 +29,12 @@ class Content(object):
 
     def read(self):
         pass
+
+    def decode(self):
+        if isinstance(self.contents, bytes):
+            return json.dumps(self.contents.decode())
+        else:
+            return json.dumps(self.contents)
 
     def __iter__(self):
         return (content for content in self.contents)

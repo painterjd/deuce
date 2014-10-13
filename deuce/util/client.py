@@ -1,6 +1,7 @@
 import aiohttp
 import asyncio
 import hashlib
+import json
 from swiftclient.exceptions import ClientException
 
 from deuce import conf
@@ -102,7 +103,8 @@ def get_container(url, token, container, limit=None, marker=None):
                                               headers=headers)
 
     if response.status >= 200 and response.status < 300:
-        block_list = [block['name'] for block in content]
+        json_content = json.loads(response.decode())
+        block_list = [block['name'] for block in json_content]
         return block_list
     else:
         raise ClientException("Vault GET failed")
