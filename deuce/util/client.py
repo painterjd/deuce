@@ -2,6 +2,8 @@ import aiohttp
 import asyncio
 import hashlib
 from swiftclient.exceptions import ClientException
+
+from deuce import conf
 from deuce.util.event_loop import get_event_loop
 
 # NOTE (TheSriram) : must include exception handling
@@ -84,8 +86,10 @@ def head_container(url, token, container):
         raise ClientException("Vault HEAD failed")
 
 
-def get_container(url, token, container, limit, marker=None):
+def get_container(url, token, container, limit=None, marker=None):
 
+    if not limit:
+        limit = conf.api_configuration.max_returned_num
     qs = '?format=json&limit={0}'.format(limit)
 
     if marker:

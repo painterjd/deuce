@@ -55,9 +55,9 @@ class ItemResource(object):
         resp.set_header('X-Block-Location', block_url)
 
         logger.warn('Caller tried to PUT a block directly to storage. '
-            'Transaction: {0} Project: {1}'.format(
-                deuce.context.transaction.request_id,
-                deuce.context.project_id))
+                    'Transaction: {0} Project: {1}'.format(
+                        deuce.context.transaction.request_id,
+                        deuce.context.project_id))
         raise errors.HTTPMethodNotAllowed(
             ['HEAD', 'GET', 'DELETE'],
             'This is read-only access. Uploads must go to {0:}'.format(
@@ -110,7 +110,17 @@ class ItemResource(object):
 
         assert storage is not None
 
-        block = storage.delete_block(storage_block_id)
+        try:
+
+            response = storage.delete_block(storage_block_id)
+            if response:
+                resp.status = falcon.HTTP_204
+            else:
+                resp.status = falcon.HTTP_404
+
+        except ConstraintError as ex:
+            logger.error(str(ex))
+            raise errors.HTTPConflict(str(ex))
 
 
 class CollectionResource(object):

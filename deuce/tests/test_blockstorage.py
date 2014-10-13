@@ -5,6 +5,8 @@ from deuce.util.misc import relative_uri
 import json
 import uuid
 import os
+from mock import patch
+from deuce.model import Block
 
 from deuce.tests import ControllerTest
 
@@ -227,10 +229,54 @@ class TestBlockStorageController(ControllerTest):
         z.update(bindata)
         self.assertEqual(z.hexdigest(), block_list[0])
 
-    def test_delete_block(self):
-        block_id = self.create_storage_block_id()
+    def test_delete_storage_non_existent(self):
+        storage_block_id = self.create_storage_block_id()
 
-        block_path = self.get_storage_block_path(self.vault_name, block_id)
+        storage_block_path = self.get_storage_block_path(self.vault_name,
+                                                         storage_block_id)
 
-        response = self.simulate_delete(block_path, headers=self._hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_501)
+        response = self.simulate_delete(storage_block_path,
+                                        headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_delete_storage_block_with_references(self):
+        # NOTE(TheSriram): Let's just spoof ref-count to get 42 References.
+        with patch.object(Block, 'get_ref_count', return_value=42):
+            block_id = self.create_block_id(b'mock')
+            response = self.simulate_put(self.get_block_path(self.vault_name,
+                                                             block_id),
+                                         headers=self._hdrs,
+                                         body=b'mock')
+            storage_block_id = self.srmock.headers_dict['x-storage-id']
+
+            storage_block_path = self.get_storage_block_path(self.vault_name,
+                                                             storage_block_id)
+
+            response = self.simulate_delete(storage_block_path,
+                                            headers=self._hdrs)
+            self.assertEqual(self.srmock.status, falcon.HTTP_409)
+
+    def test_delete_storage_orphaned_block(self):
+        block_id = self.create_block_id(b'mock')
+        # NOTE(TheSriram): We put the same block twice, to orphan the second
+        # block as it will not have a reference in the metadata. But, it will
+        # nevertheless be present in block storage
+        response = self.simulate_put(self.get_block_path(self.vault_name,
+                                                         block_id),
+                                     headers=self._hdrs,
+                                     body=b'mock')
+        real_storage_id = self.srmock.headers_dict['x-storage-id']
+        response = self.simulate_put(self.get_block_path(self.vault_name,
+                                                         block_id),
+                                     headers=self._hdrs,
+                                     body=b'mock')
+        orphaned_storage_id = self.srmock.headers_dict['x-storage-id']
+
+        self.assertNotEqual(real_storage_id, orphaned_storage_id)
+
+        storage_block_path = self.get_storage_block_path(self.vault_name,
+                                                         orphaned_storage_id)
+
+        response = self.simulate_delete(storage_block_path,
+                                        headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_204)

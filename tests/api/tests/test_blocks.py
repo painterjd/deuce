@@ -104,6 +104,11 @@ class TestUploadBlocks(base.TestBase):
                                         self.block_data)
         self.assert_201_response(resp)
 
+        self.assertIn('x-block-id', resp.headers)
+        self.assertEqual(resp.headers['x-block-id'], self.blockid)
+        self.assertIn('x-storage-id', resp.headers)
+        self.assert_uuid5(resp.headers['x-storage-id'])
+
     @ddt.data(1, 3, 10, 32)
     def test_upload_multiple_blocks(self, value):
         """Upload multiple blocks in a single request"""
@@ -153,6 +158,11 @@ class TestBlockUploaded(base.TestBase):
                            contentlength=len(self.block_data))
         self.assertIn('X-Block-Reference-Count', resp.headers)
         self.assertEqual(resp.headers['X-Block-Reference-Count'], '0')
+        self.assertIn('x-block-id', resp.headers)
+        self.assertEqual(resp.headers['x-block-id'], self.blockid)
+        self.assertIn('x-storage-id', resp.headers)
+        self.assert_uuid5(resp.headers['x-storage-id'])
+        self.assertEqual(resp.headers['x-storage-id'], self.storageid)
         self.assertEqual(resp.content, self.block_data,
                          'Block data returned does not match block uploaded')
 
@@ -168,6 +178,11 @@ class TestBlockUploaded(base.TestBase):
                            contentlength=0)
         self.assertIn('X-Block-Reference-Count', resp.headers)
         self.assertEqual(resp.headers['X-Block-Reference-Count'], '0')
+        self.assertIn('x-block-id', resp.headers)
+        self.assertEqual(resp.headers['x-block-id'], self.blockid)
+        self.assertIn('x-storage-id', resp.headers)
+        self.assert_uuid5(resp.headers['x-storage-id'])
+        self.assertEqual(resp.headers['x-storage-id'], self.storageid)
         self.assertEqual(len(resp.content), 0)
 
     def test_delete_block(self):
@@ -360,6 +375,11 @@ class TestBlocksReferenceCount(base.TestBase):
                            contentlength=len(self.block_data))
         self.assertIn('X-Block-Reference-Count', resp.headers)
         self.assertEqual(resp.headers['X-Block-Reference-Count'], expected)
+        self.assertIn('x-block-id', resp.headers)
+        self.assertEqual(resp.headers['x-block-id'], self.blockid)
+        self.assertIn('x-storage-id', resp.headers)
+        self.assert_uuid5(resp.headers['x-storage-id'])
+        self.assertEqual(resp.headers['x-storage-id'], self.storageid)
         self.assertEqual(resp.content, self.block_data,
                          'Block data returned does not match block uploaded')
 
@@ -388,6 +408,11 @@ class TestBlocksReferenceCount(base.TestBase):
                            contentlength=0)
         self.assertIn('X-Block-Reference-Count', resp.headers)
         self.assertEqual(resp.headers['X-Block-Reference-Count'], expected)
+        self.assertIn('x-block-id', resp.headers)
+        self.assertEqual(resp.headers['x-block-id'], self.blockid)
+        self.assertIn('x-storage-id', resp.headers)
+        self.assert_uuid5(resp.headers['x-storage-id'])
+        self.assertEqual(resp.headers['x-storage-id'], self.storageid)
         self.assertEqual(len(resp.content), 0)
 
     def tearDown(self):
