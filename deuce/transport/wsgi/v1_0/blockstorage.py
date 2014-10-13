@@ -148,6 +148,35 @@ class ItemResource(object):
 
 class CollectionResource(object):
 
+    @validate(vault_id=VaultPutRule)
+    def on_post(self, req, resp, vault_id):
+        """Note: This does not support POST as it is read-only
+        """
+        # PUT operations must go to /vaults/{vaultid}/blocks
+        # instead of /vaults/{vaultid}/storage/blocks
+        path = req.path
+
+        path_parts = path.split('/')
+        del path_parts[4]
+
+        path = str('/').join(path_parts)
+
+        block_url = (req.protocol + '://' +
+                     req.get_header('host') +
+                     req.app +
+                     path)
+
+        resp.set_header('X-Blocks-Location', block_url)
+
+        logger.warn('Caller tried to PUT a block directly to storage. '
+                    'Transaction: {0} Project: {1}'.format(
+                        deuce.context.transaction.request_id,
+                        deuce.context.project_id))
+        raise errors.HTTPMethodNotAllowed(
+            ['GET'],
+            'This is read-only access. Uploads must go to {0:}'.format(
+                block_url))
+
     @validate(req=RequestRule(StorageBlockMarkerRule, LimitRule),
               vault_id=VaultGetRule)
     def on_get(self, req, resp, vault_id):
