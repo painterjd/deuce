@@ -121,6 +121,7 @@ class TestBase(unittest.TestCase):
         :returns: standard WSGI iterable response
         """
 
+        self.srmock = ftest.StartResponseMock()
         headers = kwargs.get('headers', self.headers).copy()
         kwargs['headers'] = headers
         return self.app(ftest.create_environ(path=path,

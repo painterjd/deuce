@@ -48,6 +48,10 @@ class ItemResource(object):
             storage_id = block.get_storage_id()
             resp.set_header('X-Storage-ID', str(storage_id))
             resp.set_header('X-Block-ID', str(block_id))
+
+            resp.set_header('X-Block-Size',
+                            str(block.get_block_length()))
+
             resp.status = falcon.HTTP_204
 
         except ConsistencyError as ex:
@@ -102,7 +106,7 @@ class ItemResource(object):
             resp.set_header('X-Block-ID', str(block_id))
             resp.status = (
                 falcon.HTTP_201 if retval is True else falcon.HTTP_500)
-            logger.info('block [{0}] added'.format(block_id))
+            logger.info('block [{0}] added [{1}]'.format(block_id, storage_id))
         except ValueError as e:
             raise errors.HTTPPreconditionFailed('hash error')
 

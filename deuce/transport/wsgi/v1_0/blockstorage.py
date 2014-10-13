@@ -42,7 +42,7 @@ class ItemResource(object):
             del path_parts[(len(path_parts) - 1)]
             path_parts.append(metadata_block_id)
 
-        resp.set_header('X-Block-ID', metadata_block_id)
+        resp.set_header('X-Block-ID', str(metadata_block_id))
         resp.set_header('X-Storage-ID', storage_block_id)
 
         path = str('/').join(path_parts)
@@ -66,9 +66,11 @@ class ItemResource(object):
     @validate(vault_id=VaultGetRule, storage_block_id=StorageBlockGetRule)
     def on_get(self, req, resp, vault_id, storage_block_id):
         """Returns a specific block from storage alone"""
-        storage = BlockStorage(vault_id)
+        storage = BlockStorage.get(vault_id)
 
-        assert storage is not None
+        if storage is None:
+            logger.error('Vault [{0}] does not exist'.format(vault_id))
+            raise errors.HTTPNotFound
 
         block = storage.get_block(storage_block_id)
 
@@ -82,6 +84,9 @@ class ItemResource(object):
         ref_mod = block.get_ref_modified()
         resp.set_header('X-Ref-Modified', str(ref_mod))
 
+        resp.set_header('X-Storage-ID', str(storage_block_id))
+        resp.set_header('X-Block-ID', str(block.metadata_block_id))
+
         resp.stream = block.get_obj()
         resp.stream_len = block.get_block_length()
         resp.status = falcon.HTTP_200
@@ -90,15 +95,33 @@ class ItemResource(object):
     @validate(vault_id=VaultGetRule, storage_block_id=StorageBlockGetRule)
     def on_head(self, req, resp, vault_id, storage_block_id):
         """Returns the block data from storage alone"""
-        storage = BlockStorage(vault_id)
+        storage = BlockStorage.get(vault_id)
 
-        assert storage is not None
+        if storage is None:
+            logger.error('Vault [{0}] does not exist'.format(vault_id))
+            raise errors.HTTPNotFound
 
         storage_block_info = storage.head_block(storage_block_id)
-        # for k in storage_block_info.keys():
-        #    resp.set_headers(k, storage_block_info[k])
 
-        # resp.status = falcon.HTTP_204
+        if storage_block_info is None:
+            logger.error('Block [{0}] does not exist in storage'.format(
+                storage_block_id))
+            raise errors.HTTPNotFound
+
+        resp.set_header('X-Block-Reference-Count',
+                        str(storage_block_info['reference']['count']))
+        resp.set_header('X-Ref-Modified',
+                        str(storage_block_info['reference']['modified']))
+        resp.set_header('X-Storage-ID',
+                        str(storage_block_info['id']['storage']))
+        resp.set_header('X-Block-ID',
+                        str(storage_block_info['id']['metadata']))
+        resp.set_header('X-Block-Size',
+                        str(storage_block_info['length']))
+        resp.set_header('X-Block-Orphaned',
+                        str(storage_block_info['orphaned']))
+
+        resp.status = falcon.HTTP_204
 
     @validate(vault_id=VaultGetRule, storage_block_id=StorageBlockGetRule)
     def on_delete(self, req, resp, vault_id, storage_block_id):
@@ -106,7 +129,7 @@ class ItemResource(object):
         the storage after verifying it does not exist
         in metadata (due diligence applies)
         """
-        storage = BlockStorage(vault_id)
+        storage = BlockStorage.get(vault_id)
 
         assert storage is not None
 
