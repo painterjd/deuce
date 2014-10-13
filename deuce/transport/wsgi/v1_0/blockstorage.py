@@ -42,7 +42,7 @@ class ItemResource(object):
             del path_parts[(len(path_parts) - 1)]
             path_parts.append(metadata_block_id)
 
-        resp.set_header('X-Block-ID', metadata_block_id)
+        resp.set_header('X-Block-ID', str(metadata_block_id))
         resp.set_header('X-Storage-ID', storage_block_id)
 
         path = str('/').join(path_parts)

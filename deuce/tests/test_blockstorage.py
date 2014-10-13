@@ -43,7 +43,7 @@ class TestBlockStorageController(ControllerTest):
         self.assertIn('x-storage-id', self.srmock.headers_dict)
         self.assertEqual(block_id, self.srmock.headers_dict['x-storage-id'])
         self.assertIn('x-block-id', self.srmock.headers_dict)
-        self.assertIsNone(self.srmock.headers_dict['x-block-id'])
+        self.assertEqual(str(None), self.srmock.headers_dict['x-block-id'])
 
     def test_put_block_existing_block(self):
         # block already in metadata/storage
