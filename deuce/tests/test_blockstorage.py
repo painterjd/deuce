@@ -147,10 +147,16 @@ class TestBlockStorageController(ControllerTest):
         block_list, block_data = self.helper_create_blocks(num_blocks=40)
         storage_list = self.helper_store_blocks(self.vault_name, block_data)
 
+        # Test with no marker
+        response = self.simulate_get(self._block_storage_path,
+                                     headers=self._hdrs)
+        storage_ids = json.loads(response[0].decode())
+        self.assertEqual(self.srmock.status, falcon.HTTP_200)
+
         # Test valid marker
         # Lets list from the second storage_id
-        query_marker = storage_list[1][1]
-        return_storage_ids = [storage[1] for storage in storage_list]
+        query_marker = storage_ids[0]
+
         marker = 'marker={0:}'.format(query_marker)
         response = self.simulate_get(self._block_storage_path,
                                      query_string=marker,
@@ -159,7 +165,7 @@ class TestBlockStorageController(ControllerTest):
 
         for resp in responses:
             self.assertTrue(uuid.UUID(resp))
-            self.assertIn(resp, return_storage_ids)
+            self.assertIn(resp, storage_ids)
 
         # Test valid limit
         response = self.simulate_get(self._block_storage_path,
