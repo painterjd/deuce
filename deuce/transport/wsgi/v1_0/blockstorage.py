@@ -147,9 +147,6 @@ class CollectionResource(object):
 
         responses = list(storage_blocks)
 
-        # List the blocks into JSON and return.
-        # TODO: figure out a way to stream this back(??)
-
         # Was the list truncated? See note above about +1
         truncated = len(responses) > 0 and len(responses) == limit + 1
 
