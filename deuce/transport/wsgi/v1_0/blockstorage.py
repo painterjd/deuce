@@ -84,6 +84,9 @@ class ItemResource(object):
         ref_mod = block.get_ref_modified()
         resp.set_header('X-Ref-Modified', str(ref_mod))
 
+        resp.set_header('X-Storage-ID', str(storage_block_id))
+        resp.set_header('X-Block-ID', str(block.metadata_block_id))
+
         resp.stream = block.get_obj()
         resp.stream_len = block.get_block_length()
         resp.status = falcon.HTTP_200

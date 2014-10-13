@@ -298,11 +298,17 @@ class TestBlockStorageController(ControllerTest):
 
         response = self.simulate_get(block_path, headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_200)
-        # TODO: self.assertIn('x-ref-modified', str(self.srmock.headers))
-        self.assertIn('x-block-reference-count', str(self.srmock.headers))
+        self.assertIn('x-ref-modified', self.srmock.headers_dict)
+        self.assertIn('x-block-reference-count', self.srmock.headers_dict)
         self.assertEqual(
             int(self.srmock.headers_dict['x-block-reference-count']),
             0)
+        self.assertIn('x-storage-id', self.srmock.headers_dict)
+        self.assertEqual(storage_list[0][1],
+                         self.srmock.headers_dict['x-storage-id'])
+        self.assertIn('x-block-id', self.srmock.headers_dict)
+        self.assertEqual(block_list[0],
+                         self.srmock.headers_dict['x-block-id'])
 
         response_body = [resp for resp in response]
         bindata = response_body[0]
