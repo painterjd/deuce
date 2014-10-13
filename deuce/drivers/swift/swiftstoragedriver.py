@@ -99,6 +99,19 @@ class SwiftStorageDriver(BlockStorageDriver):
 
         return statistics
 
+    def get_vault_block_list(self, vault_id, limit, marker=None):
+        try:
+            container_block_list = self.Conn.get_container(
+                url=deuce.context.openstack.swift.storage_url,
+                token=deuce.context.openstack.auth_token,
+                container=vault_id,
+                limit=limit,
+                marker=marker
+            )
+            return container_block_list
+        except ClientException as e:
+            return None
+
     # =========== BLOCKS ===============================
 
     def store_block(self, vault_id, block_id, blockdata):

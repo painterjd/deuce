@@ -70,6 +70,29 @@ class DiskStorageDriverTest(V1Base):
             assert key in statistics.keys()
             assert statistics[key] == 0
 
+    def test_vault_block_list(self):
+        driver = self.create_driver()
+
+        block_size = 100
+        vault_id = self.create_vault_id()
+
+        driver.create_vault(vault_id)
+        block_datas = [MockFile(block_size) for _ in range(30)]
+        block_ids = [block_data.sha1() for block_data in block_datas]
+        (status, storage_ids) = driver.store_async_block(vault_id, block_ids, [
+            block_data.read() for block_data in block_datas])
+        for storage_id, block_data in zip(storage_ids, block_datas):
+            assert driver.block_exists(vault_id, storage_id)
+
+        ret_blocks = driver.get_vault_block_list(vault_id, limit=2)
+
+        self.assertEqual(len(ret_blocks), 2)
+
+        ret_blocks = driver.get_vault_block_list(self.create_vault_id(),
+                                                 limit=2)
+
+        self.assertIsNone(ret_blocks)
+
     def test_block_crud(self):
         driver = self.create_driver()
 

@@ -9,9 +9,10 @@ logger = logging.getLogger(__name__)
 
 class BlockStorage(object):
 
-    def __init__(self, vault_id):
+    def __init__(self, vault_id, storage_block_id=None):
         self.vault_id = vault_id
         self.Vault = Vault.get(vault_id)
+        self.storage_block_id = storage_block_id
 
     def get_metadata_id(self, storage_block_id):
         return deuce.metadata_driver.get_block_metadata_id(self.vault_id,
@@ -39,9 +40,9 @@ class BlockStorage(object):
 
         return Block(self.vault_id, metadata_id, obj) if obj else None
 
-    @staticmethod
-    def get_blocks_generator(marker, limit):
-        # TODO: Implement this, error from here is just temporary
-        raise errors.HTTPNotImplemented(
-            'Directly Delete Block From Storage Not Implemented')
-        # return []
+    def get_blocks_generator(self, marker, limit):
+        return (BlockStorage(self.vault_id, storage_block_id)
+                for storage_block_id in
+                deuce.storage_driver.get_vault_block_list(self.vault_id,
+                                                          limit,
+                                                          marker))

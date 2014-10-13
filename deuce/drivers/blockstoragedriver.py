@@ -5,6 +5,8 @@ import socket
 import six
 from abc import ABCMeta, abstractmethod, abstractproperty
 
+from deuce import conf
+
 
 @six.add_metaclass(ABCMeta)
 class BlockStorageDriver(object):
@@ -56,6 +58,12 @@ class BlockStorageDriver(object):
         raise NotImplementedError
 
     @abstractmethod
+    def get_vault_block_list(self, vault_id, marker, limit):
+        """Return the list of blocks in vault from storage."""
+
+        raise NotImplementedError
+
+    @abstractmethod
     def get_block_obj(self, vault_id, block_id):
         """Returns a single file-like object"""
         raise NotImplementedError
@@ -74,11 +82,11 @@ class BlockStorageDriver(object):
 
     @abstractmethod
     def store_async_block(self, vault_id, block_ids, block_datas):
-        """Stores blocks asynchronusly into the specified vault
+        """Stores blocks asynchronously into the specified vault
 
         :param vault_id: The IDs of the vault
         :param block_ids: The IDs of the blocks
-        :param block_datass: The content of the blocks
+        :param block_datas: The content of the blocks
         """
         raise NotImplementedError
 

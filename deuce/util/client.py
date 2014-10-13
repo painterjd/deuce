@@ -57,9 +57,16 @@ def _request_getobj(method, url, headers, data=None):
     return (response, block)
 
 
+@get_event_loop
+def _request_getcontainer(method, url, headers, data=None):
+    response = yield from aiohttp.request(method=method, url=url,
+                                          headers=headers, data=data)
+
+    content = yield from response.content.read()
+    return (response, content)
+
+
 # Create vault
-
-
 def put_container(url, token, container, response_dict):
     headers = {'X-Auth-Token': token}
     response = _request('PUT', url + '/' + container, headers=headers)
@@ -75,6 +82,26 @@ def head_container(url, token, container):
         return response.headers
     else:
         raise ClientException("Vault HEAD failed")
+
+
+def get_container(url, token, container, limit, marker=None):
+
+    qs = '?format=json&limit={0}'.format(limit)
+
+    if marker:
+        qs = qs + '&marker={0}'.format(marker)
+
+    req_url = url + '/' + container + qs
+
+    headers = {'X-Auth-Token': token}
+    response, content = _request_getcontainer('GET', req_url,
+                                              headers=headers)
+
+    if response.status >= 200 and response.status < 300:
+        block_list = [block['name'] for block in content]
+        return block_list
+    else:
+        raise ClientException("Vault GET failed")
 
 
 # Delete Vault

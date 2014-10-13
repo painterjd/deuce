@@ -1,3 +1,4 @@
+import json
 from deuce.util import client as p3k_swiftclient
 from deuce.tests.util.mockfile import MockFile
 from deuce.tests import V1Base
@@ -16,6 +17,18 @@ class Response(object):
             fut = asyncio.Future(loop=None)
             fut.set_result(content)
             self.content.read = mock.Mock(return_value=fut)
+
+
+class Content(object):
+
+    def __init__(self, contents):
+        self.contents = contents
+
+    def read(self):
+        pass
+
+    def __iter__(self):
+        return (content for content in self.contents)
 
 
 class Test_P3k_SwiftClient(V1Base):
@@ -57,6 +70,56 @@ class Test_P3k_SwiftClient(V1Base):
         p3k_swiftclient.aiohttp.request = mock.Mock(return_value=fut)
         self.assertRaises(ClientException,
                           lambda: p3k_swiftclient.head_container(
+                              self.storage_url,
+                              self.token,
+                              self.vault))
+
+    def test_get_container_marker_limit(self):
+        # With marker and limit
+        content = Content([{'name': 'mocka'},
+                           {'name': 'mockb'},
+                           {'name': 'mockc'}])
+        limit = 3
+        marker = 'mocka'
+        res = Response(200, content)
+        fut = asyncio.Future(loop=None)
+        fut.set_result(res)
+        p3k_swiftclient.aiohttp.request = mock.Mock(return_value=fut)
+        response = p3k_swiftclient.get_container(
+            self.storage_url,
+            self.token,
+            self.vault,
+            limit,
+            marker)
+        self.assertEqual(response, [part['name'] for part in content])
+
+    def test_get_container_no_marker_limit(self):
+        # With marker and limit as None
+        content = Content([{'name': 'mocka'},
+                           {'name': 'mockb'},
+                           {'name': 'mockc'}])
+        limit = None
+        marker = None
+        res = Response(200, content)
+        fut = asyncio.Future(loop=None)
+        fut.set_result(res)
+        p3k_swiftclient.aiohttp.request = mock.Mock(return_value=fut)
+        response = p3k_swiftclient.get_container(
+            self.storage_url,
+            self.token,
+            self.vault,
+            limit,
+            marker)
+        self.assertEqual(response, [part['name'] for part in content])
+
+    def test_get_non_existent_container(self):
+        content = Content([{'name': 'mock'}])
+        res = Response(404, content)
+        fut = asyncio.Future(loop=None)
+        fut.set_result(res)
+        p3k_swiftclient.aiohttp.request = mock.Mock(return_value=fut)
+        self.assertRaises(ClientException,
+                          lambda: p3k_swiftclient.get_container(
                               self.storage_url,
                               self.token,
                               self.vault))
