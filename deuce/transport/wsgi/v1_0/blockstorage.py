@@ -165,7 +165,7 @@ class CollectionResource(object):
         # We actually fetch the user's requested
         # limit +1 to detect if the list is being
         # truncated or not.
-        storage = BlockStorage(vault_id)
+        storage = BlockStorage.get(vault_id)
         storage_blocks = storage.get_blocks_generator(inmarker, limit + 1)
 
         responses = list(storage_blocks)

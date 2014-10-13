@@ -11,25 +11,19 @@ logger = logging.getLogger(__name__)
 
 class BlockStorage(object):
 
-
-    def __init__(self, vault_id, storage_block_id=None):
-        self.vault_id = vault_id
-        self.Vault = Vault.get(vault_id)
-        self.storage_block_id = storage_block_id
-
     @staticmethod
     def get(vault_id):
         vault = Vault.get(vault_id)
 
         return BlockStorage(vault) if vault else None
 
-    def __init__(self, vault):
+    def __init__(self, vault, storage_block_id=None):
         self.Vault = vault
+        self.storage_block_id = storage_block_id
 
     @property
     def vault_id(self):
         return self.Vault.id
-
 
     def get_metadata_id(self, storage_block_id):
         return deuce.metadata_driver.get_block_metadata_id(self.vault_id,
@@ -111,7 +105,7 @@ class BlockStorage(object):
         return Block(self.vault_id, metadata_block_id, obj) if obj else None
 
     def get_blocks_generator(self, marker, limit):
-        return (BlockStorage(self.vault_id, storage_block_id)
+        return (BlockStorage(Vault.get(self.vault_id), storage_block_id)
                 for storage_block_id in
                 deuce.storage_driver.get_vault_block_list(self.vault_id,
                                                           limit,
