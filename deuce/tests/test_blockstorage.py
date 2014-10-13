@@ -109,7 +109,7 @@ class TestBlockStorageController(ControllerTest):
         self.assertIn('x-storage-id', self.srmock.headers_dict)
         self.assertEqual(block_id, self.srmock.headers_dict['x-storage-id'])
         self.assertIn('x-block-id', self.srmock.headers_dict)
-        self.assertIsNone(self.srmock.headers_dict['x-block-id'])
+        self.assertEqual(str(None), self.srmock.headers_dict['x-block-id'])
 
         block_location = self.srmock.headers_dict['x-block-location']
         self.assertTrue(block_location)
