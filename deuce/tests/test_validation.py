@@ -1,3 +1,4 @@
+import hashlib
 from unittest import TestCase
 import uuid
 
@@ -16,7 +17,7 @@ class MockRequest(object):
 class TestRulesBase(TestCase):
 
     @staticmethod
-    def build_request(params=None):
+    def build_request(params=None, separator='&'):
         """Build a request object to use for testing
 
         :param params: list of tuples containing the name and value pairs
@@ -312,7 +313,8 @@ class TestMetadataBlockRules(TestRulesBase):
 
 class TestStorageBlockRules(TestRulesBase):
 
-    positive_cases = [str(uuid.uuid4()) for _ in range(0, 1000)]
+    positive_cases = [hashlib.sha1(bytes(i)).hexdigest() + '_' +
+                      str(uuid.uuid4()) for i in range(0, 1000)]
 
     negative_cases = [
         '',

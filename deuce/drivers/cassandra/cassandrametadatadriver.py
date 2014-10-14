@@ -386,7 +386,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
         args = dict(
             projectid=deuce.context.project_id,
             vaultid=vault_id,
-            storageid=uuid.UUID(storage_id)
+            storageid=storage_id
         )
 
         res = self._session.execute(CQL_GET_BLOCK_ID, args)
@@ -656,7 +656,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
                 projectid=deuce.context.project_id,
                 vaultid=vault_id,
                 blockid=block_id,
-                storageid=uuid.UUID(storage_id),
+                storageid=storage_id,
                 reftime=int(datetime.datetime.utcnow().timestamp()),
                 blocksize=int(blocksize)
             )
