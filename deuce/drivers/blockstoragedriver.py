@@ -18,11 +18,11 @@ class BlockStorageDriver(object):
     """
 
     @abstractmethod
-    def block_exists(self, vault_id, block_id):
+    def block_exists(self, vault_id, storage_block_id):
         """Determines if the specified block exists in the vault.
 
         :param vault_id: The ID of the vault to check
-        :param block_id: The ID of the block to check"""
+        :param storage_block_id: The Storage ID of the block to check"""
         raise NotImplementedError
 
     @abstractmethod
@@ -64,53 +64,53 @@ class BlockStorageDriver(object):
         raise NotImplementedError
 
     @abstractmethod
-    def get_block_obj(self, vault_id, block_id):
+    def get_block_obj(self, vault_id, storage_block_id):
         """Returns a single file-like object"""
         raise NotImplementedError
 
     @abstractmethod
-    def get_block_object_length(self, vault_id, block_id):
+    def get_block_object_length(self, vault_id, storage_block_id):
         """Returns the length of an object"""
         raise NotImplementedError
 
     @abstractmethod
-    def store_block(self, vault_id, block_id, block_data):
+    def store_block(self, vault_id, metadata_block_id, block_data):
         """Stores the block into the specified vault
 
-        :param block_id: The ID of the block"""
+        :param storage_block_id: The Storage ID of the block"""
         raise NotImplementedError
 
     @abstractmethod
-    def store_async_block(self, vault_id, block_ids, block_datas):
+    def store_async_block(self, vault_id, metadata_block_ids, block_datas):
         """Stores blocks asynchronously into the specified vault
 
         :param vault_id: The IDs of the vault
-        :param block_ids: The IDs of the blocks
+        :param metadata_block_ids: The Metadata IDs of the blocks
         :param block_datas: The content of the blocks
         """
         raise NotImplementedError
 
     @abstractmethod
-    def block_exists(self, vault_id, block_id):
+    def block_exists(self, vault_id, storage_block_id):
         """Determines if the specified block exists in the
         vault."""
         raise NotImplementedError
 
     @abstractmethod
-    def delete_block(self, vault_id, block_id):
+    def delete_block(self, vault_id, storage_block_id):
         """Deletes the specified block from storage"""
         raise NotImplementedError
 
-    def create_blocks_generator(self, vault_id, block_gen):
+    def create_blocks_generator(self, vault_id, storage_block_gen):
         """Returns a generator of file-like objects that are
         ready to read. These objects will get closed
         individually."""
-        return (self.get_block_obj(vault_id, block_id)
-            for block_id in block_gen)
+        return (self.get_block_obj(vault_id, storage_block_id)
+            for storage_block_id in storage_block_gen)
 
     @staticmethod
-    def storage_id(blockid):
+    def storage_id(metadata_block_id):
         """Generates a storage id, for a given
-        block id"""
-        return str(uuid.uuid5(uuid.NAMESPACE_URL, blockid + ' ' +
+        metadata block id"""
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, metadata_block_id + ' ' +
             str(socket.gethostname()) + str(time.time())))
