@@ -91,14 +91,15 @@ def get_container(url, token, container, limit=None, marker=None):
 
     if not limit:
         limit = conf.api_configuration.max_returned_num
-    qs = '?format=json&limit={0}'.format(limit)
+    qs = '?limit={0}'.format(limit)
 
     if marker:
         qs = qs + '&marker={0}'.format(marker)
 
     req_url = url + '/' + container + qs
 
-    headers = {'X-Auth-Token': token}
+    headers = {'X-Auth-Token': token,
+               'Accept': 'application/json'}
     response, content = _request_getcontainer('GET', req_url,
                                               headers=headers)
 
