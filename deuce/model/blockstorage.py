@@ -58,6 +58,8 @@ class BlockStorage(object):
 
         # Block doesn't exist in storage
         if block is None:
+            logger.debug('Unable to locate block {0}'.format(
+                storage_block_id))
             return None
 
         # Default values

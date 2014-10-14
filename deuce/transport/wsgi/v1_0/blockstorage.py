@@ -89,7 +89,6 @@ class ItemResource(object):
 
         resp.stream = block.get_obj()
         resp.stream_len = block.get_block_length()
-
         resp.status = falcon.HTTP_200
         resp.content_type = 'application/octet-stream'
 
