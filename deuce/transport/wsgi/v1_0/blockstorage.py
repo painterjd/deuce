@@ -165,22 +165,21 @@ class CollectionResource(object):
         # We actually fetch the user's requested
         # limit +1 to detect if the list is being
         # truncated or not.
-        storage_blocks = BlockStorage.get_blocks_generator(inmarker, limit + 1)
+        storage = BlockStorage.get(vault_id)
+        storage_blocks = storage.get_blocks_generator(inmarker, limit + 1)
 
-        # List the blocks into JSON and return.
-        # TODO: figure out a way to stream this back(??)
-        # responses = list(storage_blocks)
+        responses = list(storage_blocks)
 
         # Was the list truncated? See note above about +1
-        # truncated = len(responses) > 0 and len(responses) == limit + 1
+        truncated = len(responses) > 0 and len(responses) == limit + 1
 
-        # outmarker = responses.pop().storage_block_id if truncated else None
+        outmarker = responses.pop().storage_block_id if truncated else None
 
-        # if outmarker:
-        #    query_args = {'marker': outmarker}
-        #    query_args['limit'] = limit
-        #    returl = set_qs_on_url(req.url, query_args)
-        #    resp.set_header("X-Next-Batch", returl)
+        if outmarker:
+            query_args = {'marker': outmarker}
+            query_args['limit'] = limit
+            returl = set_qs_on_url(req.url, query_args)
+            resp.set_header("X-Next-Batch", returl)
 
-        # resp.body = json.dumps([response.storage_block_id
-        #                         for response in responses])
+        resp.body = json.dumps([response.storage_block_id
+                                for response in responses])

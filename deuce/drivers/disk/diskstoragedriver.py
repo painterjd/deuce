@@ -39,6 +39,24 @@ class DiskStorageDriver(BlockStorageDriver):
         path = self._get_vault_path(vault_id)
         return os.path.exists(path)
 
+    def get_vault_block_list(self, vault_id, limit, marker=None):
+
+        path = self._get_vault_path(vault_id)
+        if os.path.exists(path):
+            total_contents = os.listdir(path)
+
+            if marker:
+                try:
+                    index = total_contents.index(marker)
+                    return total_contents[index:(index + limit)]
+                except ValueError:
+                    return []
+            else:
+                return total_contents[:limit]
+
+        else:
+            return None
+
     def get_vault_statistics(self, vault_id):
         """Return the statistics on the vault.
 

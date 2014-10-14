@@ -17,8 +17,9 @@ class BlockStorage(object):
 
         return BlockStorage(vault) if vault else None
 
-    def __init__(self, vault):
+    def __init__(self, vault, storage_block_id=None):
         self.Vault = vault
+        self.storage_block_id = storage_block_id
 
     @property
     def vault_id(self):
@@ -103,9 +104,9 @@ class BlockStorage(object):
 
         return Block(self.vault_id, metadata_block_id, obj) if obj else None
 
-    @staticmethod
-    def get_blocks_generator(marker, limit):
-        # TODO: Implement this, error from here is just temporary
-        raise errors.HTTPNotImplemented(
-            'Directly Delete Block From Storage Not Implemented')
-        # return []
+    def get_blocks_generator(self, marker, limit):
+        return (BlockStorage(Vault.get(self.vault_id), storage_block_id)
+                for storage_block_id in
+                deuce.storage_driver.get_vault_block_list(self.vault_id,
+                                                          limit,
+                                                          marker))

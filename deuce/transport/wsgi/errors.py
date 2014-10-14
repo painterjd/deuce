@@ -72,19 +72,6 @@ class HTTPNotFound(falcon.HTTPNotFound):
         super(HTTPNotFound, self).__init__()
 
 
-class HTTPNotImplemented(falcon.HTTPError):
-
-    """Derives NotImplemented from falcon.HTTPError"""
-
-    TITLE = u'Not Implemented'
-
-    def __init__(self, description):
-        super(HTTPNotImplemented, self).__init__(status.HTTP_501,
-                                                 self.TITLE,
-                                                 description,
-                                                 code=501)
-
-
 class HTTPMethodNotAllowed(falcon.HTTPMethodNotAllowed):
 
     """Wraps falcon.HTTPMethodNotAllowed"""

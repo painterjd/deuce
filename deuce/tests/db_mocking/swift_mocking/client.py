@@ -1,4 +1,5 @@
 import atexit
+import bisect
 import datetime
 import hashlib
 import io
@@ -86,6 +87,21 @@ def head_container(url,
         response_headers['x-container-object-count'] = object_count
 
         return response_headers
+    else:
+        raise ClientException('mocking')
+
+
+def get_container(url, token, container, limit, marker):
+    path = _get_vault_block_path(container)
+    if os.path.exists(path):
+        total_contents = os.listdir(path)
+        if marker:
+            total_contents.sort()
+            index = bisect.bisect(total_contents, marker)
+            return total_contents[index:(index + limit)]
+        else:
+            return total_contents[:limit]
+
     else:
         raise ClientException('mocking')
 

@@ -1,6 +1,9 @@
 import ddt
 import hashlib
 import falcon
+from deuce.util.misc import relative_uri
+import json
+import uuid
 import os
 from mock import patch
 from deuce.model import Block
@@ -126,15 +129,64 @@ class TestBlockStorageController(ControllerTest):
     def test_list_blocks(self):
         response = self.simulate_get(self._block_storage_path,
                                      headers=self._hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_501)
+        self.assertEqual(self.srmock.status, falcon.HTTP_200)
 
-    def test_list_blocks_with_marker(self):
+    def test_list_blocks_with_limit_marker(self):
+
+        # Test with bad marker
+        block_storage_path = self.get_storage_blocks_path(self.vault_name)
         block_marker = self.create_storage_block_id()
         marker = 'marker={0:}'.format(block_marker)
+
         response = self.simulate_get(self._block_storage_path,
                                      query_string=marker,
                                      headers=self._hdrs)
-        self.assertEqual(self.srmock.status, falcon.HTTP_501)
+        self.assertEqual(self.srmock.status, falcon.HTTP_200)
+        self.assertEqual(response[0].decode(), '[]')
+
+        block_list, block_data = self.helper_create_blocks(num_blocks=40)
+        storage_list = self.helper_store_blocks(self.vault_name, block_data)
+
+        # Test with no marker
+        response = self.simulate_get(self._block_storage_path,
+                                     headers=self._hdrs)
+        storage_ids = json.loads(response[0].decode())
+        self.assertEqual(self.srmock.status, falcon.HTTP_200)
+
+        # Test valid marker
+        # Lets list from the second storage_id
+        query_marker = storage_ids[0]
+
+        marker = 'marker={0:}'.format(query_marker)
+        response = self.simulate_get(self._block_storage_path,
+                                     query_string=marker,
+                                     headers=self._hdrs)
+        responses = json.loads(response[0].decode())
+
+        for resp in responses:
+            self.assertTrue(uuid.UUID(resp))
+            self.assertIn(resp, storage_ids)
+
+        # Test valid limit
+        response = self.simulate_get(self._block_storage_path,
+                                     query_string='limit=3',
+                                     headers=self._hdrs)
+        self.assertEqual(len(json.loads(response[0].decode())), 3)
+
+        # Test valid marker with limit
+        query_string = 'marker={0:}&limit={1:}'.format(query_marker, '2')
+        response = self.simulate_get(self._block_storage_path,
+                                     query_string=query_string,
+                                     headers=self._hdrs)
+        self.assertEqual(len(json.loads(response[0].decode())), 2)
+
+        next_url, querystring = relative_uri(
+            self.srmock.headers_dict['x-next-batch'])
+
+        response = self.simulate_get(next_url,
+                                     query_string=querystring,
+                                     headers=self._hdrs)
+        self.assertEqual(len(json.loads(response[0].decode())), 2)
 
     def test_head_block_in_nonexistent_vault(self):
         block_id = self.create_storage_block_id()
