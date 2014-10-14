@@ -16,20 +16,11 @@ class Block(object):
         self.storage_block_id = storage_block_id
         self._fileobj = obj
 
-        has_content = True if obj else False
-        logger.info('Caching Block({0}, {1}, content={2})'.format(
-            vault_id, metadata_block_id, has_content))
-
     def get_obj(self):
         """Returns a file-like object that can be used for
         reading the data. The stream should be closed when
         by the caller when done.
         """
-        has_content = True if self._fileobj else False
-        logger.info('Cached Block({0}, {1}, content={2})={3}'.format(
-            self.vault_id, self.metadata_block_id, has_content,
-            str(self._fileobj.read())))
-        self._fileobj.seek(0, os.SEEK_SET)
         return self._fileobj
 
     def get_ref_count(self):

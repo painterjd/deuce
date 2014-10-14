@@ -150,15 +150,10 @@ class DiskStorageDriver(BlockStorageDriver):
         of objects should be returned
         """
         path = self._get_block_path(vault_id, storage_block_id)
-        logger.info('Looking in Vault ({0}) for block {1} at path {2}'.format(
-                    vault_id, storage_block_id, path))
 
         if not os.path.exists(path):
-            logger.info('Path {0} does not exist.'.format(path))
             return None
 
-        logger.info('Located block {0} at path {1}'.format(
-            storage_block_id, path))
         return open(path, 'rb')
 
     def get_block_object_length(self, vault_id, storage_block_id):

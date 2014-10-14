@@ -90,14 +90,6 @@ class ItemResource(object):
         resp.stream = block.get_obj()
         resp.stream_len = block.get_block_length()
 
-        logger.info('Returning Block ({0}, {1}, content{2}) - {3}'.format(
-            block.vault_id, block.metadata_block_id,
-            True if block._fileobj else False,
-            True if resp.stream else False))
-        logger.info('Returning Content Length {0} == {1} ? {2}'.format(
-            block.get_block_length(), resp.stream_len,
-            (block.get_block_length() == resp.stream_len)))
-
         resp.status = falcon.HTTP_200
         resp.content_type = 'application/octet-stream'
 

@@ -58,8 +58,6 @@ class BlockStorage(object):
 
         # Block doesn't exist in storage
         if block is None:
-            logger.debug('Unable to locate block {0}'.format(
-                storage_block_id))
             return None
 
         # Default values
@@ -99,20 +97,9 @@ class BlockStorage(object):
         """Get a block directly from storage
         """
         metadata_block_id = self.get_metadata_id(storage_block_id)
-        logger.info(
-            'Vault {0} - Storage Block ID {1} maps to Metadata Storage ID {2}'
-            .format(self.vault_id, storage_block_id, metadata_block_id))
 
         obj = deuce.storage_driver.get_block_obj(self.vault_id,
                                                  storage_block_id)
-        if obj:
-            logger.info('Vault {0} - Storage Block {1}: Located data'.
-                format(self.vault_id, storage_block_id))
-        else:
-            logger.info(
-                'Vault {0} - Storage Block {1}: FAILED to located data'.
-                format(self.vault_id, storage_block_id))
-
         return Block(self.vault_id,
                      metadata_block_id,
                      obj=obj,
