@@ -131,8 +131,8 @@ class TestBase(fixtures.BaseTestFixture):
             self.assertEqual(int(headers['content-length']), contentlength)
 
     def assertUrl(self, url, base=False, vaults=False, vaultspath=False,
-                  blocks=False, files=False, filepath=False, fileblock=False,
-                  nextlist=False):
+                  blocks=False, blockpath=False, files=False, filepath=False,
+                  fileblock=False, nextlist=False):
         """Check that the url provided has information according to the flags
         passed
         """
@@ -156,6 +156,11 @@ class TestBase(fixtures.BaseTestFixture):
         if blocks:
             self.assertEqual(u.path, '/{0}/vaults/{1}/blocks'
                              ''.format(self.api_version, self.vaultname), msg)
+
+        if blockpath:
+            valid = re.compile('/{0}/vaults/{1}/blocks/[a-zA-Z0-9\-]*'
+                               ''.format(self.api_version, self.vaultname))
+            self.assertIsNotNone(valid.match(u.path), msg)
 
         if files:
             self.assertEqual(u.path, '/{0}/vaults/{1}/files'

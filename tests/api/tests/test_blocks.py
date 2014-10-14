@@ -191,8 +191,25 @@ class TestBlockUploaded(base.TestBase):
         resp = self.client.delete_block(self.vaultname, self.blockid)
         self.assert_204_response(resp)
 
+    def test_upload_block_twice(self):
+        """Upload the same block twice"""
+
+        resp = self.client.upload_block(self.vaultname, self.blockid,
+                                        self.block_data)
+        self.assert_201_response(resp)
+
+        self.assertIn('x-block-id', resp.headers)
+        self.assertEqual(resp.headers['x-block-id'], self.blockid)
+        self.assertIn('x-storage-id', resp.headers)
+        self.assert_uuid5(resp.headers['x-storage-id'])
+        self.storageid_added = resp.headers['x-storage-id']
+        self.assertNotEqual(self.storageid, resp.headers['x-storage-id'])
+
     def tearDown(self):
         super(TestBlockUploaded, self).tearDown()
+        if hasattr(self, 'storageid_added'):
+            self.client.delete_storage_block(self.vaultname,
+                    self.storageid_added)
         self.client.delete_block(self.vaultname, self.blockid)
         self.client.delete_vault(self.vaultname)
 
