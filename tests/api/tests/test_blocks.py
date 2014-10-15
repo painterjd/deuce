@@ -104,10 +104,13 @@ class TestUploadBlocks(base.TestBase):
                                         self.block_data)
         self.assert_201_response(resp)
 
-        self.assertIn('x-block-id', resp.headers)
-        self.assertEqual(resp.headers['x-block-id'], self.blockid)
+        self.assertHeaders(resp.headers, blockid=self.blockid)
         self.assertIn('x-storage-id', resp.headers)
-        self.assert_uuid5(resp.headers['x-storage-id'])
+        ids = resp.headers['x-storage-id'].split('_')
+        self.assertEqual(ids[0], self.blockid,
+                'Storage Id {0} does not begin with the block id {1}'
+                ''.format(resp.headers['x-storage-id'], self.blockid))
+        self.assert_uuid5(ids[1])
 
     @ddt.data(1, 3, 10, 32)
     def test_upload_multiple_blocks(self, value):
@@ -153,16 +156,13 @@ class TestBlockUploaded(base.TestBase):
         self.assertEqual(resp.status_code, 200,
                          'Status code returned: {0} . '
                          'Expected 200'.format(resp.status_code))
-        self.assertHeaders(resp.headers, binary=True,
+        self.assertHeaders(resp.headers,
+                           binary=True,
                            lastmodified=True,
-                           contentlength=len(self.block_data))
-        self.assertIn('X-Block-Reference-Count', resp.headers)
-        self.assertEqual(resp.headers['X-Block-Reference-Count'], '0')
-        self.assertIn('x-block-id', resp.headers)
-        self.assertEqual(resp.headers['x-block-id'], self.blockid)
-        self.assertIn('x-storage-id', resp.headers)
-        self.assert_uuid5(resp.headers['x-storage-id'])
-        self.assertEqual(resp.headers['x-storage-id'], self.storageid)
+                           contentlength=len(self.block_data),
+                           refcount=0,
+                           blockid=self.blockid,
+                           storageid=self.storageid)
         self.assertEqual(resp.content, self.block_data,
                          'Block data returned does not match block uploaded')
 
@@ -170,19 +170,13 @@ class TestBlockUploaded(base.TestBase):
         """Head an individual block"""
 
         resp = self.client.block_head(self.vaultname, self.blockid)
-        self.assertEqual(resp.status_code, 204,
-                         'Status code returned: {0} . '
-                         'Expected 204'.format(resp.status_code))
+        self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
                            lastmodified=True,
-                           contentlength=0)
-        self.assertIn('X-Block-Reference-Count', resp.headers)
-        self.assertEqual(resp.headers['X-Block-Reference-Count'], '0')
-        self.assertIn('x-block-id', resp.headers)
-        self.assertEqual(resp.headers['x-block-id'], self.blockid)
-        self.assertIn('x-storage-id', resp.headers)
-        self.assert_uuid5(resp.headers['x-storage-id'])
-        self.assertEqual(resp.headers['x-storage-id'], self.storageid)
+                           contentlength=0,
+                           refcount=0,
+                           blockid=self.blockid,
+                           storageid=self.storageid)
         self.assertEqual(len(resp.content), 0)
 
     def test_delete_block(self):
@@ -198,12 +192,10 @@ class TestBlockUploaded(base.TestBase):
                                         self.block_data)
         self.assert_201_response(resp)
 
-        self.assertIn('x-block-id', resp.headers)
-        self.assertEqual(resp.headers['x-block-id'], self.blockid)
-        self.assertIn('x-storage-id', resp.headers)
-        self.assert_uuid5(resp.headers['x-storage-id'])
-        self.storageid_added = resp.headers['x-storage-id']
-        self.assertNotEqual(self.storageid, resp.headers['x-storage-id'])
+        self.assertHeaders(resp.headers,
+                           blockid=self.blockid)
+        self.assertIn('X-Storage-Id', resp.headers)
+        self.assertNotEqual(self.storageid, resp.headers['X-Storage-Id'])
 
     def tearDown(self):
         super(TestBlockUploaded, self).tearDown()
@@ -371,7 +363,7 @@ class TestBlocksReferenceCount(base.TestBase):
     def test_get_block_with_multiple_references(self, value):
         """Get an individual block that has multiple references"""
 
-        expected = '3'
+        expected = 3
         if value == 'delete_finalized':
             # delete 1 reference; a finalized file
             self.client.delete_file(vaultname=self.vaultname,
@@ -381,7 +373,7 @@ class TestBlocksReferenceCount(base.TestBase):
             self.client.delete_file(vaultname=self.vaultname,
                                     fileid=self.files[0].Id)
         elif value == 'all':
-            expected = '4'
+            expected = 4
 
         resp = self.client.get_block(self.vaultname, self.blockid)
         self.assertEqual(resp.status_code, 200,
@@ -389,14 +381,10 @@ class TestBlocksReferenceCount(base.TestBase):
                          'Expected 200'.format(resp.status_code))
         self.assertHeaders(resp.headers, binary=True,
                            lastmodified=True,
-                           contentlength=len(self.block_data))
-        self.assertIn('X-Block-Reference-Count', resp.headers)
-        self.assertEqual(resp.headers['X-Block-Reference-Count'], expected)
-        self.assertIn('x-block-id', resp.headers)
-        self.assertEqual(resp.headers['x-block-id'], self.blockid)
-        self.assertIn('x-storage-id', resp.headers)
-        self.assert_uuid5(resp.headers['x-storage-id'])
-        self.assertEqual(resp.headers['x-storage-id'], self.storageid)
+                           contentlength=len(self.block_data),
+                           refcount=expected,
+                           blockid=self.blockid,
+                           storageid=self.storageid)
         self.assertEqual(resp.content, self.block_data,
                          'Block data returned does not match block uploaded')
 
@@ -404,7 +392,7 @@ class TestBlocksReferenceCount(base.TestBase):
     def test_head_block_with_multiple_references(self, value):
         """Head an individual block that has multiple references"""
 
-        expected = '3'
+        expected = 3
         if value == 'delete_finalized':
             # delete 1 reference; a finalized file
             self.client.delete_file(vaultname=self.vaultname,
@@ -414,22 +402,16 @@ class TestBlocksReferenceCount(base.TestBase):
             self.client.delete_file(vaultname=self.vaultname,
                                     fileid=self.files[0].Id)
         elif value == 'all':
-            expected = '4'
+            expected = 4
 
         resp = self.client.block_head(self.vaultname, self.blockid)
-        self.assertEqual(resp.status_code, 204,
-                         'Status code returned: {0} . '
-                         'Expected 204'.format(resp.status_code))
+        self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
                            lastmodified=True,
-                           contentlength=0)
-        self.assertIn('X-Block-Reference-Count', resp.headers)
-        self.assertEqual(resp.headers['X-Block-Reference-Count'], expected)
-        self.assertIn('x-block-id', resp.headers)
-        self.assertEqual(resp.headers['x-block-id'], self.blockid)
-        self.assertIn('x-storage-id', resp.headers)
-        self.assert_uuid5(resp.headers['x-storage-id'])
-        self.assertEqual(resp.headers['x-storage-id'], self.storageid)
+                           contentlength=0,
+                           refcount=expected,
+                           blockid=self.blockid,
+                           storageid=self.storageid)
         self.assertEqual(len(resp.content), 0)
 
     def tearDown(self):

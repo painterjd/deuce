@@ -20,6 +20,7 @@ import urlparse
 
 Block = namedtuple('Block', 'Id Data')
 File = namedtuple('File', 'Id Url')
+Storage = namedtuple('Storage', 'Id BlockId')
 
 
 class TestBase(fixtures.BaseTestFixture):
@@ -107,7 +108,9 @@ class TestBase(fixtures.BaseTestFixture):
         return testMethodName == name
 
     def assertHeaders(self, headers, json=False, binary=False,
-                      lastmodified=False, contentlength=None):
+                      lastmodified=False, contentlength=None,
+                      refcount=None, blockid=None, storageid=None,
+                      allow=None, location=False):
         """Basic http header validation"""
 
         self.assertIsNotNone(headers['transaction-id'])
@@ -129,6 +132,25 @@ class TestBase(fixtures.BaseTestFixture):
 
         if contentlength is not None:
             self.assertEqual(int(headers['content-length']), contentlength)
+
+        if refcount is not None:
+            self.assertIn('X-Block-Reference-Count', headers)
+            self.assertEqual(int(headers['X-Block-Reference-Count']), refcount)
+
+        if blockid is not None:
+            self.assertIn('X-Block-Id', headers)
+            self.assertEqual(headers['X-Block-Id'], blockid)
+
+        if storageid is not None:
+            self.assertIn('X-Storage-Id', headers)
+            self.assertEqual(headers['X-Storage-Id'], storageid)
+
+        if allow is not None:
+            self.assertIn('Allow', headers)
+            self.assertEqual(headers['Allow'], allow)
+
+        if location:
+            self.assertIn('X-Block-Location', headers)
 
     def assertUrl(self, url, base=False, vaults=False, vaultspath=False,
                   blocks=False, blockpath=False, files=False, filepath=False,
@@ -262,6 +284,7 @@ class TestBase(fixtures.BaseTestFixture):
         self.vaults.append(self.vaultname)
         self.blocks = []
         self.files = []
+        self.storage = []
 
     def generate_block_data(self, block_data=None, size=30720):
         """
@@ -283,10 +306,9 @@ class TestBase(fixtures.BaseTestFixture):
         If not, a random block of data of the specified size is used
         """
         self.generate_block_data(block_data, size)
-        resp = self.client.upload_block(self.vaultname, self.blockid,
+        self.resp = self.client.upload_block(self.vaultname, self.blockid,
                                         self.block_data)
-        self.storageid = resp.headers['x-storage-id']
-        return 201 == resp.status_code
+        return 201 == self.resp.status_code
 
     def upload_block(self, block_data=None, size=30720):
         """
@@ -298,6 +320,8 @@ class TestBase(fixtures.BaseTestFixture):
         """
         if not self._upload_block(block_data, size):
             raise Exception('Failed to upload block')
+        self.storageid = self.resp.headers['x-storage-id']
+        self.storage.append(Storage(Id=self.storageid, BlockId=self.blockid))
 
     def _upload_multiple_blocks(self, nblocks, size=30720):
         """
