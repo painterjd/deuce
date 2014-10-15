@@ -32,6 +32,21 @@ class TestBlockStorageController(ControllerTest):
         self.helper_delete_vault(self.vault_name, self._hdrs)
         super(TestBlockStorageController, self).tearDown()
 
+    def test_post_blocks(self):
+
+        data = 'abcdef'
+
+        block_path = 'http://localhost' + \
+            self.get_blocks_path(self.vault_name)
+        storage_path = self.get_storage_blocks_path(self.vault_name)
+
+        response = self.simulate_post(storage_path,
+                                      headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_405)
+        self.assertIn('x-blocks-location', self.srmock.headers_dict)
+        self.assertEqual(block_path,
+                         self.srmock.headers_dict['x-blocks-location'])
+
     def test_put_block_nonexistant_block(self):
         # No block already in metadata/storage
 
