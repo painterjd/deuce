@@ -118,6 +118,6 @@ class BlockStorageDriver(object):
 
         """
         return str(blockid) + '_' + str(uuid.uuid5(uuid.NAMESPACE_URL,
-                                    blockid +
-                                    str(socket.gethostname()) +
-                                    str(time.time())))
+                                                   blockid +
+                                                   str(socket.gethostname()) +
+                                                   str(time.time())))

@@ -14,6 +14,15 @@ class MockRequest(object):
     pass
 
 
+class InvalidSeparatorError(Exception):
+    """Invalid Separator Error is raised whenever
+    a invalid separator is set for joining query strings
+    in a url"""
+
+    def __init__(self, msg):
+        Exception.__init__(self, msg)
+
+
 class TestRulesBase(TestCase):
 
     @staticmethod
@@ -45,8 +54,12 @@ class TestRulesBase(TestCase):
                 if mock_env['QUERY_STRING'] is None:
                     mock_env['QUERY_STRING'] = param_set
                 else:
-                    mock_env['QUERY_STRING'] = '{1}{0}{2}'.format(
-                        separator, mock_env['QUERY_STRING'], param_set)
+                    if separator == '&' or separator == ';':
+                        mock_env['QUERY_STRING'] = '{1}{0}{2}'.format(
+                            separator, mock_env['QUERY_STRING'], param_set)
+                    else:
+                        raise InvalidSeparatorError('separator in query string'
+                                                    'must be & or ;')
 
         if mock_env['QUERY_STRING'] is None:
             del mock_env['QUERY_STRING']
@@ -137,7 +150,7 @@ class TestVaultRules(TestRulesBase):
             with self.assertRaises(errors.HTTPNotFound):
                 self.utilize_get_vault_id(case)
 
-    def test_vault_get(self):
+    def test_vault_put(self):
 
         for p_case in self.__class__.positive_cases:
             self.assertTrue(self.utilize_put_vault_id(p_case))
@@ -318,6 +331,9 @@ class TestStorageBlockRules(TestRulesBase):
 
     negative_cases = [
         '',
+        'fecfd28bbc9345891a66d7c1b8ff46e60192d'
+        '2840c3de7c4-5fe9-4b2e-b19a-9cf81364997b',  # note no '_' between sha1
+                                                    #  and uuid
         'e7bf692b-ec7b-40ad-b0d1-45ce6798fb6z',  # note trailing z
         str(uuid.uuid4()).upper(),  # Force case sensitivity
         None
