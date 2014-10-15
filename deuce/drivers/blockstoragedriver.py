@@ -77,7 +77,9 @@ class BlockStorageDriver(object):
     def store_block(self, vault_id, metadata_block_id, block_data):
         """Stores the block into the specified vault
 
-        :param storage_block_id: The Storage ID of the block"""
+        :param metadata_block_id: The Metadata ID of the block
+        :returns: A tuple containing the status of saving the block to storage
+                    (True/False), and the storage id of the block"""
         raise NotImplementedError
 
     @abstractmethod
