@@ -283,8 +283,8 @@ class TestListStorageBlocks(base.TestBase):
             jsonschema.validate(resp_body, deuce_schema.block_storage_list)
 
             self.assertEqual(len(resp_body), value,
-                             'Number of storage block ids returned is not {0} . '
-                             'Returned {1}'.format(value, len(resp_body)))
+                      'Number of storage block ids returned is not {0} . '
+                      'Returned {1}'.format(value, len(resp_body)))
             for storageid in resp_body:
                 self.assertIn(storageid, self.storageids)
                 self.storageids.remove(storageid)
