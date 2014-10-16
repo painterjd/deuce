@@ -54,7 +54,7 @@ class TestRulesBase(TestCase):
                 if mock_env['QUERY_STRING'] is None:
                     mock_env['QUERY_STRING'] = param_set
                 else:
-                    if separator == '&' or separator == ';':
+                    if separator in ('&', ';'):
                         mock_env['QUERY_STRING'] = '{1}{0}{2}'.format(
                             separator, mock_env['QUERY_STRING'], param_set)
                     else:
