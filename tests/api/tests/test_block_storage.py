@@ -1,6 +1,7 @@
 from tests.api import base
 from tests.api.utils.schema import deuce_schema
 
+import ddt
 import jsonschema
 import os
 import sha
@@ -95,12 +96,9 @@ class TestBlockUploaded(base.TestBase):
                            contentlength=0,
                            refcount=0,
                            blockid=self.blockid,
-                           storageid=self.storageid)
-        self.assertIn('x-block-orphaned', resp.headers)
-        self.assertEqual(resp.headers['x-block-orphaned'], 'False')
-        self.assertIn('x-block-size', resp.headers)
-        self.assertEqual(int(resp.headers['x-block-size']),
-                len(self.block_data))
+                           storageid=self.storageid,
+                           orphan='False',
+                           size=len(self.block_data))
         self.assertEqual(len(resp.content), 0)
 
     def test_upload_storage_block(self):
@@ -182,14 +180,11 @@ class TestBlockOrphaned(base.TestBase):
                            contentlength=0,
                            refcount=0,
                            blockid='None',
-                           storageid=self.storageid)
+                           storageid=self.storageid,
+                           orphan='True',
+                           size=len(self.block_data))
         self.assertIn('X-Ref-Modified', resp.headers)
         self.assertEqual(resp.headers['X-Ref-Modified'], "None")
-        self.assertIn('x-block-orphaned', resp.headers)
-        self.assertEqual(resp.headers['x-block-orphaned'], 'True')
-        self.assertIn('x-block-size', resp.headers)
-        self.assertEqual(int(resp.headers['x-block-size']),
-                len(self.block_data))
         self.assertEqual(len(resp.content), 0)
 
     def test_delete_storage_block_with_metadata(self):
@@ -203,4 +198,123 @@ class TestBlockOrphaned(base.TestBase):
         super(TestBlockOrphaned, self).tearDown()
         self.client.delete_storage_block(self.vaultname, self.storageid)
         self.client.delete_block(self.vaultname, self.blockid)
+        self.client.delete_vault(self.vaultname)
+
+
+@ddt.ddt
+class TestListStorageBlocks(base.TestBase):
+
+    def setUp(self):
+        super(TestListStorageBlocks, self).setUp()
+        self.create_empty_vault()
+        self.upload_multiple_blocks(20)
+        self.storageids = []
+        for storage in self.storage:
+            self.storageids.append(storage.Id)
+
+    def test_list_multiple_storage_blocks(self):
+        """List multiple storage blocks (20)"""
+
+        resp = self.client.list_of_storage_blocks(self.vaultname)
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.block_storage_list)
+
+        self.assertListEqual(sorted(resp_body), sorted(self.storageids),
+                             'Response for List Storage Blocks'
+                             ' {0} {1}'.format(self.storageids, resp_body))
+
+    @ddt.data(2, 4, 5, 10)
+    def test_list_multiple_storage_blocks_marker(self, value):
+        """List multiple storage blocks (20) using a marker (value)"""
+
+        sorted_storage_list = sorted(self.storageids)
+        markerid = sorted_storage_list[value]
+        resp = self.client.list_of_storage_blocks(self.vaultname,
+                marker=markerid)
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.block_storage_list)
+
+        self.assertListEqual(sorted(resp_body), sorted_storage_list[value:],
+                             'Response for List Storage Blocks'
+                             ' {0} {1}'.format(self.storageids, resp_body))
+
+    @ddt.data(2, 4, 5, 10)
+    def test_list_storage_blocks_limit(self, value):
+        """List multiple storage blocks, setting the limit to value"""
+
+        self.assertBlocksPerPage(value)
+
+    @ddt.data(2, 4, 5, 10)
+    def test_list_storage_blocks_limit_marker(self, value):
+        """List multiple storage blocks, setting the limit to value and using a
+        marker"""
+
+        markerid = sorted(self.storageids)[value]
+        self.assertBlocksPerPage(value, marker=markerid, pages=1)
+
+    def assertBlocksPerPage(self, value, marker=None, pages=0):
+        """
+        Helper function to check the blocks returned per request
+        Also verifies that the marker, if provided, is used
+        """
+
+        url = None
+        for i in range(20 / value - pages):
+            if not url:
+                resp = self.client.list_of_storage_blocks(self.vaultname,
+                                                  marker=marker, limit=value)
+            else:
+                resp = self.client.list_of_storage_blocks(alternate_url=url)
+
+            self.assert_200_response(resp)
+
+            if i < 20 / value - (1 + pages):
+                self.assertIn('x-next-batch', resp.headers)
+                url = resp.headers['x-next-batch']
+                self.assertUrl(url, storage=True, nextlist=True)
+            else:
+                self.assertNotIn('x-next-batch', resp.headers)
+
+            resp_body = resp.json()
+            jsonschema.validate(resp_body, deuce_schema.block_storage_list)
+
+            self.assertEqual(len(resp_body), value,
+                             'Number of storage block ids returned is not {0} . '
+                             'Returned {1}'.format(value, len(resp_body)))
+            for storageid in resp_body:
+                self.assertIn(storageid, self.storageids)
+                self.storageids.remove(storageid)
+        self.assertEqual(len(self.storageids), value * pages,
+                         'Discrepancy between the list of storage blocks '
+                         'returned and the blocks uploaded')
+
+    def test_list_storage_blocks_invalid_marker(self):
+        """Request a Storage Block List with an invalid marker"""
+
+        bad_marker = sha.new(self.id_generator(50)).hexdigest()
+        resp = self.client.list_of_storage_blocks(self.vaultname,
+                marker=bad_marker)
+        self.assert_404_response(resp)
+
+    def test_list_storage_blocks_bad_marker(self):
+        """Request a Storage Block List with a bad marker"""
+
+        blockid = sha.new(self.id_generator(15)).hexdigest()
+        st_id = uuid.uuid5(uuid.NAMESPACE_URL, self.id_generator(50))
+        bad_storageid = '{0}_{1}'.format(blockid, st_id)
+        resp = self.client.list_of_storage_blocks(self.vaultname,
+                marker=bad_storageid)
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        self.assertEqual(resp_body, [])
+
+    def tearDown(self):
+        super(TestListStorageBlocks, self).tearDown()
+        [self.client.delete_block(self.vaultname, block.Id) for block in
+            self.blocks]
         self.client.delete_vault(self.vaultname)

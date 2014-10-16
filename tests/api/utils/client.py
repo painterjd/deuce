@@ -333,3 +333,22 @@ class BaseDeuceClient(client.AutoMarshallingHTTPClient):
                 ''.format(self.url, self.version, vaultname, storage_blockid),
                 headers=new_header, data=block_data)
         return resp
+
+    def list_of_storage_blocks(self, vaultname=None, marker=None, limit=None,
+                       alternate_url=None):
+        """
+        Get a list of all blocks
+        """
+
+        parameters = {}
+        if marker is not None:
+            parameters['marker'] = marker
+        if limit is not None:
+            parameters['limit'] = limit
+        if alternate_url:
+            url = alternate_url
+        else:
+            url = '{0}/{1}/vaults/{2}/storage/blocks' \
+                  ''.format(self.url, self.version, vaultname)
+        resp = self.request('GET', url, params=parameters)
+        return resp

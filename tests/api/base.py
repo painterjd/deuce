@@ -110,7 +110,7 @@ class TestBase(fixtures.BaseTestFixture):
     def assertHeaders(self, headers, json=False, binary=False,
                       lastmodified=False, contentlength=None,
                       refcount=None, blockid=None, storageid=None,
-                      allow=None, location=False):
+                      allow=None, location=False, orphan=None, size=None):
         """Basic http header validation"""
 
         self.assertIsNotNone(headers['transaction-id'])
@@ -152,9 +152,17 @@ class TestBase(fixtures.BaseTestFixture):
         if location:
             self.assertIn('X-Block-Location', headers)
 
+        if orphan is not None:
+            self.assertIn('X-Block-Orphaned', headers)
+            self.assertEqual(headers['X-Block-Orphaned'], orphan)
+
+        if size is not None:
+            self.assertIn('X-Block-Size', headers)
+            self.assertEqual(int(headers['X-Block-Size']), size)
+
     def assertUrl(self, url, base=False, vaults=False, vaultspath=False,
                   blocks=False, blockpath=False, files=False, filepath=False,
-                  fileblock=False, nextlist=False):
+                  fileblock=False, storage=False, nextlist=False):
         """Check that the url provided has information according to the flags
         passed
         """
@@ -197,6 +205,10 @@ class TestBase(fixtures.BaseTestFixture):
             valid = re.compile('/{0}/vaults/{1}/files/[a-zA-Z0-9\-_]*/blocks'
                                ''.format(self.api_version, self.vaultname))
             self.assertIsNotNone(valid.match(u.path), msg)
+
+        if storage:
+            self.assertEqual(u.path, '/{0}/vaults/{1}/storage/blocks'
+                             ''.format(self.api_version, self.vaultname), msg)
 
         if nextlist:
             query = urlparse.parse_qs(u.query)
@@ -344,6 +356,10 @@ class TestBase(fixtures.BaseTestFixture):
         """
         if not self._upload_multiple_blocks(nblocks, size):
             raise Exception('Failed to upload multiple blocks')
+        for block in self.blocks:
+            resp = self.client.block_head(self.vaultname, block.Id)
+            self.storage.append(Storage(Id=resp.headers['x-storage-id'],
+                BlockId=block.Id))
 
     def _create_new_file(self):
         """

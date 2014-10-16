@@ -195,6 +195,7 @@ class TestBlockUploaded(base.TestBase):
         self.assertHeaders(resp.headers,
                            blockid=self.blockid)
         self.assertIn('X-Storage-Id', resp.headers)
+        self.storageid_added = resp.headers['X-Storage-Id']
         self.assertNotEqual(self.storageid, resp.headers['X-Storage-Id'])
 
     def tearDown(self):
