@@ -44,7 +44,7 @@ class DiskStorageDriver(BlockStorageDriver):
         path = self._get_vault_path(vault_id)
         if os.path.exists(path):
             total_contents = os.listdir(path)
-
+            total_contents.sort()
             if marker:
                 try:
                     index = total_contents.index(marker)
