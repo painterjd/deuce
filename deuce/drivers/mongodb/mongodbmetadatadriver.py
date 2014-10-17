@@ -35,19 +35,6 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         # Maintain the document size less than the system maximun.
         self._docnum = int(conf.metadata_driver.mongodb.maxFileBlockSegNum)
 
-    def _determine_limit(self, limit):
-        """ Determines the limit based on user input """
-
-        # Note: +1 is allowed here because it allows
-        # the user to fetch one beyond to see if they
-        # are at the end of the list
-        if not limit:
-            res = conf.api_configuration.max_returned_num + 1
-        else:
-            res = min(conf.api_configuration.max_returned_num + 1, limit)
-
-        return res
-
     def create_vaults_generator(self, marker=None, limit=None):
         """Creates and returns a generator that will return
         the vault IDs.
