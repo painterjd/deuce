@@ -111,7 +111,7 @@ class ItemResource(object):
 
     @validate(vault_id=VaultPutRule, file_id=FilePostRuleNoneOk)
     def on_post(self, req, resp, vault_id, file_id):
-        """This endpoint Assigns blocks to files
+        """This endpoint finalizes a file
         """
         vault = Vault.get(vault_id)
 
@@ -121,62 +121,31 @@ class ItemResource(object):
             logger.error('Vault [{0}] does not exist'.format(vault_id))
             raise errors.HTTPBadRequestAPI('Vault does not exist')
 
-        self._assign(resp, req, vault, vault_id, file_id)
-
-    def _assign(self, resp, req, vault, vault_id, file_id):
         f = vault.get_file(file_id)
 
         if not f:
             logger.error('File [{0}] does not exist'.format(file_id))
             raise errors.HTTPNotFound
 
-        body = req.stream.read(req.content_length)
-        if not body:
-            try:
-                # Fileid with an empty body will finalize the file.
-                filesize = int(req.get_header('x-file-length', required=True))
-                res = deuce.metadata_driver.finalize_file(vault_id, file_id,
-                                                          filesize)
-            except Exception as e:
-                # There are gaps or overlaps in blocks of the file
-                # The list of errors returns
-                details = str(e)
-                logger.error('File [{0}] finalization '
-                             'failed; [{1}]'.format(file_id, details))
-                raise errors.HTTPConflict(json.dumps(details))
-            else:
-                resp.status = falcon.HTTP_200
-                return
-
         if f.finalized:
-            # A finalized file cannot be
-            # modified
-            # TODO: Determine a better, more precise
-            #       status code
             logger.error('Finalized file [{0}] '
                          'cannot be modified'.format(file_id))
             raise errors.HTTPConflict('Finalized file cannot be modified')
+        try:
 
-        # Deserialize from stream
-        # TODO (TheSriram): Validate payload
-        payload = json.loads(body.decode())
-
-        missing_blocks = list()
-
-        for mapping in payload:
-            # NOTE(TheSriram): payload is a list of lists of the form
-            # [[block,offset],[block,offset],[block,offset]]
-            block_id, offset = mapping
-
-            if not deuce.metadata_driver.has_block(vault_id, block_id):
-
-                missing_blocks.append(block_id)
-
-            deuce.metadata_driver.assign_block(vault_id, file_id,
-                                               block_id,
-                                               offset)
-
-        resp.body = json.dumps(missing_blocks)
+            filesize = int(req.get_header('x-file-length', required=True))
+            res = deuce.metadata_driver.finalize_file(vault_id, file_id,
+                                                      filesize)
+        except Exception as e:
+            # There are gaps or overlaps in blocks of the file
+            # The list of errors returns
+            details = str(e)
+            logger.error('File [{0}] finalization '
+                         'failed; [{1}]'.format(file_id, details))
+            raise errors.HTTPConflict(json.dumps(details))
+        else:
+            resp.status = falcon.HTTP_200
+            return
 
     @validate(vault_id=VaultGetRule, file_id=FileGetRule)
     def on_delete(self, req, resp, vault_id, file_id):

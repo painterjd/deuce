@@ -216,11 +216,12 @@ class TestFiles(ControllerTest):
         data = json.dumps([[block_list[cnt], cnt * 100]
                  for cnt in range(0, enough_num)])
 
-        response = self.simulate_post(self._distractor_file_id,
+        response = self.simulate_post(self._distractor_file_id + '/blocks',
                                       body=data, headers=hdrs)
 
         # Add blocks to FILES, resp has a list of missing blocks.
-        response = self.simulate_post(self._file_id, body=data, headers=hdrs)
+        response = self.simulate_post(self._file_id + '/blocks', body=data,
+                                      headers=hdrs)
         self.assertGreater(len(response[0].decode()), 2)
         # assert len(response.body) > 2
 
@@ -228,7 +229,8 @@ class TestFiles(ControllerTest):
         self.helper_store_blocks(self.vault_id, blocks_data)
 
         # Add the same blocks to FILES again, resp is empty.
-        response = self.simulate_post(self._file_id, body=data, headers=hdrs)
+        response = self.simulate_post(self._file_id + '/blocks', body=data,
+                                      headers=hdrs)
 
         self.assertEqual(len(response[0].decode()), 2)
         # assert len(response.body) == 2
@@ -248,7 +250,8 @@ class TestFiles(ControllerTest):
         data2 = json.dumps([[block_list2[cnt - enough_num], cnt * 100]
                  for cnt in range(enough_num, enough_num2)])
 
-        response = self.simulate_post(self._file_id, body=data2, headers=hdrs)
+        response = self.simulate_post(self._file_id + '/blocks', body=data2,
+                                      headers=hdrs)
         self.assertGreater(len(response[0].decode()), 2)
         # assert len(response.body) > 2
 
@@ -256,7 +259,8 @@ class TestFiles(ControllerTest):
         self.helper_store_blocks(self.vault_id, blocks_data2)
 
         # Add blocks. resp will be empty.
-        response = self.simulate_post(self._file_id, body=data2, headers=hdrs)
+        response = self.simulate_post(self._file_id + '/blocks', body=data2,
+                                      headers=hdrs)
         self.assertEqual(len(response[0].decode()), 2)
 
         # Get the file.
@@ -277,10 +281,14 @@ class TestFiles(ControllerTest):
         response = self.simulate_post(self._file_id, headers=good_hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_200)
 
-        # Error on trying to change Finalized file.
-        response = self.simulate_post(self._file_id, body=data, headers=hdrs)
+        # Error on trying to refinalize Finalized file.
+        response = self.simulate_post(self._file_id, headers=hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
+        # Error on trying to reassign blocks to  finalized file
+        response = self.simulate_post(self._file_id + '/blocks',
+                                      body=data, headers=hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_409)
         # Get finalized file.
         response = self.simulate_get(self._file_id, headers=hdrs)
         actual_file = list(response)
@@ -318,6 +326,22 @@ class TestFiles(ControllerTest):
         response = self.simulate_get(incorrect_file_get_blocks,
                                      headers=self._hdrs)
 
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_non_existent_file_blocks_endpoints(self):
+        file_blocks_path_format = '/v1.0/vaults/{0}/files/{1}/blocks'
+        incorrect_vault = file_blocks_path_format.format('mock',
+                                                  self.create_file_id())
+        response = self.simulate_post(incorrect_vault,
+                                      headers=self._hdrs,
+                                      body="[['mockid','mockvalue']]")
+        self.assertEqual(self.srmock.status, falcon.HTTP_400)
+
+        incorrect_file = file_blocks_path_format.format(self.vault_id,
+                                                        self.create_file_id())
+        response = self.simulate_post(incorrect_file,
+                                      headers=self._hdrs,
+                                      body="[['mockid','mockvalue']]")
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
     def helper_test_file_blocks_controller(self, file_id, hdrs):

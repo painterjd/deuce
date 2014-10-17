@@ -54,3 +54,47 @@ class CollectionResource(object):
             resp.set_header("X-Next-Batch", returl)
 
         resp.body = json.dumps(responses)
+
+    @validate(vault_id=VaultPutRule, file_id=FilePostRuleNoneOk)
+    def on_post(self, req, resp, vault_id, file_id):
+        """This endpoint Assigns blocks to files
+        """
+        vault = Vault.get(vault_id)
+
+        # caller tried to post to a vault that
+        # does not exist
+        if not vault:
+            logger.error('Vault [{0}] does not exist'.format(vault_id))
+            raise errors.HTTPBadRequestAPI('Vault does not exist')
+
+        f = vault.get_file(file_id)
+
+        if not f:
+            logger.error('File [{0}] does not exist'.format(file_id))
+            raise errors.HTTPNotFound
+
+        if f.finalized:
+            logger.error('Finalized file [{0}] '
+                         'cannot be modified'.format(file_id))
+            raise errors.HTTPConflict('Finalized file cannot be modified')
+
+        body = req.stream.read(req.content_length)
+        # TODO (TheSriram): Validate payload
+        payload = json.loads(body.decode())
+
+        missing_blocks = list()
+
+        for mapping in payload:
+            # NOTE(TheSriram): payload is a list of lists of the form
+            # [[block,offset],[block,offset],[block,offset]]
+            block_id, offset = mapping
+
+            if not deuce.metadata_driver.has_block(vault_id, block_id):
+
+                missing_blocks.append(block_id)
+
+            deuce.metadata_driver.assign_block(vault_id, file_id,
+                                               block_id,
+                                               offset)
+
+        resp.body = json.dumps(missing_blocks)
