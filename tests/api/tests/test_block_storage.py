@@ -163,7 +163,7 @@ class TestBlockOrphaned(base.TestBase):
                            lastmodified=True,
                            contentlength=len(self.block_data),
                            refcount=0,
-                           blockid=self.blockid,
+                           blockid='None',
                            storageid=self.storageid)
         self.assertEqual(resp.content, self.block_data,
                          'Block data returned does not match block uploaded')
