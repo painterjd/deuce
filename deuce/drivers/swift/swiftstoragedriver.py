@@ -114,32 +114,33 @@ class SwiftStorageDriver(BlockStorageDriver):
 
     # =========== BLOCKS ===============================
 
-    def store_block(self, vault_id, block_id, blockdata):
+    def store_block(self, vault_id, metadata_block_id, blockdata):
         try:
             response = dict()
             mdhash = hashlib.md5()
 
             mdhash.update(blockdata)
             mdetag = mdhash.hexdigest()
-            storageid = self.storage_id(block_id)
+            storage_id = self.storage_id(metadata_block_id)
             ret_etag = self.Conn.put_object(
                 url=deuce.context.openstack.swift.storage_url,
                 token=deuce.context.openstack.auth_token,
                 container=vault_id,
-                name=storageid,
+                name=storage_id,
                 contents=blockdata,
                 content_length=str(len(blockdata)),
                 etag=mdetag,
                 response_dict=response)
             return (response['status'] == 201
-                    and ret_etag == mdetag, storageid)
+                    and ret_etag == mdetag, storage_id)
         except ClientException:
             return False
 
-    def store_async_block(self, vault_id, block_ids, blockdatas):
+    def store_async_block(self, vault_id, metadata_block_ids, blockdatas):
         try:
             response = dict()
-            storage_ids = [self.storage_id(block_id) for block_id in block_ids]
+            storage_ids = [self.storage_id(metadata_block_id)
+                           for metadata_block_id in metadata_block_ids]
             rets = self.Conn.put_async_object(
                 url=deuce.context.openstack.swift.storage_url,
                 token=deuce.context.openstack.auth_token,
@@ -152,21 +153,21 @@ class SwiftStorageDriver(BlockStorageDriver):
         except ClientException:
             return False
 
-    def block_exists(self, vault_id, block_id):
+    def block_exists(self, vault_id, storage_block_id):
 
         try:
             response = self.Conn.head_object(
                 url=deuce.context.openstack.swift.storage_url,
                 token=deuce.context.openstack.auth_token,
                 container=vault_id,
-                name=str(block_id))
+                name=str(storage_block_id))
 
             return response
 
         except ClientException:
             return False
 
-    def delete_block(self, vault_id, block_id):
+    def delete_block(self, vault_id, storage_block_id):
 
         response = dict()
 
@@ -175,13 +176,13 @@ class SwiftStorageDriver(BlockStorageDriver):
                 url=deuce.context.openstack.swift.storage_url,
                 token=deuce.context.openstack.auth_token,
                 container=vault_id,
-                name=str(block_id),
+                name=str(storage_block_id),
                 response_dict=response)
             return response['status'] >= 200 and response['status'] < 300
         except ClientException:
             return False
 
-    def get_block_obj(self, vault_id, block_id):
+    def get_block_obj(self, vault_id, storage_block_id):
 
         try:
             buff = BytesIO()
@@ -192,7 +193,7 @@ class SwiftStorageDriver(BlockStorageDriver):
                 url=deuce.context.openstack.swift.storage_url,
                 token=deuce.context.openstack.auth_token,
                 container=vault_id,
-                name=str(block_id),
+                name=str(storage_block_id),
                 response_dict=response)
 
             if block[1]:
@@ -204,7 +205,7 @@ class SwiftStorageDriver(BlockStorageDriver):
         except ClientException:
             return None
 
-    def get_block_object_length(self, vault_id, block_id):
+    def get_block_object_length(self, vault_id, storage_block_id):
         """Returns the length of an object"""
         response = dict()
         try:
@@ -215,17 +216,10 @@ class SwiftStorageDriver(BlockStorageDriver):
                     url=deuce.context.openstack.swift.storage_url,
                     token=deuce.context.openstack.auth_token,
                     container=vault_id,
-                    name=str(block_id),
+                    name=str(storage_block_id),
                     response_dict=response)
 
             return len(block[1])
 
         except ClientException:
             return 0
-
-    def create_blocks_generator(self, vault_id, block_gen):
-        """Returns a generator of file-like objects that are
-        ready to read. These objects will get closed
-        individually."""
-        return (self.get_block_obj(vault_id, block_id)
-                for block_id in block_gen)
