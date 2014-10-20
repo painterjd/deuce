@@ -6,6 +6,7 @@ import jsonschema
 import msgpack
 import os
 import sha
+import time
 
 
 class TestNoBlocksUploaded(base.TestBase):
@@ -140,6 +141,7 @@ class TestBlockUploaded(base.TestBase):
     def test_list_one_block(self):
         """List a single block"""
 
+        time.sleep(65)
         resp = self.client.list_of_blocks(self.vaultname)
         self.assert_200_response(resp)
 
@@ -149,9 +151,20 @@ class TestBlockUploaded(base.TestBase):
         self.assertListEqual(resp_body, [self.blockid],
                              'Response for List Blocks should have 1 item')
 
+        resp = self.client.block_head(self.vaultname, self.blockid)
+        self.assert_204_response(resp)
+        self.assertHeaders(resp.headers,
+                           lastmodified=True,
+                           contentlength=0,
+                           refcount=0,
+                           blockid=self.blockid,
+                           storageid=self.storageid)
+        self.assertEqual(int(resp.headers['x-ref-modified']), self.modified)
+
     def test_get_one_block(self):
         """Get an individual block"""
 
+        time.sleep(65)
         resp = self.client.get_block(self.vaultname, self.blockid)
         self.assertEqual(resp.status_code, 200,
                          'Status code returned: {0} . '
@@ -166,9 +179,6 @@ class TestBlockUploaded(base.TestBase):
         self.assertEqual(resp.content, self.block_data,
                          'Block data returned does not match block uploaded')
 
-    def test_head_one_block(self):
-        """Head an individual block"""
-
         resp = self.client.block_head(self.vaultname, self.blockid)
         self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
@@ -177,6 +187,21 @@ class TestBlockUploaded(base.TestBase):
                            refcount=0,
                            blockid=self.blockid,
                            storageid=self.storageid)
+        self.assertEqual(int(resp.headers['x-ref-modified']), self.modified)
+
+    def test_head_one_block(self):
+        """Head an individual block"""
+
+        time.sleep(65)
+        resp = self.client.block_head(self.vaultname, self.blockid)
+        self.assert_204_response(resp)
+        self.assertHeaders(resp.headers,
+                           lastmodified=True,
+                           contentlength=0,
+                           refcount=0,
+                           blockid=self.blockid,
+                           storageid=self.storageid)
+        self.assertEqual(int(resp.headers['x-ref-modified']), self.modified)
         self.assertEqual(len(resp.content), 0)
 
     def test_delete_block(self):
@@ -188,6 +213,7 @@ class TestBlockUploaded(base.TestBase):
     def test_upload_block_twice(self):
         """Upload the same block twice"""
 
+        time.sleep(65)
         resp = self.client.upload_block(self.vaultname, self.blockid,
                                         self.block_data)
         self.assert_201_response(resp)
@@ -197,6 +223,16 @@ class TestBlockUploaded(base.TestBase):
         self.assertIn('X-Storage-Id', resp.headers)
         self.storageid_added = resp.headers['X-Storage-Id']
         self.assertNotEqual(self.storageid, resp.headers['X-Storage-Id'])
+
+        resp = self.client.block_head(self.vaultname, self.blockid)
+        self.assert_204_response(resp)
+        self.assertHeaders(resp.headers,
+                           lastmodified=True,
+                           contentlength=0,
+                           refcount=0,
+                           blockid=self.blockid,
+                           storageid=self.storageid)
+        self.assertEqual(int(resp.headers['x-ref-modified']), self.modified)
 
     def tearDown(self):
         super(TestBlockUploaded, self).tearDown()
@@ -333,6 +369,41 @@ class TestBlocksAssignedToFile(base.TestBase):
         self.assertEqual(resp_body['description'],
                 '["Constraint Error: Block {0} has references"]'
                 ''.format(self.blockid))
+
+    def test_modified_block_after_assignment(self):
+        """Head a block and compare the ref-modified value after the
+        block was assigned to a file"""
+
+        time.sleep(65)
+        resp = self.client.block_head(self.vaultname, self.blockid)
+        self.assert_204_response(resp)
+        self.assertHeaders(resp.headers,
+                           lastmodified=True,
+                           contentlength=0,
+                           refcount=1,
+                           blockid=self.blockid,
+                           storageid=self.storageid)
+        self.assertGreater(int(resp.headers['x-ref-modified']),
+                           self.modified)
+
+    def test_modified_block_after_removing_assignment(self):
+        """Head a block and compare the ref-modified value after the
+        number of references to the block is reduced"""
+
+        time.sleep(65)
+        resp = self.client.delete_file(self.vaultname, self.fileid)
+
+        # Test begins here
+        resp = self.client.block_head(self.vaultname, self.blockid)
+        self.assert_204_response(resp)
+        self.assertHeaders(resp.headers,
+                           lastmodified=True,
+                           contentlength=0,
+                           refcount=0,
+                           blockid=self.blockid,
+                           storageid=self.storageid)
+        self.assertGreater(int(resp.headers['x-ref-modified']),
+                           self.modified)
 
     def tearDown(self):
         super(TestBlocksAssignedToFile, self).tearDown()

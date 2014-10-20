@@ -297,6 +297,7 @@ class TestBase(fixtures.BaseTestFixture):
         self.blocks = []
         self.files = []
         self.storage = []
+        self.modified_times = []
 
     def generate_block_data(self, block_data=None, size=30720):
         """
@@ -334,6 +335,11 @@ class TestBase(fixtures.BaseTestFixture):
             raise Exception('Failed to upload block')
         self.storageid = self.resp.headers['x-storage-id']
         self.storage.append(Storage(Id=self.storageid, BlockId=self.blockid))
+        resp = self.client.block_head(self.vaultname, self.blockid)
+        if resp.status_code != 204:
+            raise Exception('Could not HEAD block {0}'.format(self.blockid))
+        self.modified = int(resp.headers['x-ref-modified'])
+        self.modified_times.append(self.modified)
 
     def _upload_multiple_blocks(self, nblocks, size=30720):
         """
@@ -358,8 +364,13 @@ class TestBase(fixtures.BaseTestFixture):
             raise Exception('Failed to upload multiple blocks')
         for block in self.blocks:
             resp = self.client.block_head(self.vaultname, block.Id)
+            if resp.status_code != 204:
+                raise Exception('Could not HEAD block {0}'.format(block.Id))
             self.storage.append(Storage(Id=resp.headers['x-storage-id'],
                 BlockId=block.Id))
+            self.modified_times.append(int(resp.headers['x-ref-modified']))
+        self.storageid = self.storage[-1].Id
+        self.modified = self.modified_times[-1]
 
     def _create_new_file(self):
         """
