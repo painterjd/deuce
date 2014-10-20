@@ -9,6 +9,7 @@ import sha
 
 
 class TestNoBlocksUploaded(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestNoBlocksUploaded, self).setUp()
@@ -90,6 +91,7 @@ class TestNoBlocksUploaded(base.TestBase):
 
 @ddt.ddt
 class TestUploadBlocks(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestUploadBlocks, self).setUp()
@@ -128,6 +130,7 @@ class TestUploadBlocks(base.TestBase):
 
 
 class TestBlockUploaded(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestBlockUploaded, self).setUp()
@@ -199,6 +202,7 @@ class TestBlockUploaded(base.TestBase):
 
 @ddt.ddt
 class TestListBlocks(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestListBlocks, self).setUp()
@@ -302,6 +306,7 @@ class TestListBlocks(base.TestBase):
 
 
 class TestBlocksAssignedToFile(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestBlocksAssignedToFile, self).setUp()
@@ -335,6 +340,7 @@ class TestBlocksAssignedToFile(base.TestBase):
 
 @ddt.ddt
 class TestBlocksReferenceCount(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestBlocksReferenceCount, self).setUp()

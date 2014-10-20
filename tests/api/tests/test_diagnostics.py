@@ -3,6 +3,7 @@ import ddt
 
 
 class TestDiagnostics(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestDiagnostics, self).setUp()
