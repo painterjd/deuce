@@ -141,7 +141,7 @@ class TestBlockUploaded(base.TestBase):
     def test_list_one_block(self):
         """List a single block"""
 
-        time.sleep(65)
+        time.sleep(5)
         resp = self.client.list_of_blocks(self.vaultname)
         self.assert_200_response(resp)
 
@@ -164,7 +164,7 @@ class TestBlockUploaded(base.TestBase):
     def test_get_one_block(self):
         """Get an individual block"""
 
-        time.sleep(65)
+        time.sleep(5)
         resp = self.client.get_block(self.vaultname, self.blockid)
         self.assertEqual(resp.status_code, 200,
                          'Status code returned: {0} . '
@@ -192,7 +192,7 @@ class TestBlockUploaded(base.TestBase):
     def test_head_one_block(self):
         """Head an individual block"""
 
-        time.sleep(65)
+        time.sleep(5)
         resp = self.client.block_head(self.vaultname, self.blockid)
         self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
@@ -213,7 +213,7 @@ class TestBlockUploaded(base.TestBase):
     def test_upload_block_twice(self):
         """Upload the same block twice"""
 
-        time.sleep(65)
+        time.sleep(5)
         resp = self.client.upload_block(self.vaultname, self.blockid,
                                         self.block_data)
         self.assert_201_response(resp)
@@ -374,7 +374,7 @@ class TestBlocksAssignedToFile(base.TestBase):
         """Head a block and compare the ref-modified value after the
         block was assigned to a file"""
 
-        time.sleep(65)
+        time.sleep(5)
         resp = self.client.block_head(self.vaultname, self.blockid)
         self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
@@ -390,7 +390,7 @@ class TestBlocksAssignedToFile(base.TestBase):
         """Head a block and compare the ref-modified value after the
         number of references to the block is reduced"""
 
-        time.sleep(65)
+        time.sleep(5)
         resp = self.client.delete_file(self.vaultname, self.fileid)
 
         # Test begins here
