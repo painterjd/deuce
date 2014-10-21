@@ -10,6 +10,7 @@ import uuid
 
 
 class TestNoFilesCreated(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestNoFilesCreated, self).setUp()
@@ -33,6 +34,7 @@ class TestNoFilesCreated(base.TestBase):
 
 
 class TestCreateFile(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestCreateFile, self).setUp()
@@ -56,6 +58,7 @@ class TestCreateFile(base.TestBase):
 
 
 class TestFileBlockUploaded(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestFileBlockUploaded, self).setUp()
@@ -108,6 +111,7 @@ class TestFileBlockUploaded(base.TestBase):
 
 
 class TestEmptyFile(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestEmptyFile, self).setUp()
@@ -145,6 +149,7 @@ class TestEmptyFile(base.TestBase):
 
 
 class TestFileAssignedBlocks(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestFileAssignedBlocks, self).setUp()
@@ -186,6 +191,7 @@ class TestFileAssignedBlocks(base.TestBase):
 
 
 class TestFileMissingBlock(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestFileMissingBlock, self).setUp()
@@ -225,6 +231,7 @@ class TestFileMissingBlock(base.TestBase):
 
 
 class TestFileOverlappingBlock(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestFileOverlappingBlock, self).setUp()
@@ -262,6 +269,7 @@ class TestFileOverlappingBlock(base.TestBase):
 
 @ddt.ddt
 class TestListBlocksOfFile(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestListBlocksOfFile, self).setUp()
@@ -381,6 +389,7 @@ class TestListBlocksOfFile(base.TestBase):
 
 
 class TestFinalizedFile(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestFinalizedFile, self).setUp()
@@ -452,6 +461,7 @@ class TestFinalizedFile(base.TestBase):
 
 @ddt.ddt
 class TestMultipleFinalizedFiles(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestMultipleFinalizedFiles, self).setUp()
