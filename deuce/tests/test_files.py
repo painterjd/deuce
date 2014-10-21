@@ -36,9 +36,9 @@ class TestFiles(ControllerTest):
         response = self.simulate_post(self._files_path, headers=self._hdrs)
         self._file_id = self.srmock.headers_dict['x-file-id']
         self._file_url = self.srmock.headers_dict['location']
-        self._file_url = urlparse(self._file_url).path
+        self._file_path = urlparse(self._file_url).path
         # Now, _file_id is '/v1.0/vaults/files_vault_test/files/SOME_FILE_ID'
-        self.assertTrue(self._file_url.endswith(self._file_id))
+        self.assertTrue(self._file_path.endswith(self._file_id))
 
         # Create distractor File
         response = self.simulate_post(self._files_path, headers=self._hdrs)
@@ -222,7 +222,7 @@ class TestFiles(ControllerTest):
                                       body=data, headers=hdrs)
 
         # Add blocks to FILES, resp has a list of missing blocks.
-        response = self.simulate_post(self._file_url, body=data, headers=hdrs)
+        response = self.simulate_post(self._file_path, body=data, headers=hdrs)
         self.assertGreater(len(response[0].decode()), 2)
         # assert len(response.body) > 2
 
@@ -230,13 +230,13 @@ class TestFiles(ControllerTest):
         self.helper_store_blocks(self.vault_id, blocks_data)
 
         # Add the same blocks to FILES again, resp is empty.
-        response = self.simulate_post(self._file_url, body=data, headers=hdrs)
+        response = self.simulate_post(self._file_path, body=data, headers=hdrs)
 
         self.assertEqual(len(response[0].decode()), 2)
         # assert len(response.body) == 2
 
         # Get unfinalized file.
-        response = self.simulate_get(self._file_url, headers=hdrs)
+        response = self.simulate_get(self._file_path, headers=hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Register 1.20 times of blocks into system.
@@ -250,7 +250,9 @@ class TestFiles(ControllerTest):
         data2 = json.dumps([[block_list2[cnt - enough_num], cnt * 100]
                  for cnt in range(enough_num, enough_num2)])
 
-        response = self.simulate_post(self._file_url, body=data2, headers=hdrs)
+        response = self.simulate_post(self._file_path,
+                                      body=data2,
+                                      headers=hdrs)
         self.assertGreater(len(response[0].decode()), 2)
         # assert len(response.body) > 2
 
@@ -258,43 +260,45 @@ class TestFiles(ControllerTest):
         self.helper_store_blocks(self.vault_id, blocks_data2)
 
         # Add blocks. resp will be empty.
-        response = self.simulate_post(self._file_url, body=data2, headers=hdrs)
+        response = self.simulate_post(self._file_path,
+                                      body=data2,
+                                      headers=hdrs)
         self.assertEqual(len(response[0].decode()), 2)
 
         # Get the file.
-        response = self.simulate_get(self._file_url, headers=hdrs)
+        response = self.simulate_get(self._file_path, headers=hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Failed Finalize file for block gap & overlap
 
         failhdrs = hdrs.copy()
         failhdrs['x-file-length'] = '100'
-        response = self.simulate_post(self._file_url,
+        response = self.simulate_post(self._file_path,
                                       headers=failhdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Successfully finalize file
         good_hdrs = hdrs.copy()
         good_hdrs['x-file-length'] = str(enough_num2 * 100)
-        response = self.simulate_post(self._file_url, headers=good_hdrs)
+        response = self.simulate_post(self._file_path, headers=good_hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_200)
 
         # Error on trying to change Finalized file.
-        response = self.simulate_post(self._file_url, body=data, headers=hdrs)
+        response = self.simulate_post(self._file_path, body=data, headers=hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Get finalized file.
-        response = self.simulate_get(self._file_url, headers=hdrs)
+        response = self.simulate_get(self._file_path, headers=hdrs)
         actual_file = list(response)
         file_length = sum(len(file_chunk) for file_chunk in actual_file)
         self.assertEqual(file_length, enough_num2 * 100)
         self.assertEqual(self.srmock.status, falcon.HTTP_200)
 
         # List the blocks that make up this file
-        self.helper_test_file_blocks_controller(self._file_url, hdrs)
+        self.helper_test_file_blocks_controller(self._file_path, hdrs)
 
         # Delete the finalized file. delete returns 'ok'
-        response = self.simulate_delete(self._file_url, headers=hdrs)
+        response = self.simulate_delete(self._file_path, headers=hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_204)
 
     def test_nonexistent_file_endpoints(self):
@@ -388,14 +392,14 @@ class TestFiles(ControllerTest):
     def test_files_error(self):
         from deuce.model import Vault
         with patch.object(Vault, 'get', return_value=False):
-            self.simulate_delete(self._file_url, headers=self._hdrs)
+            self.simulate_delete(self._file_path, headers=self._hdrs)
             self.assertEqual(self.srmock.status, falcon.HTTP_404)
         with patch.object(Vault, 'get_file', return_value=False):
-            self.simulate_delete(self._file_url, headers=self._hdrs)
+            self.simulate_delete(self._file_path, headers=self._hdrs)
             self.assertEqual(self.srmock.status, falcon.HTTP_404)
-            self.simulate_get(self._file_url + '/blocks', headers=self._hdrs)
+            self.simulate_get(self._file_path + '/blocks', headers=self._hdrs)
             self.assertEqual(self.srmock.status, falcon.HTTP_404)
-        self.simulate_delete(self._file_url, headers=self._hdrs)
+        self.simulate_delete(self._file_path, headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_204)
 
     def helper_get_files(self, marker, limit, assert_return_url,
