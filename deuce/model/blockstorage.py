@@ -1,7 +1,6 @@
 import deuce
 from deuce.model import Block
 from deuce.model import Vault
-from deuce.model.block import Block
 from deuce.util import log as logging
 from deuce.drivers.metadatadriver import ConstraintError
 import deuce.transport.wsgi.errors as errors
@@ -32,7 +31,9 @@ class BlockStorage(object):
     def delete_block(self, storage_block_id):
 
         block_id = self.get_metadata_id(storage_block_id)
-        block = Block(self.vault_id, block_id) if block_id else None
+        block = Block(self.vault_id,
+                      block_id,
+                      storage_block_id=storage_block_id) if block_id else None
         ref_count = block.get_ref_count() if block else None
 
         if block is None:
@@ -101,8 +102,10 @@ class BlockStorage(object):
 
         obj = deuce.storage_driver.get_block_obj(self.vault_id,
                                                  storage_block_id)
-
-        return Block(self.vault_id, metadata_block_id, obj) if obj else None
+        return Block(self.vault_id,
+                     metadata_block_id,
+                     obj=obj,
+                     storage_block_id=storage_block_id) if obj else None
 
     def get_blocks_generator(self, marker, limit):
         return (BlockStorage(Vault.get(self.vault_id), storage_block_id)

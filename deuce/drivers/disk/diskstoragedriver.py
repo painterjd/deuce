@@ -7,6 +7,10 @@ import io
 import shutil
 
 import deuce
+from deuce.util import log
+
+
+logger = log.getLogger(__name__)
 
 
 class DiskStorageDriver(BlockStorageDriver):
@@ -25,9 +29,9 @@ class DiskStorageDriver(BlockStorageDriver):
         return os.path.join(self._path, str(deuce.context.project_id),
             vault_id)
 
-    def _get_block_path(self, vault_id, block_id):
+    def _get_block_path(self, vault_id, storage_block_id):
         vault_path = self._get_vault_path(vault_id)
-        return os.path.join(vault_path, str(block_id))
+        return os.path.join(vault_path, str(storage_block_id))
 
     def create_vault(self, vault_id):
         path = self._get_vault_path(vault_id)
@@ -105,20 +109,21 @@ class DiskStorageDriver(BlockStorageDriver):
             # An error occurred
             return False
 
-    def store_block(self, vault_id, block_id, blockdata):
-        storageid = self.storage_id(block_id)
-        path = self._get_block_path(vault_id, storageid)
+    def store_block(self, vault_id, metadata_block_id, blockdata):
+        storage_id = self.storage_id(metadata_block_id)
+        path = self._get_block_path(vault_id, storage_id)
 
         with open(path, 'wb') as outfile:
             outfile.write(blockdata)
 
-        return (True, storageid)
+        return (True, storage_id)
 
-    def store_async_block(self, vault_id, block_ids, blockdatas):
+    def store_async_block(self, vault_id, metadata_block_ids, blockdatas):
         results = []
-        storage_ids = [self.storage_id(block_id) for block_id in block_ids]
-        for storageid, blockdata in zip(storage_ids, blockdatas):
-            path = self._get_block_path(vault_id, storageid)
+        storage_ids = [self.storage_id(metadata_block_id)
+                       for metadata_block_id in metadata_block_ids]
+        for storage_id, blockdata in zip(storage_ids, blockdatas):
+            path = self._get_block_path(vault_id, storage_id)
 
             with open(path, 'wb') as outfile:
                 outfile.write(blockdata)
@@ -126,12 +131,12 @@ class DiskStorageDriver(BlockStorageDriver):
 
         return (True, storage_ids)
 
-    def block_exists(self, vault_id, block_id):
-        path = self._get_block_path(vault_id, block_id)
+    def block_exists(self, vault_id, storage_block_id):
+        path = self._get_block_path(vault_id, storage_block_id)
         return os.path.exists(path)
 
-    def delete_block(self, vault_id, block_id):
-        path = self._get_block_path(vault_id, block_id)
+    def delete_block(self, vault_id, storage_block_id):
+        path = self._get_block_path(vault_id, storage_block_id)
 
         if os.path.exists(path):
             os.remove(path)
@@ -139,21 +144,21 @@ class DiskStorageDriver(BlockStorageDriver):
         else:
             return False
 
-    def get_block_obj(self, vault_id, block_id):
+    def get_block_obj(self, vault_id, storage_block_id):
         """Returns a file-like object capable or streaming the
         block data. If the object cannot be retrieved, the list
         of objects should be returned
         """
-        path = self._get_block_path(vault_id, block_id)
+        path = self._get_block_path(vault_id, storage_block_id)
 
         if not os.path.exists(path):
             return None
 
         return open(path, 'rb')
 
-    def get_block_object_length(self, vault_id, block_id):
+    def get_block_object_length(self, vault_id, storage_block_id):
         """Returns the length of an object"""
-        path = self._get_block_path(vault_id, block_id)
+        path = self._get_block_path(vault_id, storage_block_id)
 
         if not os.path.exists(path):
             return 0

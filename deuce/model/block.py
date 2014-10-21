@@ -1,14 +1,19 @@
+import os
 
 import deuce
+from deuce.util import log as logging
 
-import os
+
+logger = logging.getLogger(__name__)
 
 
 class Block(object):
 
-    def __init__(self, vault_id, metadata_block_id, obj=None):
+    def __init__(self, vault_id, metadata_block_id, obj=None,
+            storage_block_id=None):
         self.vault_id = vault_id
         self.metadata_block_id = metadata_block_id
+        self.storage_block_id = storage_block_id
         self._fileobj = obj
 
     def get_obj(self):
@@ -39,5 +44,8 @@ class Block(object):
 
     def get_storage_id(self):
         """Returns the storage id for a given block"""
-        return deuce.metadata_driver.get_block_storage_id(
-            self.vault_id, self.metadata_block_id)
+        if self.metadata_block_id is not None:
+            return deuce.metadata_driver.get_block_storage_id(
+                self.vault_id, self.metadata_block_id)
+        else:
+            return self.storage_block_id
