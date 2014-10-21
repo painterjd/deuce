@@ -261,19 +261,6 @@ class CassandraStorageDriver(MetadataStorageDriver):
         deuce_keyspace = conf.metadata_driver.cassandra.keyspace
         self._session = self._cluster.connect(deuce_keyspace)
 
-    def _determine_limit(self, limit):
-        """ Determines the limit based on user input """
-
-        # Note: +1 is allowed here because it allows
-        # the user to fetch one beyond to see if they
-        # are at the end of the list
-        if not limit:
-            res = conf.api_configuration.max_returned_num + 1
-        else:
-            res = min(conf.api_configuration.max_returned_num + 1, limit)
-
-        return res
-
     def create_vault(self, vault_id):
         """Creates a vault"""
         args = dict(

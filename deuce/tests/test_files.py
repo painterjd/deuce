@@ -19,7 +19,7 @@ class TestFiles(ControllerTest):
         super(TestFiles, self).setUp()
 
         self.file_list = []
-        self.max_ret_num = conf.api_configuration.max_returned_num
+        self.max_ret_num = conf.api_configuration.default_returned_num
         self.total_file_num = 0
 
         self._hdrs = {"x-project-id": self.create_project_id()}
@@ -207,7 +207,7 @@ class TestFiles(ControllerTest):
 
         hdrs = {'content-type': 'application/x-deuce-block-list'}
         hdrs.update(self._hdrs)
-        enough_num = int(conf.api_configuration.max_returned_num)
+        enough_num = int(conf.api_configuration.default_returned_num)
 
         # Register enough_num of blocks into system.
         block_list, blocks_data = self.helper_create_blocks(
@@ -240,7 +240,7 @@ class TestFiles(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_409)
 
         # Register 1.20 times of blocks into system.
-        enough_num2 = int(1.2 * conf.api_configuration.max_returned_num)
+        enough_num2 = int(1.2 * conf.api_configuration.default_returned_num)
 
         block_list2, blocks_data2 = self.helper_create_blocks(num_blocks=(
             enough_num2 - enough_num))
@@ -387,7 +387,7 @@ class TestFiles(ControllerTest):
             params['marker'] = current_marker
 
         self.assertEqual(len(resp_block_list), 1.2 *
-                         conf.api_configuration.max_returned_num)
+                         conf.api_configuration.default_returned_num)
 
     def test_files_error(self):
         from deuce.model import Vault

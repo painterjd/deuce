@@ -90,7 +90,7 @@ def head_container(url, token, container):
 def get_container(url, token, container, limit=None, marker=None):
 
     if not limit:
-        limit = conf.api_configuration.max_returned_num
+        limit = conf.api_configuration.default_returned_num
     qs = '?limit={0}'.format(limit)
 
     if marker:

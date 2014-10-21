@@ -271,13 +271,13 @@ class TestBlocksController(ControllerTest):
                                                 marker, 8, False, 1, False)
 
         # Create more blocks.
-        num_blocks = int(1.5 * conf.api_configuration.max_returned_num)
+        num_blocks = int(1.5 * conf.api_configuration.default_returned_num)
         block_list = self.helper_create_blocks(num_blocks=num_blocks)
         self.block_list += block_list
         self.total_block_num += num_blocks
 
         # List from 0; use conf limit
-        max_num = conf.api_configuration.max_returned_num
+        max_num = conf.api_configuration.default_returned_num
         next_batch_url = self.helper_get_blocks(path,
                                                 0, 0, assert_ret_url=True,
                                                 assert_data_len=max_num,
