@@ -207,7 +207,10 @@ class BaseDeuceClient(client.AutoMarshallingHTTPClient):
         Assign blocks to a file
         """
 
-        url = self._file_url(vaultname, fileid, alternate_url)
+        if alternate_url:
+            url = self._file_url(vaultname, fileid, alternate_url + '/blocks')
+        else:
+            url = self._file_url(vaultname, fileid, blocks=True)
         resp = self.request('POST', url, data=blocklist_json)
         return resp
 
