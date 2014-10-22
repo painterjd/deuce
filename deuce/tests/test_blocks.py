@@ -89,7 +89,9 @@ class TestBlocksController(ControllerTest):
         self.assertIn('x-block-reference-count', str(self.srmock.headers))
         self.assertIn('x-ref-modified', str(self.srmock.headers))
         self.assertIn('x-storage-id', str(self.srmock.headers))
-        self.assertTrue(uuid.UUID(self.srmock.headers_dict['x-storage-id']))
+        resp_sha1, resp_uuid = self.srmock.headers_dict['x-storage-id'].\
+            split('_')
+        self.assertTrue(uuid.UUID(resp_uuid))
         self.assertIn('x-block-id', str(self.srmock.headers))
         self.assertEqual(block_list[0], self.srmock.headers_dict['x-block-id'])
 

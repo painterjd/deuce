@@ -4,7 +4,7 @@ import os
 import shutil
 import unittest
 import uuid
-
+import random
 import falcon
 from falcon import testing as ftest
 import six
@@ -15,6 +15,7 @@ from deuce.transport.wsgi import v1_0
 from deuce.transport.wsgi.driver import Driver
 import deuce.util.log as logging
 from deuce.util.misc import relative_uri
+from deuce.tests.util import MockFile
 
 __all__ = ['V1Base']
 
@@ -94,7 +95,8 @@ class TestBase(unittest.TestCase):
         return sha1.hexdigest()
 
     def create_storage_block_id(self):
-        return '{0:}'.format(str(uuid.uuid4()))
+        return '{0:}_{1:}'.format(MockFile(random.randrange(100)).sha1(),
+                                  str(uuid.uuid4()))
 
     def create_vault_id(self):
         """Creates a dummy vault ID. This could be

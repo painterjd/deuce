@@ -1,3 +1,4 @@
+import hashlib
 from unittest import TestCase
 import uuid
 
@@ -13,10 +14,19 @@ class MockRequest(object):
     pass
 
 
+class InvalidSeparatorError(Exception):
+    """Invalid Separator Error is raised whenever
+    a invalid separator is set for joining query strings
+    in a url"""
+
+    def __init__(self, msg):
+        Exception.__init__(self, msg)
+
+
 class TestRulesBase(TestCase):
 
     @staticmethod
-    def build_request(params=None):
+    def build_request(params=None, separator='&'):
         """Build a request object to use for testing
 
         :param params: list of tuples containing the name and value pairs
@@ -44,8 +54,12 @@ class TestRulesBase(TestCase):
                 if mock_env['QUERY_STRING'] is None:
                     mock_env['QUERY_STRING'] = param_set
                 else:
-                    mock_env['QUERY_STRING'] = '{1}{0}{2}'.format(
-                        separator, mock_env['QUERY_STRING'], param_set)
+                    if separator in ('&', ';'):
+                        mock_env['QUERY_STRING'] = '{1}{0}{2}'.format(
+                            separator, mock_env['QUERY_STRING'], param_set)
+                    else:
+                        raise InvalidSeparatorError('separator in query string'
+                                                    'must be & or ;')
 
         if mock_env['QUERY_STRING'] is None:
             del mock_env['QUERY_STRING']
@@ -136,7 +150,7 @@ class TestVaultRules(TestRulesBase):
             with self.assertRaises(errors.HTTPNotFound):
                 self.utilize_get_vault_id(case)
 
-    def test_vault_get(self):
+    def test_vault_put(self):
 
         for p_case in self.__class__.positive_cases:
             self.assertTrue(self.utilize_put_vault_id(p_case))
@@ -312,10 +326,14 @@ class TestMetadataBlockRules(TestRulesBase):
 
 class TestStorageBlockRules(TestRulesBase):
 
-    positive_cases = [str(uuid.uuid4()) for _ in range(0, 1000)]
+    positive_cases = [hashlib.sha1(bytes(i)).hexdigest() + '_' +
+                      str(uuid.uuid4()) for i in range(0, 1000)]
 
     negative_cases = [
         '',
+        'fecfd28bbc9345891a66d7c1b8ff46e60192d'
+        '2840c3de7c4-5fe9-4b2e-b19a-9cf81364997b',  # note no '_' between sha1
+                                                    #  and uuid
         'e7bf692b-ec7b-40ad-b0d1-45ce6798fb6z',  # note trailing z
         str(uuid.uuid4()).upper(),  # Force case sensitivity
         None

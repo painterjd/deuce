@@ -179,7 +179,8 @@ class TestBlockStorageController(ControllerTest):
         responses = json.loads(response[0].decode())
 
         for resp in responses:
-            self.assertTrue(uuid.UUID(resp))
+            resp_sha1, resp_uuid = resp.split('_')
+            self.assertTrue(uuid.UUID(resp_uuid))
             self.assertIn(resp, storage_ids)
 
         # Test valid limit

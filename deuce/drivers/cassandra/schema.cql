@@ -15,7 +15,7 @@ CREATE COLUMNFAMILY blocks (
   projectid TEXT,
   vaultid TEXT,
   blockid TEXT,
-  storageid UUID,
+  storageid TEXT,
   blocksize INT,
   reftime BIGINT,
   PRIMARY KEY((projectid, vaultid), blockid)
