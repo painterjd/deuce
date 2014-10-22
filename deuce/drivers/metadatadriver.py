@@ -6,6 +6,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 # is to enable 100% code coverage when testing
 
 import deuce
+from deuce import conf
 
 
 class OverlapError(Exception):
@@ -270,3 +271,11 @@ class MetadataStorageDriver(object):
                 vault_id,
                 "Constraint Error: Block {0} has references".format(block_id)
             )
+
+    def _determine_limit(self, limit):
+        """ Determines the limit based on user input """
+
+        res = conf.api_configuration.default_returned_num if not \
+            limit else min(conf.api_configuration.max_returned_num, limit)
+
+        return res

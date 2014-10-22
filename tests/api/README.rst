@@ -27,8 +27,10 @@ To run the tests:
 
    ``cd deuce/tests``
 
-   ``nosetests --with-xunit api``
+   ``nosetests --with-xunit --nologcapture api``
 
-*Note*: You may want to redirect stderr output of nosetests to a file. OpenCAFE's logging captures all the requests and responses and nosetests outputs this captured data when a test fails, including all binary (block) data
+*Note*: You may want to run API Tests in parallel mode:
+
+   ``nosetests --nologcapture --processes=8 --process-timeout=120 --process-restartworker api``
 
 

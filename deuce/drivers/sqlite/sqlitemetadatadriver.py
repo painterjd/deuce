@@ -308,19 +308,6 @@ class SqliteStorageDriver(MetadataStorageDriver):
             db_ver = db_ver + 1
             self._set_user_version(db_ver)
 
-    def _determine_limit(self, limit):
-        """ Determines the limit based on user input """
-
-        # Note: +1 is allowed here because it allows
-        # the user to fetch one beyond to see if they
-        # are at the end of the list
-        if not limit:
-            res = conf.api_configuration.max_returned_num + 1
-        else:
-            res = min(conf.api_configuration.max_returned_num + 1, limit)
-
-        return res
-
     def _determine_marker(self, marker):
         """Determines the default marker to use if
         the passed marker is None, empty string, etc

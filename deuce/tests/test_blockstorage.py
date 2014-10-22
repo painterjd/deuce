@@ -383,6 +383,71 @@ class TestBlockStorageController(ControllerTest):
         z.update(bindata)
         self.assertEqual(z.hexdigest(), block_list[0])
 
+    def test_get_block_orphaned_block(self):
+        block_list, block_data = self.helper_create_blocks(num_blocks=1)
+        self.assertEqual(len(block_list), 1)
+
+        size, data, sha1 = zip(*block_data)
+
+        upload_block_path = self.get_block_path(self.vault_name, sha1[0])
+
+        upload_headers = {}
+        upload_headers.update(self._hdrs)
+        upload_headers.update({
+            "Content-Type": "application/octet-stream",
+            "Content-Length": str(size[0]),
+        })
+
+        # Upload the block twice, orphaning the second block
+        upload_first = self.simulate_put(upload_block_path,
+                                         headers=upload_headers,
+                                         body=data[0])
+        self.assertEqual(self.srmock.status, falcon.HTTP_201)
+        first_storage_id = self.srmock.headers_dict['x-storage-id']
+        first_block_id = self.srmock.headers_dict['x-block-id']
+
+        upload_second = self.simulate_put(upload_block_path,
+                                          headers=upload_headers,
+                                         body=data[0])
+        self.assertEqual(self.srmock.status, falcon.HTTP_201)
+        second_storage_id = self.srmock.headers_dict['x-storage-id']
+        second_block_id = self.srmock.headers_dict['x-block-id']
+
+        # Verify we got the same block id but different storage ids
+        self.assertEqual(first_block_id, second_block_id)
+        self.assertNotEqual(first_storage_id, second_storage_id)
+
+        # Get the storage id from the orphaned second block
+        storage_id = second_storage_id
+
+        block_path = self.get_storage_block_path(self.vault_name,
+                                                 storage_id)
+
+        response = self.simulate_get(block_path, headers=self._hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_200)
+        self.assertIn('x-ref-modified', self.srmock.headers_dict)
+        self.assertIn('x-block-reference-count', self.srmock.headers_dict)
+        self.assertEqual(
+            int(self.srmock.headers_dict['x-block-reference-count']),
+            0)
+        self.assertIn('x-storage-id', self.srmock.headers_dict)
+        self.assertEqual(second_storage_id,
+                         self.srmock.headers_dict['x-storage-id'])
+        self.assertIn('x-block-id', self.srmock.headers_dict)
+        self.assertEqual(str(None),
+                         self.srmock.headers_dict['x-block-id'])
+
+        response_body = [resp for resp in response]
+        bindata = response_body[0]
+        z = hashlib.sha1()
+        z.update(bindata)
+        self.assertEqual(z.hexdigest(), sha1[0])
+        self.assertIn('content-length', self.srmock.headers_dict)
+        self.assertEqual(str(size[0]),
+                         self.srmock.headers_dict['content-length'])
+        self.assertEqual(size[0], len(bindata))
+        self.assertEqual(data[0], bindata)
+
     def test_delete_storage_non_existent(self):
         storage_block_id = self.create_storage_block_id()
 

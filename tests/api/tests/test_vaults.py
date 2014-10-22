@@ -8,6 +8,7 @@ import time
 
 
 class TestNoVaultsCreated(base.TestBase):
+    _multiprocess_can_split = True
 
     def setUp(self):
         super(TestNoVaultsCreated, self).setUp()
@@ -36,6 +37,7 @@ class TestNoVaultsCreated(base.TestBase):
 
 @ddt.ddt
 class TestCreateVaults(base.TestBase):
+    _multiprocess_can_split = True
 
     def setUp(self):
         super(TestCreateVaults, self).setUp()
@@ -55,6 +57,7 @@ class TestCreateVaults(base.TestBase):
 
 
 class TestEmptyVault(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestEmptyVault, self).setUp()
@@ -111,6 +114,7 @@ class TestEmptyVault(base.TestBase):
 
 
 class TestVaultWithBlocksFiles(base.TestBase):
+    _multiprocess_can_split = True
 
     def setUp(self):
         super(TestVaultWithBlocksFiles, self).setUp()
@@ -176,6 +180,7 @@ class TestVaultWithBlocksFiles(base.TestBase):
 
 
 class TestPopulatedVault(base.TestBase):
+    _multiprocess_can_split = True
 
     def setUp(self):
         super(TestPopulatedVault, self).setUp()
@@ -203,6 +208,7 @@ class TestPopulatedVault(base.TestBase):
 
 @ddt.ddt
 class TestListVaults(base.TestBase):
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(TestListVaults, self).setUp()

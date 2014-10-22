@@ -31,7 +31,7 @@ class CollectionResource(object):
         # if param is not present
         inmarker = req.get_param('marker')
         limit = req.get_param_as_int('limit') if req.get_param_as_int('limit') \
-            else conf.api_configuration.max_returned_num
+            else conf.api_configuration.default_returned_num
 
         # Get the block generator from the metadata driver.
         # Note: +1 on limit is to fetch one past the limt
