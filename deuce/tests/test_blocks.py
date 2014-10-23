@@ -335,11 +335,6 @@ class TestBlocksController(ControllerTest):
             rel_url, querystring = relative_uri(
                 self.srmock.headers_dict['Location'])
             file_ids.append(rel_url)
-        # responses = [self.simulate_post(self.get_files_path(self.vault_name),
-        #                                 headers=self._hdrs)
-        #              for _ in range(2)]
-        # file_ids = [urlparse(response.headers["Location"]).path
-        #             for response in responses]
         block_list = self.helper_create_blocks(3, singleblocksize=True)
 
         offsets = [x * 100 for x in range(3)]
@@ -347,10 +342,9 @@ class TestBlocksController(ControllerTest):
 
         hdrs = {'content-type': 'application/x-deuce-block-list'}
         hdrs.update(self._hdrs)
-
         for file_id in file_ids:
             # assign blocks to file
-            response = self.simulate_post(file_id,
+            response = self.simulate_post(file_id + '/blocks',
                                           body=json.dumps(data), headers=hdrs)
             if finalize_status:
                 # finalize file
