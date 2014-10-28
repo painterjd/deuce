@@ -114,6 +114,21 @@ class TestBlocksController(ControllerTest):
         response = self.simulate_put(path, headers=headers, body=data)
         self.assertEqual(self.srmock.status, falcon.HTTP_412)
 
+    def test_put_invalid_length(self):
+
+        data = os.urandom(100)
+        blockid = self.calc_sha1(data)
+        blocklen = 5
+
+        path = self.get_block_path(self.vault_name, blockid)
+        headers = {
+            "Content-Type": "application/octet-stream",
+            "Content-Length": str(blocklen),
+        }
+        headers.update(self._hdrs)
+        response = self.simulate_put(path, headers=headers, body=data)
+        self.assertEqual(self.srmock.status, falcon.HTTP_412)
+
     def test_put_happy_case(self):
 
         block_list = self.helper_create_blocks(num_blocks=1)

@@ -62,6 +62,14 @@ class Vault(object):
         # Validate the hash of the block data against block_id
         if hashlib.sha1(blockdata).hexdigest() != block_id:
             raise ValueError('Invalid Hash Value in the block ID')
+
+        actual_block_length = len(blockdata)
+        if actual_block_length != data_len:
+            raise BufferError(
+                'Specified block length ({0}) does not match '
+                'actual block length ({1})'.format(
+                    data_len, actual_block_length))
+
         retval = deuce.storage_driver.store_block(
             self.id, block_id, blockdata)
 
