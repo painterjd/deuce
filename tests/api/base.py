@@ -223,11 +223,22 @@ class TestBase(fixtures.BaseTestFixture):
 
         self._assert_json_response(resp, 412)
 
+    def assert_uuid4(self, value):
+        """Validate the value is a uuid4"""
+
+        self._assert_uuid(4, value)
+
     def assert_uuid5(self, value):
         """Validate the value is a uuid5"""
 
+        self._assert_uuid(5, value)
+
+    def _assert_uuid(self, version, value):
+        """Validate the value is a uuid"""
+
         self.assertRegexpMatches(value,
-                r'^[a-z0-9]{8}\-[a-z0-9]{4}\-5[a-z0-9]{3}\-[ab89]'
+                r'^[a-z0-9]{8}\-[a-z0-9]{4}\-' + str(version) +
+                '[a-z0-9]{3}\-[ab89]'
                 '[a-z0-9]{3}\-[a-z0-9]{12}$')
 
     def _create_empty_vault(self, vaultname=None, size=50):
@@ -334,7 +345,7 @@ class TestBase(fixtures.BaseTestFixture):
         if not self._create_new_file():
             raise Exception('Failed to create a file')
         self.fileurl = self.resp.headers['location']
-        self.fileid = self.fileurl.split('/')[-1]
+        self.fileid = self.resp.headers['X-File-Id']
         self.files.append(File(Id=self.fileid, Url=self.fileurl))
         self.filesize = 0
 

@@ -48,6 +48,10 @@ class TestCreateFile(base.TestBase):
 
         self.assertIn('location', resp.headers)
         self.assertUrl(resp.headers['location'], filepath=True)
+        self.assertIn('X-File-Id', resp.headers)
+        self.assert_uuid4(resp.headers['X-File-Id'])
+        self.assertEqual(resp.headers['X-File-Id'],
+                resp.headers['location'].split('/')[-1])
 
     def tearDown(self):
         super(TestCreateFile, self).tearDown()
