@@ -151,7 +151,7 @@ class SwiftStorageDriver(BlockStorageDriver):
                 response_dict=response)
             return (response['status'] == 201, storage_ids)
         except ClientException:
-            return False
+            return (False, [])
 
     def block_exists(self, vault_id, storage_block_id):
 

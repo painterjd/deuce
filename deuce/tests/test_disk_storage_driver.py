@@ -1,10 +1,13 @@
+from hashlib import md5
+import mock
 import os
+import random
+
 from deuce.tests import V1Base
 from deuce.drivers.blockstoragedriver import BlockStorageDriver
 from deuce.drivers.disk import DiskStorageDriver
 from deuce.tests.util import MockFile
 
-from hashlib import md5
 
 # TODO: Make this test generic -- it should not konw
 # which particular driver it is testing.
@@ -228,3 +231,41 @@ class DiskStorageDriverTest(V1Base):
         for storage_id in storage_ids[:]:
             driver.delete_block(vault_id, storage_id)
         assert driver.delete_vault(vault_id)
+
+    def test_storage_block_async_failure(self):
+        # (BenjamenMeyer) Success cases are tken care of elsewhere
+        # we're only concerned about the failure case that explicitly
+        # exists for the DiskStorageDriver.
+
+        if self.__class__ != DiskStorageDriverTest:
+            self.skipTest('Test only applies to DiskStorageDriverTest')
+
+        driver = self.create_driver()
+
+        vault_id = self.create_vault_id()
+        driver.create_vault(vault_id)
+
+        count = 5
+
+        block_sizes = [random.randint(0, 100) for _ in range(count)]
+        block_datas = [os.urandom(x) for x in block_sizes]
+        block_ids = [self.create_block_id(y) for y in block_datas]
+
+        # Make the last eone generate a side-effect
+        open_values = [mock.mock_open() for _ in range(count)]
+        for ov in open_values:
+            ov.write = mock.MagicMock()
+
+        # Failure in writing data
+        open_values[2].write.side_effect = Exception('mocking open failure')
+        # Failure in opening file
+        open_values[-1].side_effect = Exception('mocking open failure')
+
+        with mock.patch(
+                'builtins.open', open_values, create=True):
+
+            retVal, retList = driver.store_async_block(vault_id,
+                                                       block_ids,
+                                                       block_datas)
+        self.assertFalse(retVal)
+        self.assertEqual(retList, [])
