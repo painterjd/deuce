@@ -267,6 +267,11 @@ class DiskStorageDriverTest(V1Base):
         with mock.patch(
                 'builtins.open', open_values, create=True):
 
+            # since store_block() only makes one open() call we have
+            # to loop over it to call our of our mock_open() configurations
+            # in the list
+            # Note: that len(open_values) == len(block_id) == count
+            #       therefore we only need to loop over the zip() of the data
             for block_size, block_data, block_id in zip(block_sizes,
                                                         block_datas,
                                                         block_ids):
@@ -308,6 +313,11 @@ class DiskStorageDriverTest(V1Base):
         with mock.patch(
                 'builtins.open', open_values, create=True):
 
+            # Unlike store_block(), store_async_block() makes multiple
+            # open() calls so there is no need for a loop.
+            # Note: len(open_values) == len(block_id) == count
+            #       therefore the single store_async_block() utilizes
+            #       all the values in open_values.
             retVal, retList = driver.store_async_block(vault_id,
                                                        block_ids,
                                                        block_datas)

@@ -693,7 +693,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
         # The Ref-time value is stored in the blocks table
         # if the block doesn't exist then the ref-time insertion
         # will cause it to exist and then the register_block() will
-        # fail to insert the data correctly. Therefore, only 
+        # fail to insert the data correctly. Therefore, only
         # insert the ref-time if we already have the block
         #
         # Note: the block registration will automatically insert the
