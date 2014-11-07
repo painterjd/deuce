@@ -97,6 +97,12 @@ class Vault(object):
         # let the Validation and Clean-Up Service remove any uploaded blocks
         # and fail out the request as a whole
         if retval:
+            # Note: zip() will produce a list of the shortest combination.
+            # That is, if a = (1, 2, 3) and b = (a, b) then
+            # zip(a, b) = ((1, a), (2, b)). If 'a' is the storage id for '2'
+            # because '1' failed to be stored, then the entire list is
+            # improperly shifted and we incorrectly report which blocks were
+            # saved, thus corrupting the data
             for block_id, storageid, blockdata, block_size in zip(block_ids,
                                                                   storage_ids,
                                                                   blockdatas,
