@@ -375,7 +375,29 @@ class TestBlocksController(ControllerTest):
 
     def test_vault_error(self):
         from deuce.model import Vault
-        with patch.object(Vault, 'put_async_block', return_value=False):
+        with patch.object(Vault,
+                          'put_async_block',
+                          return_value=False):
+            self.helper_create_blocks(1, async=True)
+            self.assertEqual(self.srmock.status, falcon.HTTP_500)
+
+    def test_vault_storage_failure_error(self):
+        import deuce
+        from deuce.model import Vault
+
+        with patch.object(deuce.storage_driver,
+                          'store_block',
+                          return_value=(False, '')):
+            self.helper_create_blocks(1, async=False)
+            self.assertEqual(self.srmock.status, falcon.HTTP_500)
+
+    def test_vault_async_storage_failure_error(self):
+        import deuce
+        from deuce.model import Vault
+
+        with patch.object(deuce.storage_driver,
+                          'store_async_block',
+                          return_value=(False, [])):
             self.helper_create_blocks(1, async=True)
             self.assertEqual(self.srmock.status, falcon.HTTP_500)
 

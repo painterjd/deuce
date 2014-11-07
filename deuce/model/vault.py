@@ -70,13 +70,14 @@ class Vault(object):
                 'actual block length ({1})'.format(
                     data_len, actual_block_length))
 
-        retval = deuce.storage_driver.store_block(
+        retval, storage_id = deuce.storage_driver.store_block(
             self.id, block_id, blockdata)
 
-        deuce.metadata_driver.register_block(
-            self.id, block_id, retval[1], data_len)
+        if retval:
+            deuce.metadata_driver.register_block(
+                self.id, block_id, storage_id, data_len)
 
-        return retval
+        return (retval, storage_id)
 
     def put_async_block(self, block_ids, blockdatas):
         block_ids = [block_id.decode() for block_id in block_ids]
@@ -95,15 +96,16 @@ class Vault(object):
         # (BenjamenMeyer): If we fail to upload any one block then we
         # let the Validation and Clean-Up Service remove any uploaded blocks
         # and fail out the request as a whole
-        for block_id, storageid, blockdata, block_size in zip(block_ids,
-                                                              storage_ids,
-                                                              blockdatas,
-                                                              block_sizes):
-            deuce.metadata_driver.register_block(
-                self.id,
-                block_id,
-                storageid,
-                block_size)
+        if retval:
+            for block_id, storageid, blockdata, block_size in zip(block_ids,
+                                                                  storage_ids,
+                                                                  blockdatas,
+                                                                  block_sizes):
+                deuce.metadata_driver.register_block(
+                    self.id,
+                    block_id,
+                    storageid,
+                    block_size)
 
         return retval
 

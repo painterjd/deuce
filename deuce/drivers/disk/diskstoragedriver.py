@@ -112,10 +112,19 @@ class DiskStorageDriver(BlockStorageDriver):
         storage_id = self.storage_id(metadata_block_id)
         path = self._get_block_path(vault_id, storage_id)
 
-        with open(path, 'wb') as outfile:
+        try:
+            # (BenjamenMeyer) - Using a open() in a context will
+            # oddly result in the exiting of the context being
+            # not covered even though the success and failure
+            # paths can be proven to be covered.
+            outfile = open(path, 'wb')
             outfile.write(blockdata)
+            outfile.flush()
+            outfile.close()
 
-        return (True, storage_id)
+            return (True, storage_id)
+        except:
+            return (False, '')
 
     def store_async_block(self, vault_id, metadata_block_ids, blockdatas):
         storage_ids = [self.storage_id(metadata_block_id)

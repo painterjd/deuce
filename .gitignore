@@ -1,6 +1,7 @@
 # operational directories
 deuce/cover
 deuce/log
+*.log
 
 # virtualenv
 env

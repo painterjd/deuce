@@ -106,8 +106,10 @@ class SwiftStorageDriverTest(DiskStorageDriverTest):
         ) as put_object:
             put_object.side_effect = ClientException('mock')
 
-            self.assertFalse(driver.store_block(vault_id, block_id,
-                                                str('').encode('utf-8')))
+            retVal, storage_id = driver.store_block(vault_id, block_id,
+                                                    str('').encode('utf-8'))
+            self.assertFalse(retVal)
+            self.assertEqual(storage_id, '')
 
         with mock.patch(
             'deuce.tests.db_mocking.swift_mocking.client.put_async_object'
