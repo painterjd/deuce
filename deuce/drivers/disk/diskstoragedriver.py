@@ -112,6 +112,10 @@ class DiskStorageDriver(BlockStorageDriver):
         storage_id = self.storage_id(metadata_block_id)
         path = self._get_block_path(vault_id, storage_id)
 
+        returnValue = False
+        returnStorageId = ''
+        outfile = None
+
         try:
             # (BenjamenMeyer) - Using a open() in a context will
             # oddly result in the exiting of the context being
@@ -120,11 +124,20 @@ class DiskStorageDriver(BlockStorageDriver):
             outfile = open(path, 'wb')
             outfile.write(blockdata)
             outfile.flush()
-            outfile.close()
 
-            return (True, storage_id)
+            returnValue = True
+            returnStorageId = storage_id
+
         except:
-            return (False, '')
+            returnValue = False
+            returnStorageId = ''
+
+        finally:  # pragma: no cover
+            if outfile is not None:
+                if not outfile.closed:
+                    outfile.close()
+
+        return (returnValue, returnStorageId)
 
     def store_async_block(self, vault_id, metadata_block_ids, blockdatas):
         storage_ids = [self.storage_id(metadata_block_id)
@@ -137,10 +150,18 @@ class DiskStorageDriver(BlockStorageDriver):
                 # oddly result in the exiting of the context being
                 # not covered even though the success and failure
                 # paths can be proven to be covered.
-                outfile = open(path, 'wb')
-                outfile.write(blockdata)
-                outfile.flush()
-                outfile.close()
+                try:
+                    outfile = open(path, 'wb')
+                    outfile.write(blockdata)
+                    outfile.flush()
+
+                except:
+                    pass
+
+                finally:
+                    if outfile is not None:  # pragma: no cover
+                        if not outfile.closed:
+                            outfile.close()
 
             return (True, storage_ids)
 
