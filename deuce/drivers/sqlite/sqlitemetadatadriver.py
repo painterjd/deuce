@@ -698,7 +698,9 @@ class SqliteStorageDriver(MetadataStorageDriver):
 
         query_res = self._conn.execute(SQL_GET_BLOCK_REF_COUNT, args)
 
-        return next(query_res)[0]
+        count = next(query_res)[0]
+
+        return count if not None else 0
 
     def get_block_ref_modified(self, vault_id, block_id):
 

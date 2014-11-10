@@ -104,6 +104,19 @@ class ItemResource(object):
                 block_id, req.stream.read(), req.content_length)
             resp.set_header('X-Storage-ID', str(storage_id))
             resp.set_header('X-Block-ID', str(block_id))
+
+            block = vault.get_block(block_id)
+
+            ref_cnt = 0
+            ref_mod = 0
+
+            if retval:
+                ref_cnt = block.get_ref_count()
+                ref_mod = block.get_ref_modified()
+
+            resp.set_header('X-Block-Reference-Count', str(ref_cnt))
+            resp.set_header('X-Ref-Modified', str(ref_mod))
+
             resp.status = (
                 falcon.HTTP_201 if retval is True else falcon.HTTP_500)
             logger.info('block [{0}] added [{1}]'.format(block_id, storage_id))
