@@ -31,7 +31,7 @@ class OverlapError(Exception):
         self.startpos = startpos
         self.endpos = endpos
 
-        msg = "[{0}/{1} Overlap at block {2} file {3} at [{4}-{5}]".format(
+        msg = "[{0}/{1}] Overlap at block {2} file {3} at [{4}-{5}]".format(
             project_id, vault_id, block_id, file_id, startpos, endpos)
 
         Exception.__init__(self, msg)
