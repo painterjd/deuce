@@ -45,7 +45,8 @@ class BaseDeuceClient(client.AutoMarshallingHTTPClient):
         self.auth_token = ''
         if auth_token:
             self.auth_token = auth_token
-        self.default_headers['X-Service-Catalog'] = service_catalog
+        if service_catalog is not None and len(service_catalog) > 0:
+            self.default_headers['X-Service-Catalog'] = service_catalog
         self.default_headers['X-Auth-Token'] = self.auth_token
         if tenantid:
             self.default_headers['X-Project-Id'] = tenantid

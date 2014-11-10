@@ -2,6 +2,7 @@
 user_name={username for the cloud account}
 api_key={api key for the user}
 base_url=https://identity.api.rackspacecloud.com/v2.0
+use_service_catalog=False
 
 [deuce]
 base_url={deuce url}

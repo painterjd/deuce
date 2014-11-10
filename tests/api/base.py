@@ -51,7 +51,8 @@ class TestBase(fixtures.BaseTestFixture):
             cls.tenantid = cls.a_resp.entity.regions[cls.region]['tenantId']
             url_type = 'internalURL' if cls.storage_config.internal_url \
                 else 'publicURL'
-            cls.service_catalog_b64 = base64.b64encode(cls.a_resp.content)
+            if cls.auth_config.use_service_catalog:
+                cls.service_catalog_b64 = base64.b64encode(cls.a_resp.content)
         cls.client = client.BaseDeuceClient(cls.config.base_url,
                                             cls.config.version,
                                             cls.auth_token,
