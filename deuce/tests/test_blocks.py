@@ -114,6 +114,21 @@ class TestBlocksController(ControllerTest):
         response = self.simulate_put(path, headers=headers, body=data)
         self.assertEqual(self.srmock.status, falcon.HTTP_412)
 
+    def test_put_invalid_length(self):
+
+        data = os.urandom(100)
+        blockid = self.calc_sha1(data)
+        blocklen = 5
+
+        path = self.get_block_path(self.vault_name, blockid)
+        headers = {
+            "Content-Type": "application/octet-stream",
+            "Content-Length": str(blocklen),
+        }
+        headers.update(self._hdrs)
+        response = self.simulate_put(path, headers=headers, body=data)
+        self.assertEqual(self.srmock.status, falcon.HTTP_412)
+
     def test_put_happy_case(self):
 
         block_list = self.helper_create_blocks(num_blocks=1)
@@ -360,7 +375,29 @@ class TestBlocksController(ControllerTest):
 
     def test_vault_error(self):
         from deuce.model import Vault
-        with patch.object(Vault, 'put_async_block', return_value=False):
+        with patch.object(Vault,
+                          'put_async_block',
+                          return_value=False):
+            self.helper_create_blocks(1, async=True)
+            self.assertEqual(self.srmock.status, falcon.HTTP_500)
+
+    def test_vault_storage_failure_error(self):
+        import deuce
+        from deuce.model import Vault
+
+        with patch.object(deuce.storage_driver,
+                          'store_block',
+                          return_value=(False, '')):
+            self.helper_create_blocks(1, async=False)
+            self.assertEqual(self.srmock.status, falcon.HTTP_500)
+
+    def test_vault_async_storage_failure_error(self):
+        import deuce
+        from deuce.model import Vault
+
+        with patch.object(deuce.storage_driver,
+                          'store_async_block',
+                          return_value=(False, [])):
             self.helper_create_blocks(1, async=True)
             self.assertEqual(self.srmock.status, falcon.HTTP_500)
 

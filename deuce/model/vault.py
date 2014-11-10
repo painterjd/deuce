@@ -62,41 +62,58 @@ class Vault(object):
         # Validate the hash of the block data against block_id
         if hashlib.sha1(blockdata).hexdigest() != block_id:
             raise ValueError('Invalid Hash Value in the block ID')
-        retval = deuce.storage_driver.store_block(
+
+        actual_block_length = len(blockdata)
+        if actual_block_length != data_len:
+            raise BufferError(
+                'Specified block length ({0}) does not match '
+                'actual block length ({1})'.format(
+                    data_len, actual_block_length))
+
+        retval, storage_id = deuce.storage_driver.store_block(
             self.id, block_id, blockdata)
 
-        deuce.metadata_driver.register_block(
-            self.id, block_id, retval[1], data_len)
+        if retval:
+            deuce.metadata_driver.register_block(
+                self.id, block_id, storage_id, data_len)
 
-        return retval
+        return (retval, storage_id)
 
     def put_async_block(self, block_ids, blockdatas):
         block_ids = [block_id.decode() for block_id in block_ids]
+        block_sizes = [len(block_data) for block_data in blockdatas]
+
         # Validate the hash of the block data against block_id
         for block_id, blockdata in zip(block_ids, blockdatas):
-
             if hashlib.sha1(blockdata).hexdigest() != block_id:
                 raise ValueError('Invalid Hash Value in the block ID')
-        retval = deuce.storage_driver.store_async_block(
+
+        retval, storage_ids = deuce.storage_driver.store_async_block(
             self.id,
             block_ids,
             blockdatas)
 
-        # TODO(TheSriram): We must avoid race conditions
-        # One way to accomplish this is to make this an atomic
-        # operation, lets either post all the blocks or post none at
-        # all, a worker process can be spawned off to kill partially uploaded
-        # blocks. For eg: out of 10 blocks, 3 got uploaded.
+        # (BenjamenMeyer): If we fail to upload any one block then we
+        # let the Validation and Clean-Up Service remove any uploaded blocks
+        # and fail out the request as a whole
+        if retval:
+            # Note: zip() will produce a list of the shortest combination.
+            # That is, if a = (1, 2, 3) and b = (a, b) then
+            # zip(a, b) = ((1, a), (2, b)). If 'a' is the storage id for '2'
+            # because '1' failed to be stored, then the entire list is
+            # improperly shifted and we incorrectly report which blocks were
+            # saved, thus corrupting the data
+            for block_id, storageid, blockdata, block_size in zip(block_ids,
+                                                                  storage_ids,
+                                                                  blockdatas,
+                                                                  block_sizes):
+                deuce.metadata_driver.register_block(
+                    self.id,
+                    block_id,
+                    storageid,
+                    block_size)
 
-        for block_id, storageid, blockdata in zip(block_ids, retval[1],
-                                                  blockdatas):
-            deuce.metadata_driver.register_block(
-                self.id,
-                block_id,
-                storageid,
-                len(blockdata))
-
-        return retval[0]
+        return retval
 
     def get_blocks(self, marker, limit):
         gen = deuce.metadata_driver.create_block_generator(

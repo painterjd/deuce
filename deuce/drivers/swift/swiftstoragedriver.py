@@ -134,7 +134,7 @@ class SwiftStorageDriver(BlockStorageDriver):
             return (response['status'] == 201
                     and ret_etag == mdetag, storage_id)
         except ClientException:
-            return False
+            return (False, '')
 
     def store_async_block(self, vault_id, metadata_block_ids, blockdatas):
         try:
@@ -151,7 +151,7 @@ class SwiftStorageDriver(BlockStorageDriver):
                 response_dict=response)
             return (response['status'] == 201, storage_ids)
         except ClientException:
-            return False
+            return (False, [])
 
     def block_exists(self, vault_id, storage_block_id):
 

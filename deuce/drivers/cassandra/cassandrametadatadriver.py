@@ -690,13 +690,22 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
         self._session.execute(CQL_INC_BLOCK_REF_COUNT, args)
 
-        reftime_args = dict(
-            projectid=deuce.context.project_id,
-            vaultid=vault_id,
-            blockid=block_id,
-            reftime=int(datetime.datetime.utcnow().timestamp())
-        )
-        self._session.execute(CQL_UPDATE_REF_TIME, reftime_args)
+        # The Ref-time value is stored in the blocks table
+        # if the block doesn't exist then the ref-time insertion
+        # will cause it to exist and then the register_block() will
+        # fail to insert the data correctly. Therefore, only
+        # insert the ref-time if we already have the block
+        #
+        # Note: the block registration will automatically insert the
+        # ref-time as well.
+        if self.has_block(vault_id, block_id):
+            reftime_args = dict(
+                projectid=deuce.context.project_id,
+                vaultid=vault_id,
+                blockid=block_id,
+                reftime=int(datetime.datetime.utcnow().timestamp())
+            )
+            self._session.execute(CQL_UPDATE_REF_TIME, reftime_args)
 
     def _del_block_ref_count(self, vault_id, block_id):
 

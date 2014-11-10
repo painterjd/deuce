@@ -101,7 +101,7 @@ class ItemResource(object):
 
         try:
             retval, storage_id = vault.put_block(
-                block_id, req.stream.read(), req.get_header('content-length'))
+                block_id, req.stream.read(), req.content_length)
             resp.set_header('X-Storage-ID', str(storage_id))
             resp.set_header('X-Block-ID', str(block_id))
             resp.status = (
@@ -109,6 +109,9 @@ class ItemResource(object):
             logger.info('block [{0}] added [{1}]'.format(block_id, storage_id))
         except ValueError as e:
             raise errors.HTTPPreconditionFailed('hash error')
+        except BufferError as e:
+            raise errors.HTTPPreconditionFailed(
+                'content length did not match data length')
 
     @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
     def on_delete(self, req, resp, vault_id, block_id):
