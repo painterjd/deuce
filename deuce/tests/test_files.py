@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 from random import randrange
+import time
 
 import falcon
 import mock
@@ -9,6 +10,7 @@ from mock import patch
 from six.moves.urllib.parse import urlparse, parse_qs
 
 from deuce import conf
+import deuce
 from deuce.tests import ControllerTest
 from deuce.util.misc import set_qs, relative_uri
 
@@ -311,6 +313,57 @@ class TestFiles(ControllerTest):
         # Delete the finalized file. delete returns 'ok'
         response = self.simulate_delete(self._file_path, headers=hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_204)
+
+    def test_check_x_ref_modified_with_change_in_references(self):
+        hdrs = {'content-type': 'application/x-deuce-block-list'}
+        hdrs.update(self._hdrs)
+        enough_num = int(conf.api_configuration.default_returned_num)
+        # Register enough_num of blocks into system.
+        block_list, blocks_data = self.helper_create_blocks(
+            num_blocks=enough_num)
+        data = json.dumps([[block_list[cnt], cnt * 100]
+                 for cnt in range(0, enough_num)])
+        self.helper_store_blocks(self.vault_id, blocks_data)
+        control_block = block_list[randrange(0, enough_num)]
+        response = self.simulate_head(self.get_block_path(self.vault_id,
+                                                          control_block),
+                                      headers=hdrs)
+        timestamp_upload_block = self.srmock.headers_dict['x-ref-modified']
+        # NOTE(TheSriram): data is list of lists of the form:
+        # [[blockid, offset], [blockid, offset]]
+
+        time.sleep(1)
+
+        # NOTE(TheSriram): assign blocks to file after sleeping for 1 second,
+        # since granularity of 'x-ref-modified' is 1 second.
+        # the reference count of the blocks should increase, thereby
+        # modifying 'x-ref-modified' timestamp
+
+        response = self.simulate_post(self._fileblocks_path,
+                                      body=data, headers=hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_200)
+        response = self.simulate_head(self.get_block_path(self.vault_id,
+                                                          control_block),
+                                      headers=hdrs)
+        timestamp_assign_block = self.srmock.headers_dict['x-ref-modified']
+        self.assertGreater(int(timestamp_assign_block),
+                           int(timestamp_upload_block))
+        time.sleep(1)
+
+        # NOTE(TheSriram): delete file after sleeping for 1 second,
+        # the reference count of the blocks should decrease, thereby
+        # modifying 'x-ref-modified' timestamp
+
+        response = self.simulate_delete(self._file_path,
+                                        headers=hdrs)
+        self.assertEqual(self.srmock.status, falcon.HTTP_204)
+
+        response = self.simulate_head(self.get_block_path(self.vault_id,
+                                                          control_block),
+                                      headers=hdrs)
+        timestamp_delete_file = self.srmock.headers_dict['x-ref-modified']
+        self.assertGreater(int(timestamp_delete_file),
+                           int(timestamp_assign_block))
 
     def test_nonexistent_file_endpoints(self):
         file_path_format = '/v1.0/vaults/{0}/files/{1}'

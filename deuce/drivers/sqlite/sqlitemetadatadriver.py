@@ -126,6 +126,18 @@ SQL_GET_ALL_FILE_BLOCKS = '''
     ORDER BY offset
 '''
 
+SQL_UPDATE_REF_TIME_BLOCKS_IN_FILE = '''
+    UPDATE blocks
+    SET reftime = strftime('%s', 'now')
+    WHERE projectid = :projectid
+    AND vaultid = :vaultid
+    AND blockid IN (SELECT blockid
+    FROM fileblocks
+    WHERE projectid = :projectid
+    AND vaultid = :vaultid
+    AND fileid = :fileid)
+'''
+
 SQL_GET_COUNT_ALL_FILE_BLOCKS = '''
     SELECT COUNT(DISTINCT(blockid))
     FROM fileblocks
@@ -489,6 +501,8 @@ class SqliteStorageDriver(MetadataStorageDriver):
             'vaultid': vault_id,
             'fileid': file_id
         }
+        res = self._conn.execute(SQL_UPDATE_REF_TIME_BLOCKS_IN_FILE, args)
+        self._conn.commit()
 
         res = self._conn.execute(SQL_DELETE_FILE, args)
         self._conn.commit()
