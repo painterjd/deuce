@@ -56,6 +56,13 @@ class authConfig(ConfigSectionInterface):
         """
         return self.get('api_key')
 
+    @property
+    def use_service_catalog(self):
+        """
+        use and send the full service catalog
+        """
+        return self.get_boolean('use_service_catalog')
+
 
 class storageConfig(ConfigSectionInterface):
     """
