@@ -311,6 +311,7 @@ class TestListBlocks(base.TestBase):
         resp = self.client.list_of_blocks(self.vaultname, marker=bad_marker)
         self.assert_200_response(resp)
         resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.block_list)
         self.assertEqual(resp_body, blockids[i + 1:])
 
     def tearDown(self):

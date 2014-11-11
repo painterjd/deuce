@@ -302,6 +302,7 @@ class TestListVaults(base.TestBase):
         resp = self.client.list_of_vaults(marker=bad_marker)
         self.assert_200_response(resp)
         resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.vault_list)
         self.assertEqual(sorted(resp_body.keys()), vaults[i + 1:])
 
     def tearDown(self):
