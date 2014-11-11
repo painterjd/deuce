@@ -298,3 +298,61 @@ class BaseDeuceClient(client.AutoMarshallingHTTPClient):
         resp = self.request('GET', '{0}/{1}/health'.format(self.url,
                                                            self.version))
         return resp
+
+    def get_storage_block(self, vaultname, storage_blockid):
+        """
+        Get block from storage
+        """
+
+        resp = self.request('GET', '{0}/{1}/vaults/{2}/storage/blocks/{3}'
+                ''.format(self.url, self.version, vaultname, storage_blockid))
+        return resp
+
+    def storage_block_head(self, vaultname, storage_blockid):
+        """
+        Execute HEAD on a storage block
+        """
+
+        resp = self.request('HEAD', '{0}/{1}/vaults/{2}/storage/blocks/{3}'
+                ''.format(self.url, self.version, vaultname, storage_blockid))
+        return resp
+
+    def delete_storage_block(self, vaultname, storage_blockid):
+        """
+        Delete a storage block
+        """
+
+        resp = self.request('DELETE', '{0}/{1}/vaults/{2}/storage/blocks/{3}'
+                ''.format(self.url, self.version, vaultname, storage_blockid))
+        return resp
+
+    def upload_storage_block(self, vaultname, storage_blockid, block_data):
+        """
+        Upload a storage block. Operation not allowed
+        """
+
+        new_header = {'Content-Type': 'application/octet-stream',
+                      'content-length': len(block_data)}
+        resp = self.request('PUT', '{0}/{1}/vaults/{2}/storage/blocks/{3}'
+                ''.format(self.url, self.version, vaultname, storage_blockid),
+                headers=new_header, data=block_data)
+        return resp
+
+    def list_of_storage_blocks(self, vaultname=None, marker=None, limit=None,
+                       alternate_url=None):
+        """
+        Get a list of all blocks
+        """
+
+        parameters = {}
+        if marker is not None:
+            parameters['marker'] = marker
+        if limit is not None:
+            parameters['limit'] = limit
+        if alternate_url:
+            url = alternate_url
+        else:
+            url = '{0}/{1}/vaults/{2}/storage/blocks' \
+                  ''.format(self.url, self.version, vaultname)
+        resp = self.request('GET', url, params=parameters)
+        return resp
