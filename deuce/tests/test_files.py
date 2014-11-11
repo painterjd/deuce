@@ -329,6 +329,8 @@ class TestFiles(ControllerTest):
                                                           control_block),
                                       headers=hdrs)
         timestamp_upload_block = self.srmock.headers_dict['x-ref-modified']
+        x_ref_count_upload_block = \
+            self.srmock.headers_dict['x-block-reference-count']
         # NOTE(TheSriram): data is list of lists of the form:
         # [[blockid, offset], [blockid, offset]]
 
@@ -346,8 +348,12 @@ class TestFiles(ControllerTest):
                                                           control_block),
                                       headers=hdrs)
         timestamp_assign_block = self.srmock.headers_dict['x-ref-modified']
+        x_ref_count_assign_block = \
+            self.srmock.headers_dict['x-block-reference-count']
         self.assertGreater(int(timestamp_assign_block),
                            int(timestamp_upload_block))
+        self.assertGreater(int(x_ref_count_assign_block),
+                           int(x_ref_count_upload_block))
         time.sleep(1)
 
         # NOTE(TheSriram): delete file after sleeping for 1 second,
@@ -362,8 +368,12 @@ class TestFiles(ControllerTest):
                                                           control_block),
                                       headers=hdrs)
         timestamp_delete_file = self.srmock.headers_dict['x-ref-modified']
+        x_ref_count_delete_file = \
+            self.srmock.headers_dict['x-block-reference-count']
         self.assertGreater(int(timestamp_delete_file),
                            int(timestamp_assign_block))
+        self.assertGreater(int(x_ref_count_assign_block),
+                           int(x_ref_count_delete_file))
 
     def test_nonexistent_file_endpoints(self):
         file_path_format = '/v1.0/vaults/{0}/files/{1}'

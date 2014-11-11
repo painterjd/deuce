@@ -219,7 +219,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         }
 
         results = self._fileblocks.find(args)
-        block_args = args
+        block_args = args.copy()
         del block_args['fileid']
 
         self._blocks.ensure_index([('projectid', 1),
@@ -516,7 +516,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             ('blockid', 1)])
 
         # Update the reftime
-        block_args = args
+        block_args = args.copy()
         del block_args['fileid']
         del block_args['offset']
         update_args = {
