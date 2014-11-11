@@ -56,6 +56,39 @@ class TestNoBlocksUploaded(base.TestBase):
         blockid = resp.headers['x-block-location'].split('/')[-1]
         self.assertEqual(blockid, str(storageid))
 
+    def test_post_missing_storage_block(self):
+        """Try to post to storage block.
+        Block not present in metadata"""
+
+        self.generate_block_data()
+        blockid = sha.new(self.id_generator(15)).hexdigest()
+        st_id = uuid.uuid5(uuid.NAMESPACE_URL, self.id_generator(50))
+        storageid = '{0}_{1}'.format(blockid, st_id)
+        resp = self.client.post_storage_block(self.vaultname, storageid,
+                                              self.block_data)
+        self.assertEqual(resp.status_code, 405,
+                         'Status code returned: {0} . '
+                         'Expected 405'.format(resp.status_code))
+        self.assertHeaders(resp.headers,
+                           contentlength=0,
+                           blockid='None',
+                           storageid=str(storageid),
+                           allow='GET',
+                           location=True)
+
+        self.assertUrl(resp.headers['x-block-location'], blockpath=True)
+        blockid = resp.headers['x-block-location'].split('/')[-1]
+        self.assertEqual(blockid, str(storageid))
+
+    def test_delete_missing_storage_block(self):
+        """Delete a storage block that has not been uploaded"""
+
+        blockid = sha.new(self.id_generator(15)).hexdigest()
+        st_id = uuid.uuid5(uuid.NAMESPACE_URL, self.id_generator(50))
+        storageid = '{0}_{1}'.format(blockid, st_id)
+        resp = self.client.delete_storage_block(self.vaultname, storageid)
+        self.assert_404_response(resp)
+
     def tearDown(self):
         super(TestNoBlocksUploaded, self).tearDown()
         self.client.delete_vault(self.vaultname)
@@ -115,6 +148,26 @@ class TestBlockUploaded(base.TestBase):
                            blockid=self.blockid,
                            storageid=self.storageid,
                            allow='HEAD, GET, DELETE',
+                           location=True)
+
+        self.assertUrl(resp.headers['x-block-location'], blockpath=True)
+        blockid = resp.headers['x-block-location'].split('/')[-1]
+        self.assertEqual(blockid, self.blockid)
+
+    def test_post_storage_block(self):
+        """Try to post to storage block.
+        Block is present in metadata"""
+
+        resp = self.client.post_storage_block(self.vaultname, self.storageid,
+                                              self.block_data)
+        self.assertEqual(resp.status_code, 405,
+                         'Status code returned: {0} . '
+                         'Expected 405'.format(resp.status_code))
+        self.assertHeaders(resp.headers,
+                           contentlength=0,
+                           blockid=self.blockid,
+                           storageid=self.storageid,
+                           allow='GET',
                            location=True)
 
         self.assertUrl(resp.headers['x-block-location'], blockpath=True)
@@ -315,6 +368,89 @@ class TestListStorageBlocks(base.TestBase):
 
     def tearDown(self):
         super(TestListStorageBlocks, self).tearDown()
+        [self.client.delete_block(self.vaultname, block.Id) for block in
+            self.blocks]
+        self.client.delete_vault(self.vaultname)
+
+
+@ddt.ddt
+class TestStorageBlocksReferenceCount(base.TestBase):
+
+    def setUp(self):
+        super(TestStorageBlocksReferenceCount, self).setUp()
+        self.create_empty_vault()
+        self.upload_block()
+        # (not finalized) create two files and assign block
+        for _ in range(2):
+            self.create_new_file()
+            self.assign_all_blocks_to_file()
+        # (finalized) create two files and assign block
+        for _ in range(2):
+            self.create_new_file()
+            self.assign_all_blocks_to_file()
+            self.finalize_file()
+
+    @ddt.data('all', 'delete_finalized', 'delete_non_finalized')
+    def test_get_storage_block_with_multiple_references(self, value):
+        """Get an individual storage block that has multiple references"""
+
+        expected = 3
+        if value == 'delete_finalized':
+            # delete 1 reference; a finalized file
+            self.client.delete_file(vaultname=self.vaultname,
+                                    fileid=self.files[2].Id)
+        elif value == 'delete_non_finalized':
+            # delete 1 reference; a non-finalized file
+            self.client.delete_file(vaultname=self.vaultname,
+                                    fileid=self.files[0].Id)
+        elif value == 'all':
+            expected = 4
+
+        resp = self.client.get_storage_block(self.vaultname, self.storageid)
+        self.assertEqual(resp.status_code, 200,
+                         'Status code returned: {0} . '
+                         'Expected 200'.format(resp.status_code))
+        self.assertHeaders(resp.headers, binary=True,
+                           lastmodified=True,
+                           contentlength=len(self.block_data),
+                           refcount=expected,
+                           blockid=self.blockid,
+                           storageid=self.storageid)
+        self.assertEqual(resp.content, self.block_data,
+                         'Block data returned does not match block uploaded')
+
+    @ddt.data('all', 'delete_finalized', 'delete_non_finalized')
+    def test_head_storage_block_with_multiple_references(self, value):
+        """Head an individual storage block that has multiple references"""
+
+        expected = 3
+        if value == 'delete_finalized':
+            # delete 1 reference; a finalized file
+            self.client.delete_file(vaultname=self.vaultname,
+                                    fileid=self.files[2].Id)
+        elif value == 'delete_non_finalized':
+            # delete 1 reference; a non-finalized file
+            self.client.delete_file(vaultname=self.vaultname,
+                                    fileid=self.files[0].Id)
+        elif value == 'all':
+            expected = 4
+
+        resp = self.client.storage_block_head(self.vaultname, self.storageid)
+        self.assert_204_response(resp)
+        self.assertHeaders(resp.headers,
+                           lastmodified=True,
+                           contentlength=0,
+                           refcount=expected,
+                           blockid=self.blockid,
+                           storageid=self.storageid,
+                           orphan='False',
+                           size=len(self.block_data))
+        self.assertEqual(len(resp.content), 0)
+
+    def tearDown(self):
+        super(TestStorageBlocksReferenceCount, self).tearDown()
+        [self.client.delete_file(vaultname=self.vaultname,
+            fileid=file_info.Id) for file_info in self.files]
         [self.client.delete_block(self.vaultname, block.Id) for block in
             self.blocks]
         self.client.delete_vault(self.vaultname)
