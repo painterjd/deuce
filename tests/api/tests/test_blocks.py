@@ -291,12 +291,27 @@ class TestListBlocks(base.TestBase):
                          'Discrepancy between the list of blocks returned '
                          'and the blocks uploaded')
 
-    def test_list_blocks_bad_marker(self):
-        """Request a Block List with a bad marker"""
+    def test_list_blocks_invalid_marker(self):
+        """Request a Vault list with an invalid marker"""
 
-        bad_marker = sha.new(self.id_generator(50)).hexdigest()
+        bad_marker = self.id_generator(50) + '#$@'
         resp = self.client.list_of_blocks(self.vaultname, marker=bad_marker)
         self.assert_404_response(resp)
+
+    def test_list_blocks_bad_marker(self):
+        """Request a Block List with a bad marker.
+        The marker is correctly formatted, but does not exist"""
+
+        bad_marker = sha.new(self.id_generator(50)).hexdigest()
+        blockids = self.blockids[:]
+        blockids.append(bad_marker)
+        blockids.sort()
+        i = blockids.index(bad_marker)
+
+        resp = self.client.list_of_blocks(self.vaultname, marker=bad_marker)
+        self.assert_200_response(resp)
+        resp_body = resp.json()
+        self.assertEqual(resp_body, blockids[i + 1:])
 
     def tearDown(self):
         super(TestListBlocks, self).tearDown()

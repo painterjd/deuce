@@ -558,16 +558,31 @@ class TestMultipleFinalizedFiles(base.TestBase):
                          'Discrepancy between the list of files returned '
                          'and the files created/finalilzed')
 
+    def test_list_files_invalid_marker(self):
+        """Request a File list with an invalid marker"""
+
+        bad_marker = self.id_generator(36)
+        resp = self.client.list_of_files(self.vaultname, marker=bad_marker)
+        self.assert_404_response(resp)
+
     def test_list_files_bad_marker(self):
-        """Request File List with a bad marker"""
+        """Request File List with a bad marker.
+        The marker is correctly formatted, but does not exist"""
 
         fileids, fileurls = zip(*self.files)
         while True:
-            bad_marker = uuid.uuid4()
+            bad_marker = str(uuid.uuid4())
             if bad_marker not in fileids:
                 break
+        new_fileids = list(fileids[:])
+        new_fileids.append(bad_marker)
+        new_fileids.sort()
+        i = new_fileids.index(bad_marker)
+
         resp = self.client.list_of_files(self.vaultname, marker=bad_marker)
-        self.assert_404_response(resp)
+        self.assert_200_response(resp)
+        resp_body = resp.json()
+        self.assertEqual(resp_body, new_fileids[i + 1:])
 
     def tearDown(self):
         super(TestMultipleFinalizedFiles, self).tearDown()
