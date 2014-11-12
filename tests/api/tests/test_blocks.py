@@ -359,6 +359,7 @@ class TestBlocksAssignedToFile(base.TestBase):
         self.create_empty_vault()
         self.upload_multiple_blocks(3)
         self.create_new_file()
+        time.sleep(5)
         self.assign_all_blocks_to_file()
 
     def test_delete_assigned_block(self):
@@ -379,7 +380,6 @@ class TestBlocksAssignedToFile(base.TestBase):
         """Head a block and compare the ref-modified value after the
         block was assigned to a file"""
 
-        time.sleep(5)
         resp = self.client.block_head(self.vaultname, self.blockid)
         self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
@@ -395,6 +395,9 @@ class TestBlocksAssignedToFile(base.TestBase):
         """Head a block and compare the ref-modified value after the
         number of references to the block is reduced"""
 
+        resp = self.client.block_head(self.vaultname, self.blockid)
+        self.assert_204_response(resp)
+        self.modified = int(resp.headers['x-ref-modified'])
         time.sleep(5)
         resp = self.client.delete_file(self.vaultname, self.fileid)
 
