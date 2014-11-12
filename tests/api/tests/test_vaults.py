@@ -17,7 +17,7 @@ class TestNoVaultsCreated(base.TestBase):
         """Head of a vault that has not been created"""
 
         resp = self.client.vault_head(self.id_generator(50))
-        self.assert_404_response(resp)
+        self.assert_404_response(resp, skip_contentlength=True)
 
     def test_get_missing_vault(self):
         """Get a vault that has not been created"""

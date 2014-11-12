@@ -43,7 +43,7 @@ class TestNoBlocksUploaded(base.TestBase):
         self.block_data = os.urandom(100)
         self.blockid = sha.new(self.block_data).hexdigest()
         resp = self.client.block_head(self.vaultname, self.blockid)
-        self.assert_404_response(resp)
+        self.assert_404_response(resp, skip_contentlength=True)
 
     def test_delete_missing_block(self):
         """Delete one missing block"""
@@ -158,6 +158,7 @@ class TestBlockUploaded(base.TestBase):
         self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
                            lastmodified=True,
+                           skip_contentlength=True,
                            contentlength=0,
                            refcount=0,
                            blockid=self.blockid,
@@ -186,6 +187,7 @@ class TestBlockUploaded(base.TestBase):
         self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
                            lastmodified=True,
+                           skip_contentlength=True,
                            contentlength=0,
                            refcount=0,
                            blockid=self.blockid,
@@ -200,6 +202,7 @@ class TestBlockUploaded(base.TestBase):
         self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
                            lastmodified=True,
+                           skip_contentlength=True,
                            contentlength=0,
                            refcount=0,
                            blockid=self.blockid,
@@ -231,6 +234,7 @@ class TestBlockUploaded(base.TestBase):
         self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
                            lastmodified=True,
+                           skip_contentlength=True,
                            contentlength=0,
                            refcount=0,
                            blockid=self.blockid,
@@ -384,6 +388,7 @@ class TestBlocksAssignedToFile(base.TestBase):
         self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
                            lastmodified=True,
+                           skip_contentlength=True,
                            contentlength=0,
                            refcount=1,
                            blockid=self.blockid,
@@ -406,6 +411,7 @@ class TestBlocksAssignedToFile(base.TestBase):
         self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
                            lastmodified=True,
+                           skip_contentlength=True,
                            contentlength=0,
                            refcount=0,
                            blockid=self.blockid,
@@ -489,6 +495,7 @@ class TestBlocksReferenceCount(base.TestBase):
         self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
                            lastmodified=True,
+                           skip_contentlength=True,
                            contentlength=0,
                            refcount=expected,
                            blockid=self.blockid,
