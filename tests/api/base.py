@@ -20,6 +20,7 @@ import urlparse
 
 Block = namedtuple('Block', 'Id Data')
 File = namedtuple('File', 'Id Url')
+Storage = namedtuple('Storage', 'Id BlockId')
 
 
 class TestBase(fixtures.BaseTestFixture):
@@ -108,7 +109,9 @@ class TestBase(fixtures.BaseTestFixture):
         return testMethodName == name
 
     def assertHeaders(self, headers, json=False, binary=False,
-                      lastmodified=False, contentlength=None):
+                      lastmodified=False, contentlength=None,
+                      refcount=None, blockid=None, storageid=None,
+                      allow=None, location=False, orphan=None, size=None):
         """Basic http header validation"""
 
         self.assertIsNotNone(headers['transaction-id'])
@@ -131,9 +134,36 @@ class TestBase(fixtures.BaseTestFixture):
         if contentlength is not None:
             self.assertEqual(int(headers['content-length']), contentlength)
 
+        if refcount is not None:
+            self.assertIn('X-Block-Reference-Count', headers)
+            self.assertEqual(int(headers['X-Block-Reference-Count']), refcount)
+
+        if blockid is not None:
+            self.assertIn('X-Block-Id', headers)
+            self.assertEqual(headers['X-Block-Id'], blockid)
+
+        if storageid is not None:
+            self.assertIn('X-Storage-Id', headers)
+            self.assertEqual(headers['X-Storage-Id'], storageid)
+
+        if allow is not None:
+            self.assertIn('Allow', headers)
+            self.assertEqual(headers['Allow'], allow)
+
+        if location:
+            self.assertIn('X-Block-Location', headers)
+
+        if orphan is not None:
+            self.assertIn('X-Block-Orphaned', headers)
+            self.assertEqual(headers['X-Block-Orphaned'], orphan)
+
+        if size is not None:
+            self.assertIn('X-Block-Size', headers)
+            self.assertEqual(int(headers['X-Block-Size']), size)
+
     def assertUrl(self, url, base=False, vaults=False, vaultspath=False,
-                  blocks=False, files=False, filepath=False, fileblock=False,
-                  nextlist=False):
+                  blocks=False, blockpath=False, files=False, filepath=False,
+                  fileblock=False, storage=False, nextlist=False):
         """Check that the url provided has information according to the flags
         passed
         """
@@ -158,6 +188,11 @@ class TestBase(fixtures.BaseTestFixture):
             self.assertEqual(u.path, '/{0}/vaults/{1}/blocks'
                              ''.format(self.api_version, self.vaultname), msg)
 
+        if blockpath:
+            valid = re.compile('/{0}/vaults/{1}/blocks/[a-zA-Z0-9\-]*'
+                               ''.format(self.api_version, self.vaultname))
+            self.assertIsNotNone(valid.match(u.path), msg)
+
         if files:
             self.assertEqual(u.path, '/{0}/vaults/{1}/files'
                              ''.format(self.api_version, self.vaultname), msg)
@@ -171,6 +206,10 @@ class TestBase(fixtures.BaseTestFixture):
             valid = re.compile('/{0}/vaults/{1}/files/[a-zA-Z0-9\-_]*/blocks'
                                ''.format(self.api_version, self.vaultname))
             self.assertIsNotNone(valid.match(u.path), msg)
+
+        if storage:
+            self.assertEqual(u.path, '/{0}/vaults/{1}/storage/blocks'
+                             ''.format(self.api_version, self.vaultname), msg)
 
         if nextlist:
             query = urlparse.parse_qs(u.query)
@@ -269,6 +308,8 @@ class TestBase(fixtures.BaseTestFixture):
         self.vaults.append(self.vaultname)
         self.blocks = []
         self.files = []
+        self.storage = []
+        self.modified_times = []
 
     def generate_block_data(self, block_data=None, size=30720):
         """
@@ -290,10 +331,9 @@ class TestBase(fixtures.BaseTestFixture):
         If not, a random block of data of the specified size is used
         """
         self.generate_block_data(block_data, size)
-        resp = self.client.upload_block(self.vaultname, self.blockid,
+        self.resp = self.client.upload_block(self.vaultname, self.blockid,
                                         self.block_data)
-        self.storageid = resp.headers['x-storage-id']
-        return 201 == resp.status_code
+        return 201 == self.resp.status_code
 
     def upload_block(self, block_data=None, size=30720):
         """
@@ -305,6 +345,13 @@ class TestBase(fixtures.BaseTestFixture):
         """
         if not self._upload_block(block_data, size):
             raise Exception('Failed to upload block')
+        self.storageid = self.resp.headers['x-storage-id']
+        self.storage.append(Storage(Id=self.storageid, BlockId=self.blockid))
+        resp = self.client.block_head(self.vaultname, self.blockid)
+        if resp.status_code != 204:
+            raise Exception('Could not HEAD block {0}'.format(self.blockid))
+        self.modified = int(resp.headers['x-ref-modified'])
+        self.modified_times.append(self.modified)
 
     def _upload_multiple_blocks(self, nblocks, size=30720):
         """
@@ -327,6 +374,15 @@ class TestBase(fixtures.BaseTestFixture):
         """
         if not self._upload_multiple_blocks(nblocks, size):
             raise Exception('Failed to upload multiple blocks')
+        for block in self.blocks:
+            resp = self.client.block_head(self.vaultname, block.Id)
+            if resp.status_code != 204:
+                raise Exception('Could not HEAD block {0}'.format(block.Id))
+            self.storage.append(Storage(Id=resp.headers['x-storage-id'],
+                BlockId=block.Id))
+            self.modified_times.append(int(resp.headers['x-ref-modified']))
+        self.storageid = self.storage[-1].Id
+        self.modified = self.modified_times[-1]
 
     def _create_new_file(self):
         """

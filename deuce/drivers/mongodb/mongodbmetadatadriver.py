@@ -218,6 +218,22 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             'fileid': file_id
         }
 
+        results = self._fileblocks.find(args)
+        block_args = args.copy()
+        del block_args['fileid']
+
+        self._blocks.ensure_index([('projectid', 1),
+            ('vaultid', 1), ('blockid', 1)])
+
+        for result in results:
+            block_args['blockid'] = result['blockid']
+            update_args = {
+                '$set': {
+                    'reftime': int(datetime.datetime.utcnow().timestamp())
+                }
+            }
+            self._blocks.update(block_args, update_args, upsert=False)
+
         self._files.remove(args)
         self._fileblocks.remove(args)
 
@@ -500,8 +516,16 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             ('blockid', 1)])
 
         # Update the reftime
-        args['reftime'] = int(datetime.datetime.utcnow().timestamp())
-        self._blocks.update(args, args, upsert=False)
+        block_args = args.copy()
+        del block_args['fileid']
+        del block_args['offset']
+        update_args = {
+            '$set': {
+                'reftime': int(datetime.datetime.utcnow().timestamp())
+            }
+        }
+
+        self._blocks.update(block_args, update_args, upsert=False)
 
     def register_block(self, vault_id, block_id, storage_id, blocksize):
         if not self.has_block(vault_id, block_id):
@@ -565,8 +589,11 @@ class MongoDbStorageDriver(MetadataStorageDriver):
 
     def get_block_ref_modified(self, vault_id, block_id):
 
-        blockdata = self.get_block_data(vault_id, block_id)
-        return blockdata['reftime']
+        try:
+            blockdata = self.get_block_data(vault_id, block_id)
+            return blockdata['reftime']
+        except TypeError:
+            return 0
 
     def get_health(self):
         try:

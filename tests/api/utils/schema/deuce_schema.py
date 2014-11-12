@@ -141,3 +141,15 @@ block_list_of_file = {
     "minItems": 0,
     "uniqueItems": True,
 }
+
+block_storage_list = {
+    "type": "array",
+    "items": {
+        "type": "string",
+        "maxLength": 77,
+        "pattern": r"^[a-z0-9]{40}_[a-z0-9]{8}\-[a-z0-9]{4}\-[1-5]"
+        "[a-z0-9]{3}\-[ab89][a-z0-9]{3}\-[a-z0-9]{12}$",
+    },
+    "minItems": 0,
+    "uniqueItems": True,
+}
