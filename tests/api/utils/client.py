@@ -338,15 +338,15 @@ class BaseDeuceClient(client.AutoMarshallingHTTPClient):
                 headers=new_header, data=block_data)
         return resp
 
-    def post_storage_block(self, vaultname, storage_blockid, block_data):
+    def post_storage_block(self, vaultname, block_data):
         """
         Post to storage block. Operation not allowed
         """
 
         new_header = {'Content-Type': 'application/octet-stream',
                       'content-length': len(block_data)}
-        resp = self.request('POST', '{0}/{1}/vaults/{2}/storage/blocks/{3}'
-                ''.format(self.url, self.version, vaultname, storage_blockid),
+        resp = self.request('POST', '{0}/{1}/vaults/{2}/storage/blocks'
+                ''.format(self.url, self.version, vaultname),
                 headers=new_header, data=block_data)
         return resp
 
