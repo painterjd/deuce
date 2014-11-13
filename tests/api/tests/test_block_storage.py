@@ -161,21 +161,14 @@ class TestBlockUploaded(base.TestBase):
         """Try to post to storage block.
         Block is present in metadata"""
 
-        resp = self.client.post_storage_block(self.vaultname, self.storageid,
+        resp = self.client.post_storage_block(self.vaultname,
                                               self.block_data)
         self.assertEqual(resp.status_code, 405,
                          'Status code returned: {0} . '
                          'Expected 405'.format(resp.status_code))
         self.assertHeaders(resp.headers,
                            contentlength=0,
-                           blockid=self.blockid,
-                           storageid=self.storageid,
-                           allow='GET',
-                           location=True)
-
-        self.assertUrl(resp.headers['x-block-location'], blockpath=True)
-        blockid = resp.headers['x-block-location'].split('/')[-1]
-        self.assertEqual(blockid, self.blockid)
+                           allow='GET')
 
     def test_delete_storage_block_with_metadata(self):
         """Delete one block from storage.
