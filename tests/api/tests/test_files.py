@@ -5,6 +5,7 @@ import ddt
 import json
 import jsonschema
 import os
+import random
 import sha
 import uuid
 
@@ -383,6 +384,36 @@ class TestListBlocksOfFile(base.TestBase):
             del self.blockids[i]
             del self.blockids_offsets[i]
 
+    def test_list_blocks_file_invalid_marker(self):
+        """Request a File Block list with an invalid marker"""
+
+        bad_marker = self.id_generator(20)
+        resp = self.client.list_of_blocks_in_file(self.vaultname, self.fileid,
+                                                  marker=bad_marker)
+        self.assert_404_response(resp)
+
+    def test_list_blocks_file_bad_marker(self):
+        """Request File Block List with a bad marker.
+        The marker is correctly formatted, but does not exist"""
+
+        value = self.blockids_offsets.index(
+            random.choice(self.blockids_offsets))
+        bad_marker = self.blockids_offsets[value][1] + \
+            random.randint(1, 1024)
+        skipped_blockids_offsets = self.blockids_offsets[:value + 1]
+
+        resp = self.client.list_of_blocks_in_file(self.vaultname, self.fileid,
+                                                  marker=bad_marker)
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.block_list_of_file)
+
+        self.assertBlocksInResponse(resp_body)
+        self.assertEqual(self.blockids_offsets, skipped_blockids_offsets,
+                         'Discrepancy between the list of blocks returned '
+                         'and the blocks associated to the file')
+
     def tearDown(self):
         super(TestListBlocksOfFile, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
@@ -558,16 +589,32 @@ class TestMultipleFinalizedFiles(base.TestBase):
                          'Discrepancy between the list of files returned '
                          'and the files created/finalilzed')
 
+    def test_list_files_invalid_marker(self):
+        """Request a File list with an invalid marker"""
+
+        bad_marker = self.id_generator(36)
+        resp = self.client.list_of_files(self.vaultname, marker=bad_marker)
+        self.assert_404_response(resp)
+
     def test_list_files_bad_marker(self):
-        """Request File List with a bad marker"""
+        """Request File List with a bad marker.
+        The marker is correctly formatted, but does not exist"""
 
         fileids, fileurls = zip(*self.files)
         while True:
-            bad_marker = uuid.uuid4()
+            bad_marker = str(uuid.uuid4())
             if bad_marker not in fileids:
                 break
+        new_fileids = list(fileids[:])
+        new_fileids.append(bad_marker)
+        new_fileids.sort()
+        i = new_fileids.index(bad_marker)
+
         resp = self.client.list_of_files(self.vaultname, marker=bad_marker)
-        self.assert_404_response(resp)
+        self.assert_200_response(resp)
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.file_list)
+        self.assertEqual(resp_body, new_fileids[i + 1:])
 
     def tearDown(self):
         super(TestMultipleFinalizedFiles, self).tearDown()

@@ -279,15 +279,31 @@ class TestListVaults(base.TestBase):
                          'Discrepancy between the list of vaults returned '
                          'and the vaults uploaded {0}'.format(self.vaultids))
 
+    def test_list_vault_invalid_marker(self):
+        """Request a Vault list with an invalid marker"""
+
+        bad_marker = '#$@#@%$#fjsd0-'
+        resp = self.client.list_of_vaults(marker=bad_marker)
+        self.assert_404_response(resp)
+
     def test_list_vault_bad_marker(self):
-        """Request a Vault List with a bad marker"""
+        """Request a Vault List with a bad marker.
+        The marker is correctly formatted, but does not exist"""
 
         while True:
             bad_marker = self.id_generator(50)
             if bad_marker not in self.vaults:
                 break
+        vaults = self.vaults[:]
+        vaults.append(bad_marker)
+        vaults.sort()
+        i = vaults.index(bad_marker)
+
         resp = self.client.list_of_vaults(marker=bad_marker)
-        self.assert_404_response(resp)
+        self.assert_200_response(resp)
+        resp_body = resp.json()
+        jsonschema.validate(resp_body, deuce_schema.vault_list)
+        self.assertEqual(sorted(resp_body.keys()), vaults[i + 1:])
 
     def tearDown(self):
         super(TestListVaults, self).tearDown()
