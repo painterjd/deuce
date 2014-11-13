@@ -411,9 +411,13 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         # from the given start point,
         # for the limit number,
         # and sorted by the block offset.
-        resblocks = self._fileblocks.find(args,
-                                          project_args).sort('offset',
-                                                             1).limit(limit)
+
+        if limit > 0:
+            resblocks = self._fileblocks.find(args,
+                project_args).sort('offset', 1).limit(limit)
+        else:
+            resblocks = self._fileblocks.find(args,
+                project_args).sort('offset', 1)
 
         return ((res['blockid'], res['offset']) for res in resblocks)
 
