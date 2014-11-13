@@ -9,6 +9,7 @@ import uuid
 
 
 class TestNoBlocksUploaded(base.TestBase):
+    _multiprocess_can_split = True
 
     def setUp(self):
         super(TestNoBlocksUploaded, self).setUp()
@@ -95,6 +96,7 @@ class TestNoBlocksUploaded(base.TestBase):
 
 
 class TestBlockUploaded(base.TestBase):
+    _multiprocess_can_split = True
 
     def setUp(self):
         super(TestBlockUploaded, self).setUp()
@@ -196,6 +198,7 @@ class TestBlockUploaded(base.TestBase):
 
 
 class TestBlockOrphaned(base.TestBase):
+    _multiprocess_can_split = True
 
     def setUp(self):
         super(TestBlockOrphaned, self).setUp()
@@ -256,6 +259,7 @@ class TestBlockOrphaned(base.TestBase):
 
 @ddt.ddt
 class TestListStorageBlocks(base.TestBase):
+    _multiprocess_can_split = True
 
     def setUp(self):
         super(TestListStorageBlocks, self).setUp()
@@ -375,6 +379,7 @@ class TestListStorageBlocks(base.TestBase):
 
 @ddt.ddt
 class TestStorageBlocksReferenceCount(base.TestBase):
+    _multiprocess_can_split = True
 
     def setUp(self):
         super(TestStorageBlocksReferenceCount, self).setUp()
