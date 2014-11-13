@@ -62,24 +62,14 @@ class TestNoBlocksUploaded(base.TestBase):
         Block not present in metadata"""
 
         self.generate_block_data()
-        blockid = sha.new(self.id_generator(15)).hexdigest()
-        st_id = uuid.uuid5(uuid.NAMESPACE_URL, self.id_generator(50))
-        storageid = '{0}_{1}'.format(blockid, st_id)
-        resp = self.client.post_storage_block(self.vaultname, storageid,
+        resp = self.client.post_storage_block(self.vaultname,
                                               self.block_data)
         self.assertEqual(resp.status_code, 405,
                          'Status code returned: {0} . '
                          'Expected 405'.format(resp.status_code))
         self.assertHeaders(resp.headers,
                            contentlength=0,
-                           blockid='None',
-                           storageid=str(storageid),
-                           allow='GET',
-                           location=True)
-
-        self.assertUrl(resp.headers['x-block-location'], blockpath=True)
-        blockid = resp.headers['x-block-location'].split('/')[-1]
-        self.assertEqual(blockid, str(storageid))
+                           allow='GET')
 
     def test_delete_missing_storage_block(self):
         """Delete a storage block that has not been uploaded"""
