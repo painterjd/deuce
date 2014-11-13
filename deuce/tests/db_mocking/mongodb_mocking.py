@@ -20,12 +20,11 @@ def patch_aggregate(self, query):
     retval = dict()
     retval['result'] = []
     blocks = []
-    blocksdict = dict()
     offset = 0
 
     for item in query:
-        if '$match' in item and 'blocks.offset' in item['$match']:
-            offset = item['$match']['blocks.offset']['$gte']
+        if '$match' in item and 'offset' in item['$match']:
+            offset = item['$match']['offset']['$gte']
         if '$limit' in item:
             limit = item['$limit']
 
@@ -41,9 +40,7 @@ def patch_aggregate(self, query):
         block['offset'] = x * 1024
         blocks.append(block.copy())
 
-    blocksdict['blocks'] = blocks
-    retval['result'].append(blocksdict.copy())
-
+    retval['result'] = blocks
     return retval
 
 old_init = Collection.__init__

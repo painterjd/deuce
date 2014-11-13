@@ -451,49 +451,39 @@ class MongoDbStorageDriver(MetadataStorageDriver):
 
     def create_file_block_generator(self, vault_id, file_id,
             offset=None, limit=None):
-        self._files.ensure_index([('projectid', 1),
-            ('vaultid', 1), ('fileid', 1), ('seq', 1)])
+
+        self._fileblocks.ensure_index([('projectid', 1),
+            ('vaultid', 1), ('fileid', 1), ('offset', 1)])
         limit = self._determine_limit(limit)
-        search_offset = offset if offset else 0
-        blocks = []
-        blockset = []
+        search_offset = int(offset) if offset else 0
 
-        args = {'projectid': deuce.context.project_id, 'vaultid': vault_id,
-            'fileid': file_id}
+        args = {'projectid': deuce.context.project_id,
+                'vaultid': vault_id,
+                'fileid': file_id,
+                'offset': {'$gte': search_offset}}
 
-        # This aggregation searches all embedded documents in FILES
+        # This aggregation searches all embedded documents in FILEBLOCKS
         # cross different documents,
         # from the given start point,
         # for the limit number,
         # and sorted by the block offset.
 
-        resblocks = self._files.aggregate(
-            [{'$match': args},
-            {'$sort': {"seq": 1}},
-            {'$unwind': '$blocks'},
-            {'$match': {'blocks.offset': {'$gte': search_offset}}},
-            {'$limit': limit},
-            {'$group': {"_id": '$_id',
-                'blocks': {
-                    '$push': {
-                        'blockid': '$blocks.blockid',
-                        'offset': '$blocks.offset'}}}},
-            {'$sort': {'blocks.offset': 1}}])
+        resblocks = self._fileblocks.aggregate(
+            [
+                {'$match': args},
+                {'$project': {'blockid': 1,
+                              'offset': 1,
+                              '_id': 0}},
+                {'$sort': {'offset': 1}},
+                {'$limit': limit},
+            ])
 
         resblocks = resblocks.get('result')
 
-        # The resblocks is a list of lists; Flat it.
-        blockset = list(itertools.chain.from_iterable(
-            (resset.get('blocks') for resset in resblocks)))
+        if len(resblocks) == 0:
+            return []
 
-        if len(blockset) < 1:
-            return blockset
-
-        num_blocks = len(blockset)
-        blocks = list((block.get('blockid'),
-            block.get('offset')) for block in blockset)
-
-        return blocks
+        return [(res['blockid'], res['offset']) for res in resblocks]
 
     def assign_block(self, vault_id, file_id, block_id, offset):
         # TODO(jdp): tweak this to support multiple assignments
@@ -595,6 +585,6 @@ class MongoDbStorageDriver(MetadataStorageDriver):
 
     def get_health(self):
         try:
-            return self._db.status()
+            return "Mongo connected : {0}".format(self.client.alive())
         except:  # pragma: no cover
             return ["mongo is not active."]
