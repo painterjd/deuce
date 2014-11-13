@@ -292,11 +292,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
 
         filerec_id = list(resfile)[0].get('_id')
 
-        # Chop up FILEBLOCKS list, and save to block chunks
-        # in FILES.
-        starts = 0
-        pageseq = 0
-        Finished = False
+        # Save finalized state in Files Collection
         if file_size is None:
             file_size = 0
 
@@ -307,72 +303,6 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             }
         },
             upsert=False)
-
-        # This number is an arbitrary reading segment size defined
-        # in config.py.
-        chunk_num = conf.metadata_driver.mongodb.FileBlockReadSegNum
-        while True:
-
-            # Cooking one chunk page
-            docsize = 0
-            blocks = []
-            block_cnt = 0
-
-            while True:
-                # Read next segment from FILEBLOCKS
-                blocks = [{'blockid': block['blockid'],
-                    'offset': block['offset']}
-                    for block in
-                    self._fileblocks.find(find_args).
-                        sort('offset', 1).
-                        # Always fetch one more, if returns one more,
-                        # there'll be more rounds of fetch.
-                        limit(chunk_num + 1).
-                        skip(starts)]
-                if not blocks:
-                    Finished = True
-                    break
-
-                blocks_len = len(blocks)
-
-                if blocks_len < chunk_num + 1:
-                    # End of the list.
-                    block_cnt += blocks_len
-                    Finished = True
-                else:
-                    # There is more than a full segment.
-                    blocks = blocks[:-1]
-                    starts += blocks_len - 1
-                    block_cnt += blocks_len - 1
-
-                # Add the segment to the embedded document.
-                self._files.update({'_id': filerec_id}, {'$push':
-                    {'blocks': {'$each': blocks}}},
-                    upsert=False)
-
-                # Monitor the size of the document.
-                docsize += blocks_len
-                if docsize > self._docnum or Finished:
-                    break
-
-            if Finished:
-                break
-
-            # Add another document for more blocks.
-            pageseq += 1
-            ins_args = {
-                'projectid': deuce.context.project_id,
-                'vaultid': vault_id,
-                'fileid': file_id,
-                'finalized': True,
-                'seq': pageseq,
-                'blocks': [],
-                'size': file_size
-            }
-            filerec_id = self._files.insert(ins_args)
-
-        # Clean up FILEBLOCKS, delete all old block records
-        self._fileblocks.remove(find_args)
 
     def get_file_data(self, vault_id, file_id):
         """Returns a tuple representing data for this file"""
@@ -454,36 +384,38 @@ class MongoDbStorageDriver(MetadataStorageDriver):
 
         self._fileblocks.ensure_index([('projectid', 1),
             ('vaultid', 1), ('fileid', 1), ('offset', 1)])
-        limit = self._determine_limit(limit)
+
+        if limit is None:
+            limit = 0
+        else:
+            limit = self._determine_limit(limit)
+
         search_offset = int(offset) if offset else 0
 
-        args = {'projectid': deuce.context.project_id,
-                'vaultid': vault_id,
-                'fileid': file_id,
-                'offset': {'$gte': search_offset}}
+        args = {
+            'projectid': deuce.context.project_id,
+            'vaultid': vault_id,
+            'fileid': file_id,
+            'offset':
+                {
+                    '$gte': search_offset
+                }
+        }
 
-        # This aggregation searches all embedded documents in FILEBLOCKS
-        # cross different documents,
+        project_args = {
+            '_id': 0,
+            'blockid': 1,
+            'offset': 1
+        }
+        # This query searches all embedded documents in FILEBLOCKS
         # from the given start point,
         # for the limit number,
         # and sorted by the block offset.
+        resblocks = self._fileblocks.find(args,
+                                          project_args).sort('offset',
+                                                             1).limit(limit)
 
-        resblocks = self._fileblocks.aggregate(
-            [
-                {'$match': args},
-                {'$project': {'blockid': 1,
-                              'offset': 1,
-                              '_id': 0}},
-                {'$sort': {'offset': 1}},
-                {'$limit': limit},
-            ])
-
-        resblocks = resblocks.get('result')
-
-        if len(resblocks) == 0:
-            return []
-
-        return [(res['blockid'], res['offset']) for res in resblocks]
+        return ((res['blockid'], res['offset']) for res in resblocks)
 
     def assign_block(self, vault_id, file_id, block_id, offset):
         # TODO(jdp): tweak this to support multiple assignments

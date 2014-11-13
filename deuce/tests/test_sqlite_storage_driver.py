@@ -576,7 +576,6 @@ class SqliteStorageDriverTest(V1Base):
             driver.assign_block(vault_id, file_id, block_id, offset)
 
         driver.finalize_file(vault_id, file_id)
-
         output = list(driver.create_file_block_generator(vault_id, file_id))
         outblocks, outoffsets = zip(*output)
 
