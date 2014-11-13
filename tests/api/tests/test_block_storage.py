@@ -57,20 +57,6 @@ class TestNoBlocksUploaded(base.TestBase):
         blockid = resp.headers['x-block-location'].split('/')[-1]
         self.assertEqual(blockid, str(storageid))
 
-    def test_post_missing_storage_block(self):
-        """Try to post to storage block.
-        Block not present in metadata"""
-
-        self.generate_block_data()
-        resp = self.client.post_storage_block(self.vaultname,
-                                              self.block_data)
-        self.assertEqual(resp.status_code, 405,
-                         'Status code returned: {0} . '
-                         'Expected 405'.format(resp.status_code))
-        self.assertHeaders(resp.headers,
-                           contentlength=0,
-                           allow='GET')
-
     def test_delete_missing_storage_block(self):
         """Delete a storage block that has not been uploaded"""
 
