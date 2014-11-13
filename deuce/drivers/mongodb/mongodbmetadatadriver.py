@@ -583,9 +583,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             docgen = (rec['blockid'] for rec in doc['blocks'])
             files_cnt += sum(1 for _ in docgen)
 
-        count = files_cnt + fileblocks_cnt
-
-        return count if not None else 0
+        return files_cnt + fileblocks_cnt
 
     def get_block_ref_modified(self, vault_id, block_id):
 
