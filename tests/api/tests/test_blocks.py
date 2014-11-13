@@ -536,4 +536,6 @@ class TestAssignBlocksFirst(base.TestBase):
         super(TestAssignBlocksFirst, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
             fileid=file_info.Id) for file_info in self.files]
+        [self.client.delete_block(self.vaultname, block.Id) for block in
+            self.blocks]
         self.client.delete_vault(self.vaultname)
