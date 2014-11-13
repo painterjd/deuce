@@ -111,11 +111,13 @@ class TestBase(fixtures.BaseTestFixture):
     def assertHeaders(self, headers, json=False, binary=False,
                       lastmodified=False, contentlength=None,
                       refcount=None, blockid=None, storageid=None,
-                      allow=None, location=False, orphan=None, size=None):
+                      allow=None, location=False, orphan=None, size=None,
+                      skip_contentlength=False):
         """Basic http header validation"""
 
         self.assertIsNotNone(headers['transaction-id'])
-        self.assertIsNotNone(headers['content-length'])
+        if not skip_contentlength:
+            self.assertIsNotNone(headers['content-length'])
         if json:
             self.assertEqual(headers['content-type'],
                              'application/json; charset=utf-8')
@@ -132,7 +134,8 @@ class TestBase(fixtures.BaseTestFixture):
                     headers['X-Ref-Modified']))
 
         if contentlength is not None:
-            self.assertEqual(int(headers['content-length']), contentlength)
+            if 'content-length' in headers:
+                self.assertEqual(int(headers['content-length']), contentlength)
 
         if refcount is not None:
             self.assertIn('X-Block-Reference-Count', headers)
@@ -216,13 +219,14 @@ class TestBase(fixtures.BaseTestFixture):
             self.assertIn('marker', query, msg)
             self.assertIn('limit', query, msg)
 
-    def _assert_empty_response(self, resp, code):
+    def _assert_empty_response(self, resp, code, skip_contentlength=False):
         """Validation of empty responses"""
 
         self.assertEqual(resp.status_code, code,
                          'Status code returned: {0} . '
                          'Expected {1}'.format(resp.status_code, code))
-        self.assertHeaders(resp.headers, contentlength=0)
+        self.assertHeaders(resp.headers, contentlength=0,
+                           skip_contentlength=skip_contentlength)
         self.assertEqual(len(resp.content), 0)
 
     def _assert_json_response(self, resp, code):
@@ -233,10 +237,11 @@ class TestBase(fixtures.BaseTestFixture):
                          'Expected {1}'.format(resp.status_code, code))
         self.assertHeaders(resp.headers, json=True)
 
-    def assert_404_response(self, resp):
+    def assert_404_response(self, resp, skip_contentlength=False):
         """Basic validation of a 404 response"""
 
-        self._assert_empty_response(resp, 404)
+        self._assert_empty_response(resp, 404,
+                                    skip_contentlength=skip_contentlength)
 
     def assert_201_response(self, resp):
         """Basic validation of a 201 response"""
@@ -248,10 +253,11 @@ class TestBase(fixtures.BaseTestFixture):
 
         self._assert_json_response(resp, 200)
 
-    def assert_204_response(self, resp):
+    def assert_204_response(self, resp, skip_contentlength=True):
         """Basic validation of a 204 response"""
 
-        self._assert_empty_response(resp, 204)
+        self._assert_empty_response(resp, 204,
+                                    skip_contentlength=skip_contentlength)
 
     def assert_409_response(self, resp):
         """Basic validation of a 409 response"""

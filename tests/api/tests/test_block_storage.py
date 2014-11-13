@@ -31,7 +31,7 @@ class TestNoBlocksUploaded(base.TestBase):
         st_id = uuid.uuid5(uuid.NAMESPACE_URL, self.id_generator(50))
         storageid = '{0}_{1}'.format(blockid, st_id)
         resp = self.client.storage_block_head(self.vaultname, storageid)
-        self.assert_404_response(resp)
+        self.assert_404_response(resp, skip_contentlength=True)
 
     def test_upload_missing_storage_block(self):
         """Try to upload a block to storage block.
@@ -128,6 +128,7 @@ class TestBlockUploaded(base.TestBase):
                          'Expected 204'.format(resp.status_code))
         self.assertHeaders(resp.headers,
                            lastmodified=True,
+                           skip_contentlength=True,
                            contentlength=0,
                            refcount=0,
                            blockid=self.blockid,
@@ -233,6 +234,7 @@ class TestBlockOrphaned(base.TestBase):
                          'Status code returned: {0} . '
                          'Expected 204'.format(resp.status_code))
         self.assertHeaders(resp.headers,
+                           skip_contentlength=True,
                            contentlength=0,
                            refcount=0,
                            blockid='None',
@@ -444,6 +446,7 @@ class TestStorageBlocksReferenceCount(base.TestBase):
         self.assert_204_response(resp)
         self.assertHeaders(resp.headers,
                            lastmodified=True,
+                           skip_contentlength=True,
                            contentlength=0,
                            refcount=expected,
                            blockid=self.blockid,
