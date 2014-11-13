@@ -239,7 +239,7 @@ CQL_HAS_BLOCK = '''
 '''
 
 CQL_HEALTH_CHECK = '''
-    SELECT now()
+    SELECT cluster_name
     FROM system.local
 '''
 
@@ -735,6 +735,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
     def get_health(self):
         try:
             args = ()
-            return self._session.execute(CQL_HEALTH_CHECK, args)
+            res = self._session.execute(CQL_HEALTH_CHECK, args)
+            return ["cassandra cluster: [{0}] is active".format(res[0][0])]
         except:  # pragma: no cover
             return ["cassandra is not active."]
