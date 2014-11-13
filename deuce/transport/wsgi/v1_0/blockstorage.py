@@ -168,7 +168,7 @@ class CollectionResource(object):
 
         resp.set_header('X-Blocks-Location', block_url)
 
-        logger.warn('Caller tried to PUT a block directly to storage. '
+        logger.warn('Caller tried to POST a block directly to storage. '
                     'Transaction: {0} Project: {1}'.format(
                         deuce.context.transaction.request_id,
                         deuce.context.project_id))
