@@ -8,6 +8,7 @@ use_service_catalog=False
 base_url={deuce url}
 use_auth=False
 version=v1.0
+skip_diagnostics=False
 
 [storage]
 internal_url=True
