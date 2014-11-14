@@ -281,7 +281,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
     def create_vaults_generator(self, marker=None, limit=None):
         args = dict(
             projectid=deuce.context.project_id,
-            vaultid=marker or '0',
+            vaultid=marker if marker else '',
             limit=self._determine_limit(limit)
         )
         res = self._session.execute(CQL_GET_ALL_VAULTS, args)
