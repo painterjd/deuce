@@ -11,18 +11,23 @@ class TestDiagnostics(base.TestBase):
     def test_ping(self):
         """Ping"""
 
-        resp = self.client.ping()
-        self.assert_204_response(resp)
+        if not self.skip_diagnostics:
+            resp = self.client.ping()
+            self.assert_204_response(resp)
+        else:
+            self.skipTest('Configuration value skip_diagnostics = True')
 
     def test_health(self):
         """Health"""
 
-        resp = self.client.health()
-        self.assert_200_response(resp)
+        if not self.skip_diagnostics:
+            resp = self.client.health()
+            self.assert_200_response(resp)
 
-        # TODO: Add additional response.content validation
-        resp_body = resp.json()
-        self.assertTrue(resp_body[0].endswith('is active.'))
+            resp_body = resp.json()
+            self.assertTrue(resp_body[0].find('is active') > -1)
+        else:
+            self.skipTest('Configuration value skip_diagnostics = True')
 
     def tearDown(self):
         super(TestDiagnostics, self).tearDown()

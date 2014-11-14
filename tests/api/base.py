@@ -63,6 +63,7 @@ class TestBase(fixtures.BaseTestFixture):
         cls.vaults = []
         cls.blocks = []
         cls.api_version = cls.config.version
+        cls.skip_diagnostics = cls.config.skip_diagnostics
 
     @classmethod
     def tearDownClass(cls):

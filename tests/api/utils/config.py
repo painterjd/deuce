@@ -28,6 +28,13 @@ class deuceConfig(ConfigSectionInterface):
         """
         return self.get('version')
 
+    @property
+    def skip_diagnostics(self):
+        """
+        skip diagnostic endpoints tests
+        """
+        return self.get_boolean('skip_diagnostics')
+
 
 class authConfig(ConfigSectionInterface):
     """
