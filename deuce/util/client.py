@@ -127,7 +127,7 @@ def put_object(url, token, container, name, contents,
         headers.update({'Etag': etag, 'Content-Length': content_length})
     else:
         headers.update({'Content-Length': content_length})
-    response = _request('PUT', url + '/' + container + '/blocks_' + str(name),
+    response = _request('PUT', url + '/' + container + '/' + str(name),
                         headers=headers, data=contents)
 
     response_dict['status'] = response.status
@@ -143,7 +143,7 @@ def put_async_object(
         url +
         '/' +
         container +
-        '/blocks_',
+        '/',
         headers,
         names,
         contents,
@@ -165,7 +165,7 @@ def head_object(url, token, container, name):
         url +
         '/' +
         container +
-        '/blocks_' +
+        '/' +
         str(name),
         headers=headers)
 
@@ -183,7 +183,7 @@ def delete_object(url, token, container, name, response_dict):
         url +
         '/' +
         container +
-        '/blocks_' +
+        '/' +
         str(name),
         headers=headers)
 
@@ -199,7 +199,7 @@ def get_object(url, token, container, name, response_dict):
         url +
         '/' +
         container +
-        '/blocks_' +
+        '/' +
         str(name),
         headers=headers)
 
