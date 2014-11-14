@@ -32,16 +32,28 @@ class SqliteStorageDriverTest(V1Base):
         vault_id = self.create_vault_id()
 
         # empty vault stats
-        # TODO ** Create Vault Here **
         statistics = driver.get_vault_statistics(vault_id)
 
         main_keys = ('files', 'blocks')
+
         for key in main_keys:
             self.assertIn(key, statistics.keys())
             self.assertIn('count', statistics[key].keys())
             self.assertEqual(statistics[key]['count'], 0)
 
-        # TODO: Add files and check that founds match as expected
+        fileid = self.create_file_id()
+        driver.create_file(vault_id, fileid)
+
+        for _ in range(3):
+            block_id = self.create_block_id()
+            storage_id = self.create_storage_block_id()
+            blocksize = random.randrange(0, 100)
+            driver.register_block(vault_id, block_id, storage_id, blocksize)
+
+        new_stats = driver.get_vault_statistics(vault_id)
+
+        self.assertEqual(new_stats['blocks']['count'], 3)
+        self.assertEqual(new_stats['files']['count'], 1)
 
     def test_db_health(self):
         driver = self.create_driver()

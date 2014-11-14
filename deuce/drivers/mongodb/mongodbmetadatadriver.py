@@ -94,7 +94,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         def __stats_get_vault_block_count():
             self._blocks.ensure_index([('projectid', 1),
                 ('vaultid', 1), ('blockid', 1)])
-            result = self._files.find(args)
+            result = self._blocks.find(args)
             if result is None:
                 return 0  # pragma: no cover
             else:
