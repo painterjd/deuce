@@ -520,7 +520,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             return 0
 
     def get_health(self):
-        try:
-            return "Mongo connected : {0}".format(self.client.alive())
-        except:  # pragma: no cover
-            return ["mongo is not active."]
+        status = ["mongo is active"] if self.client.alive() \
+            else ["mongo is not active"]
+
+        return status
