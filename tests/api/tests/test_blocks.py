@@ -107,7 +107,8 @@ class TestUploadBlocks(base.TestBase):
                                         self.block_data)
         self.assert_201_response(resp)
 
-        self.assertHeaders(resp.headers, blockid=self.blockid)
+        self.assertHeaders(resp.headers, blockid=self.blockid,
+                           lastmodified=True, refcount=0)
         self.assertIn('x-storage-id', resp.headers)
         ids = resp.headers['x-storage-id'].split('_')
         self.assertEqual(ids[0], self.blockid,
@@ -520,6 +521,42 @@ class TestBlocksReferenceCount(base.TestBase):
 
     def tearDown(self):
         super(TestBlocksReferenceCount, self).tearDown()
+        [self.client.delete_file(vaultname=self.vaultname,
+            fileid=file_info.Id) for file_info in self.files]
+        [self.client.delete_block(self.vaultname, block.Id) for block in
+            self.blocks]
+        self.client.delete_vault(self.vaultname)
+
+
+class TestAssignBlocksFirst(base.TestBase):
+    _multiprocess_can_split_ = True
+
+    def setUp(self):
+        super(TestAssignBlocksFirst, self).setUp()
+        self.create_empty_vault()
+        self.create_new_file()
+        [self.generate_block_data() for _ in range(3)]
+        self.assign_all_blocks_to_file()
+
+    def test_upload_assigned_block(self):
+        """Upload a block that has already been assigned to 1 file"""
+
+        resp = self.client.upload_block(self.vaultname,
+                                        self.blocks[0].Id,
+                                        self.blocks[0].Data)
+        self.assert_201_response(resp)
+
+        self.assertHeaders(resp.headers, blockid=self.blocks[0].Id,
+                           lastmodified=True, refcount=1)
+        self.assertIn('x-storage-id', resp.headers)
+        ids = resp.headers['x-storage-id'].split('_')
+        self.assertEqual(ids[0], self.blocks[0].Id,
+                'Storage Id {0} does not begin with the block id {1}'
+                ''.format(resp.headers['x-storage-id'], self.blocks[0].Id))
+        self.assert_uuid5(ids[1])
+
+    def tearDown(self):
+        super(TestAssignBlocksFirst, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
             fileid=file_info.Id) for file_info in self.files]
         [self.client.delete_block(self.vaultname, block.Id) for block in
