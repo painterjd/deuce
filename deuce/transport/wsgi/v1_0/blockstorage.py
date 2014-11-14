@@ -78,10 +78,10 @@ class ItemResource(object):
             logger.error('block [{0}] does not exist'.format(storage_block_id))
             raise errors.HTTPNotFound
 
-        ref_cnt = block.get_ref_count()
-        resp.set_header('X-Block-Reference-Count', str(ref_cnt))
+        ref_cnt = block.get_ref_count() if block.metadata_block_id else 0
+        ref_mod = block.get_ref_modified() if block.metadata_block_id else 0
 
-        ref_mod = block.get_ref_modified()
+        resp.set_header('X-Block-Reference-Count', str(ref_cnt))
         resp.set_header('X-Ref-Modified', str(ref_mod))
 
         resp.set_header('X-Storage-ID', str(storage_block_id))
