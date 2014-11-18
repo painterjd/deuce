@@ -35,6 +35,13 @@ class deuceConfig(ConfigSectionInterface):
         """
         return self.get_boolean('skip_diagnostics')
 
+    @property
+    def soft_vault_list_validation(self):
+        """
+        perform a soft validation of vault lists
+        """
+        return self.get_boolean('soft_vault_list_validation')
+
 
 class authConfig(ConfigSectionInterface):
     """

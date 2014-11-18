@@ -9,6 +9,7 @@ base_url={deuce url}
 use_auth=False
 version=v1.0
 skip_diagnostics=False
+soft_vault_list_validation=False
 
 [storage]
 internal_url=True
