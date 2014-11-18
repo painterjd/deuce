@@ -11,23 +11,21 @@ class TestDiagnostics(base.TestBase):
     def test_ping(self):
         """Ping"""
 
-        if not self.skip_diagnostics:
-            resp = self.client.ping()
-            self.assert_204_response(resp)
-        else:
+        if self.skip_diagnostics:
             self.skipTest('Configuration value skip_diagnostics = True')
+        resp = self.client.ping()
+        self.assert_204_response(resp)
 
     def test_health(self):
         """Health"""
 
-        if not self.skip_diagnostics:
-            resp = self.client.health()
-            self.assert_200_response(resp)
-
-            resp_body = resp.json()
-            self.assertTrue(resp_body[0].find('is active') > -1)
-        else:
+        if self.skip_diagnostics:
             self.skipTest('Configuration value skip_diagnostics = True')
+        resp = self.client.health()
+        self.assert_200_response(resp)
+
+        resp_body = resp.json()
+        self.assertTrue(resp_body[0].find('is active') > -1)
 
     def tearDown(self):
         super(TestDiagnostics, self).tearDown()
