@@ -303,11 +303,19 @@ class TestListVaults(base.TestBase):
         i = vaults.index(bad_marker)
 
         resp = self.client.list_of_vaults(marker=bad_marker)
-        self.assert_200_response(resp)
-        resp_body = resp.json()
-        jsonschema.validate(resp_body, deuce_schema.vault_list)
+        resp_list = []
+        while True:
+            self.assert_200_response(resp)
+            resp_body = resp.json()
+            jsonschema.validate(resp_body, deuce_schema.vault_list)
+            resp_list += sorted(resp_body.keys())
+            if 'x-next-batch' in resp.headers:
+                resp = self.client.list_of_vaults(
+                    alternate_url=resp.headers['x-next-batch'])
+            else:
+                break
+
         if self.soft_vault_list_validation:
-            resp_list = sorted(resp_body.keys())
             for vaultname in vaults[i + 1:]:
                 self.assertIn(vaultname, resp_list)
         else:
