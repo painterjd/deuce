@@ -505,16 +505,14 @@ class TestBlocksController(ControllerTest):
         self.helper_exam_block_data(resp_block_list)
 
     def helper_exam_block_data(self, block_list):
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.debug('Examining blocks: {0:}'.format(block_list))
+        print('Examining blocks: {0:}'.format(block_list))
         # Now try to fetch each block, and compare against
         # the original block data
         for sha1 in block_list:
             path = self.get_block_path(self.vault_name, sha1)
             response = self.simulate_get(path, headers=self._hdrs)
-            logger.debug('Requested block - {0:}'.format(sha1))
-            logger.debug('Received headers: {0:}'.format(self.srmock.headers))
+            print('Requested block - {0:}'.format(sha1))
+            print('Received headers: {0:}'.format(self.srmock.headers))
 
             self.assertEqual(self.srmock.status, falcon.HTTP_200)
             self.assertIn('x-block-reference-count', str(self.srmock.headers))
