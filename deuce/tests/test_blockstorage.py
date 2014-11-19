@@ -378,10 +378,8 @@ class TestBlockStorageController(ControllerTest):
         self.assertEqual(block_list[0],
                          self.srmock.headers_dict['x-block-id'])
 
-        response_body = [resp for resp in response]
-        bindata = response_body[0]
         z = hashlib.sha1()
-        z.update(bindata)
+        z.update(response.read())
         self.assertEqual(z.hexdigest(), block_list[0])
 
     def test_get_block_orphaned_block(self):
@@ -438,8 +436,7 @@ class TestBlockStorageController(ControllerTest):
         self.assertEqual(str(None),
                          self.srmock.headers_dict['x-block-id'])
 
-        response_body = [resp for resp in response]
-        bindata = response_body[0]
+        bindata = response.read()
         z = hashlib.sha1()
         z.update(bindata)
         self.assertEqual(z.hexdigest(), sha1[0])
