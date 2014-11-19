@@ -76,8 +76,6 @@ class Vault(object):
         if retval:
             deuce.metadata_driver.register_block(
                 self.id, block_id, storage_id, data_len)
-        else:
-            logger.error('Failed to upload blocks {0}'.format(storage_id))
 
         return (retval, storage_id)
 
@@ -114,10 +112,6 @@ class Vault(object):
                     block_id,
                     storageid,
                     block_size)
-
-        else:
-            for storage_id in storage_ids:
-                logger.error('Failed to upload blocks {0}'.format(storage_id))
 
         return retval
 
