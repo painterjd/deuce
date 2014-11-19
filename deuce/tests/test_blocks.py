@@ -261,8 +261,12 @@ class TestBlocksController(ControllerTest):
         }
         response = self.simulate_put(path, headers=headers,
                                      body=data)
-        # Returns from BlockPutRuleNoneOk validation.
-        self.assertEqual(self.srmock.status, falcon.HTTP_400)
+
+        #  (BenjamenMeyer) Since we don't specify a block id
+        # this will go against the collection and thus be an
+        # HTTP 405 Error - Method Not Allowed - as opposed to
+        # an HTTP 400 error.
+        self.assertEqual(self.srmock.status, falcon.HTTP_405)
 
         # Create 5 blocks
         block_list = self.helper_create_blocks(num_blocks=5,
@@ -471,17 +475,17 @@ class TestBlocksController(ControllerTest):
                 next_batch_url = next_batch
 
             resp_block_list += json.loads(response[0].decode())
-            assert isinstance(json.loads(response[0].decode()), list)
+            self.assertIsInstance(json.loads(response[0].decode()), list)
 
             if not repeat:
                 self.assertEqual(not next_batch_url, not assert_ret_url)
                 self.assertEqual(len(resp_block_list), assert_data_len)
                 for h in resp_block_list:
-                    assert h in self.block_list
+                    self.assertIn(h, self.block_list)
                 if assert_data_len == -1 or \
                         assert_data_len == self.total_block_num:
                     for h in self.block_list:
-                        assert h in resp_block_list
+                        self.assertIn(h, resp_block_list)
                 if exam_block_data:
                     self.helper_exam_block_data(resp_block_list)
                 return next_batch
@@ -492,20 +496,26 @@ class TestBlocksController(ControllerTest):
                 if 'marker' in query:
                     current_marker = query.split('marker=')[1]
             params['marker'] = current_marker
-        assert len(resp_block_list) == assert_data_len
+        self.assertEqual(len(resp_block_list), assert_data_len)
         for h in resp_block_list:
-            assert h in self.block_list
+            self.assertIn(h, self.block_list)
         for h in self.block_list:
-            assert h in resp_block_list
+            self.assertIn(h, resp_block_list)
         # By default exam blocks if fetching all blocks
         self.helper_exam_block_data(resp_block_list)
 
     def helper_exam_block_data(self, block_list):
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug('Examining blocks: {0:}'.format(block_list))
         # Now try to fetch each block, and compare against
         # the original block data
         for sha1 in block_list:
             path = self.get_block_path(self.vault_name, sha1)
             response = self.simulate_get(path, headers=self._hdrs)
+            logger.debug('Requested block - {0:}'.format(sha1))
+            logger.debug('Received headers: {0:}'.format(self.srmock.headers))
+
             self.assertEqual(self.srmock.status, falcon.HTTP_200)
             self.assertIn('x-block-reference-count', str(self.srmock.headers))
             response_body = [resp for resp in response]
@@ -516,4 +526,4 @@ class TestBlocksController(ControllerTest):
             # sha1
             z = hashlib.sha1()
             z.update(bindata)
-            assert z.hexdigest() == sha1
+            self.assertEqual(z.hexdigest(), sha1)

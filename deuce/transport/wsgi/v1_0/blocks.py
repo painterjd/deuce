@@ -66,11 +66,16 @@ class ItemResource(object):
         # Step 2: Stream the block back to the user
         vault = Vault.get(vault_id)
 
+        logger.info('blocks - get - from vault {0}'.format(vault_id))
+
         # Existence of the vault should have been confirmed
         # in the vault controller
         assert vault is not None
 
         block = vault.get_block(block_id)
+
+        logger.info('blocks - get - requested block id {0} received '
+                    'block id {1}'.format(block_id, block.metadata_block_id))
 
         if block is None:
             logger.error('block [{0}] does not exist'.format(block_id))
@@ -86,12 +91,28 @@ class ItemResource(object):
         resp.set_header('X-Storage-ID', str(storage_id))
         resp.set_header('X-Block-ID', str(block_id))
 
+        logger.info('blocks - get - block id {0} has storage id {1}'
+                    .format(block_id, storage_id))
+
         resp.stream = block.get_obj()
         resp.stream_len = block.get_block_length()
+
+        """
+        import hashlib
+        s = hashlib.sha1()
+        s.update(block.get_obj().read())
+
+        logger.info('blocks - get - block id {0} has data sha1 hash of {1}'
+                    .format(block_id, s.hexdigest().lower()))
+        """
+
+        logger.info('blocks - get - block id {0} has length {1}'
+                    .format(block_id, resp.stream_len))
+
         resp.status = falcon.HTTP_200
         resp.content_type = 'application/octet-stream'
 
-    @validate(vault_id=VaultPutRule, block_id=BlockPutRuleNoneOk)
+    @validate(vault_id=VaultPutRule, block_id=BlockPutRule)
     def on_put(self, req, resp, vault_id, block_id):
         """Uploads a block into Deuce. The URL of the block
         is returned in the Location header

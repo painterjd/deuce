@@ -1,6 +1,6 @@
 aiohttp
 asyncio
-falcon
+falcon==0.1.10
 msgpack-python
 pymongo
 six

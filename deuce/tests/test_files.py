@@ -308,7 +308,7 @@ class TestFiles(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_200)
 
         # List the blocks that make up this file
-        self.helper_test_file_blocks_controller(self._file_path, hdrs)
+        self.helper_file_blocks_controller(self._file_path, hdrs)
 
         # Delete the finalized file. delete returns 'ok'
         response = self.simulate_delete(self._file_path, headers=hdrs)
@@ -416,7 +416,7 @@ class TestFiles(ControllerTest):
                                       body="[['mockid','mockvalue']]")
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
-    def helper_test_file_blocks_controller(self, file_id, hdrs):
+    def helper_file_blocks_controller(self, file_id, hdrs):
         # Get blocks of a file.
         response = self.simulate_get(file_id + '/blocks', headers=hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_200)
