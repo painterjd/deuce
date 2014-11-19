@@ -88,10 +88,11 @@ class ItemResource(object):
 
         resp.stream = block.get_obj()
         resp.stream_len = block.get_block_length()
+
         resp.status = falcon.HTTP_200
         resp.content_type = 'application/octet-stream'
 
-    @validate(vault_id=VaultPutRule, block_id=BlockPutRuleNoneOk)
+    @validate(vault_id=VaultPutRule, block_id=BlockPutRule)
     def on_put(self, req, resp, vault_id, block_id):
         """Uploads a block into Deuce. The URL of the block
         is returned in the Location header
