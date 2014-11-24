@@ -623,3 +623,33 @@ class TestMultipleFinalizedFiles(base.TestBase):
         [self.client.delete_block(self.vaultname, block.Id) for block in
             self.blocks_file]
         self.client.delete_vault(self.vaultname)
+
+
+class TestFilesAbsentVault(base.TestBase):
+    _multiprocess_can_split_ = True
+
+    def setUp(self):
+        super(TestFilesAbsentVault, self).setUp()
+        self.vaultname = self.id_generator(50)
+
+    def test_get_file_no_vault(self):
+        """Get a file (not created) from a missing vault (not created)"""
+
+        resp = self.client.get_file(self.vaultname, self.id_generator(50))
+        self.assert_404_response(resp)
+
+    def test_delete_file_no_vault(self):
+        """Delete a file (not created) from a missing vault (not created)"""
+
+        resp = self.client.delete_file(self.vaultname, self.id_generator(50))
+        self.assert_404_response(resp)
+
+    def test_create_file_no_vault(self):
+        """Create a file in a missing vault (not created)"""
+
+        resp = self.client.create_file(self.vaultname)
+        self.assert_404_response(resp)
+
+    def tearDown(self):
+        super(TestFilesAbsentVault, self).tearDown()
+        self.client.delete_vault(self.vaultname)
