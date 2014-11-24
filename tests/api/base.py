@@ -64,6 +64,7 @@ class TestBase(fixtures.BaseTestFixture):
         cls.blocks = []
         cls.api_version = cls.config.version
         cls.skip_diagnostics = cls.config.skip_diagnostics
+        cls.soft_vault_list_validation = cls.config.soft_vault_list_validation
 
     @classmethod
     def tearDownClass(cls):

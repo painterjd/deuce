@@ -222,6 +222,9 @@ class TestListVaults(base.TestBase):
 
         for vaultid in resp_body.keys():
             # check that the vaultid was among the created ones
+            if self.soft_vault_list_validation:
+                if vaultid not in vaultids:
+                    continue
             self.assertIn(vaultid, vaultids)
             vaultids.remove(vaultid)
             # check the url in the response
@@ -300,10 +303,23 @@ class TestListVaults(base.TestBase):
         i = vaults.index(bad_marker)
 
         resp = self.client.list_of_vaults(marker=bad_marker)
-        self.assert_200_response(resp)
-        resp_body = resp.json()
-        jsonschema.validate(resp_body, deuce_schema.vault_list)
-        self.assertEqual(sorted(resp_body.keys()), vaults[i + 1:])
+        resp_list = []
+        while True:
+            self.assert_200_response(resp)
+            resp_body = resp.json()
+            jsonschema.validate(resp_body, deuce_schema.vault_list)
+            resp_list += sorted(resp_body.keys())
+            if 'x-next-batch' in resp.headers:
+                resp = self.client.list_of_vaults(
+                    alternate_url=resp.headers['x-next-batch'])
+            else:
+                break
+
+        if self.soft_vault_list_validation:
+            for vaultname in vaults[i + 1:]:
+                self.assertIn(vaultname, resp_list)
+        else:
+            self.assertEqual(sorted(resp_body.keys()), vaults[i + 1:])
 
     def tearDown(self):
         super(TestListVaults, self).tearDown()
