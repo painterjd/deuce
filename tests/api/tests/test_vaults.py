@@ -170,6 +170,12 @@ class TestVaultWithBlocksFiles(base.TestBase):
         meta_blocks = meta['blocks']
         self.assertEqual(meta_blocks['count'], 20)
 
+    def test_populated_vault_head(self):
+        """Head of an individual, populated vault"""
+
+        resp = self.client.vault_head(self.vaultname)
+        self.assert_204_response(resp)
+
     def tearDown(self):
         super(TestVaultWithBlocksFiles, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
