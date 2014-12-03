@@ -49,7 +49,7 @@ class TestBase(fixtures.BaseTestFixture):
             jsonschema.validate(cls.a_resp.json(), auth.authentication)
             cls.auth_token = cls.a_resp.entity.token
 
-            cls.tenantid = cls.a_resp.entity.regions[cls.region]['tenantId']
+            cls.tenantid = cls.a_resp.entity.tenantid
             url_type = 'internalURL' if cls.storage_config.internal_url \
                 else 'publicURL'
             if cls.auth_config.use_service_catalog:
