@@ -13,7 +13,7 @@ UUID_REGEX = re.compile(
     '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 FILE_ID_REGEX = UUID_REGEX
 STORAGE_BLOCK_ID_REGEX = re.compile(
-    '[0-9a-f]{40}_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+    BLOCK_ID_REGEX.pattern[2:-2] + '_' + UUID_REGEX.pattern
 )
 OFFSET_REGEX = re.compile(
     '(?<![-.])\\b[0-9]+\\b(?!\\.[0-9])')
