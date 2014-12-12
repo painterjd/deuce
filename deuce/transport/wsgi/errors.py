@@ -1,4 +1,5 @@
 import falcon
+from falcon import http_error
 import falcon.status_codes as status
 
 
@@ -11,17 +12,6 @@ class HTTPInternalServerError(falcon.HTTPInternalServerError):
     def __init__(self, description, **kwargs):
         super(HTTPInternalServerError, self).__init__(
             self.TITLE, description=description, **kwargs)
-
-
-class HTTPBadGateway(falcon.HTTPBadGateway):
-
-    """Wraps falcon.HTTPServiceUnavailable"""
-
-    TITLE = u'Bad Gateway'
-
-    def __init__(self, description):
-        super(HTTPBadGateway, self).__init__(
-            self.TITLE, description=description)
 
 
 class HTTPBadRequestAPI(falcon.HTTPBadRequest):
@@ -52,6 +42,23 @@ class HTTPConflict(falcon.HTTPConflict):
 
     def __init__(self, description):
         super(HTTPConflict, self).__init__(self.TITLE, description)
+
+
+class HTTPGone(http_error.HTTPError):
+
+    """ Resource gone  """
+
+    TITLE = u'Gone'
+
+    def __init__(self, description, **kwargs):
+        # (BenjamenMeyer) For some reason we cannot use super() here.
+        # If we do, then it complains. May be something can be fixed
+        # in Falcon to change it so we can.
+        http_error.HTTPError.__init__(self,
+                                      status.HTTP_410,
+                                      self.TITLE,
+                                      description=description,
+                                      **kwargs)
 
 
 class HTTPPreconditionFailed(falcon.HTTPPreconditionFailed):

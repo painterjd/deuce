@@ -74,7 +74,7 @@ class TestBlocksController(ControllerTest):
             block_list = self.helper_create_blocks(1, async=True)
             path = self.get_block_path(self.vault_name, block_list[0])
             self.simulate_head(path, headers=self._hdrs)
-            self.assertEqual(self.srmock.status, falcon.HTTP_502)
+            self.assertEqual(self.srmock.status, falcon.HTTP_410)
 
     def test_head_block_nonexistent_vault(self):
         self.simulate_head('/v1.0/vaults/mock/blocks/'
