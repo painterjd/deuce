@@ -186,6 +186,12 @@ class TestFileAssignedBlocks(base.TestBase):
         self.assertEqual(resp_body['title'], 'Conflict')
         self.assertEqual(resp_body['description'], 'File not Finalized')
 
+    def test_delete_unfinalized_file_with_blocks(self):
+        """Delete a file with some blocks assigned"""
+
+        resp = self.client.delete_file(self.vaultname, self.fileid)
+        self.assert_204_response(resp)
+
     def tearDown(self):
         super(TestFileAssignedBlocks, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
