@@ -242,6 +242,26 @@ class TestBlockUploaded(base.TestBase):
                            storageid=self.storageid)
         self.assertEqual(int(resp.headers['x-ref-modified']), self.modified)
 
+    def test_upload_block_twice_with_msgpack(self):
+        """Upload the same block twice, the second time using msgpack"""
+
+        time.sleep(5)
+        data = {self.blockid: self.block_data}
+        msgpack_data = msgpack.packb(data)
+        resp = self.client.upload_multiple_blocks(self.vaultname, msgpack_data)
+        self.assert_201_response(resp)
+
+        resp = self.client.block_head(self.vaultname, self.blockid)
+        self.assert_204_response(resp)
+        self.assertHeaders(resp.headers,
+                           lastmodified=True,
+                           skip_contentlength=True,
+                           contentlength=0,
+                           refcount=0,
+                           blockid=self.blockid,
+                           storageid=self.storageid)
+        self.assertEqual(int(resp.headers['x-ref-modified']), self.modified)
+
     def tearDown(self):
         super(TestBlockUploaded, self).tearDown()
         if hasattr(self, 'storageid_added'):
