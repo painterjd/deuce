@@ -56,7 +56,7 @@ class ItemResource(object):
 
         except ConsistencyError as ex:
             logger.error(ex)
-            raise errors.HTTPBadGateway(str(ex))
+            raise errors.HTTPGone(str(ex))
 
     @validate(vault_id=VaultGetRule, block_id=BlockGetRule)
     def on_get(self, req, resp, vault_id, block_id):
