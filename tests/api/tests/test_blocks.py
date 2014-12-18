@@ -575,6 +575,30 @@ class TestAssignBlocksFirst(base.TestBase):
                 ''.format(resp.headers['x-storage-id'], self.blocks[0].Id))
         self.assert_uuid5(ids[1])
 
+    def test_upload_multiple_assigned_blocks(self):
+        """Upload multiple blocks that have already been assigned to 1 file"""
+
+        data = dict([(block.Id, block.Data) for block in self.blocks])
+        msgpack_data = msgpack.packb(data)
+        resp = self.client.upload_multiple_blocks(self.vaultname, msgpack_data)
+        self.assert_201_response(resp)
+
+        for block in self.blocks:
+            resp = self.client.block_head(self.vaultname, block.Id)
+            self.assert_204_response(resp)
+            self.assertHeaders(resp.headers,
+                               lastmodified=True,
+                               skip_contentlength=True,
+                               contentlength=0,
+                               refcount=1,
+                               blockid=block.Id)
+            self.assertIn('x-storage-id', resp.headers)
+            ids = resp.headers['x-storage-id'].split('_')
+            self.assertEqual(ids[0], block.Id,
+                    'Storage Id {0} does not begin with the block id {1}'
+                    ''.format(resp.headers['x-storage-id'], block.Id))
+            self.assert_uuid5(ids[1])
+
     def tearDown(self):
         super(TestAssignBlocksFirst, self).tearDown()
         [self.client.delete_file(vaultname=self.vaultname,
