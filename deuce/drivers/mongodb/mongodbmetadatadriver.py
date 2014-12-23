@@ -1,5 +1,5 @@
 import uuid
-
+from functools import lru_cache
 from deuce import conf
 
 import deuce
@@ -334,6 +334,26 @@ class MongoDbStorageDriver(MetadataStorageDriver):
 
         return self._blocks.find_one(args) is not None
 
+    # @lru_cache(maxsize=1024)
+    def has_blocks(self, vault_id, block_ids):
+        # Query BLOCKS for the block
+        results = []
+        for block_id in block_ids:
+            self._blocks.ensure_index([('projectid', 1),
+                ('vaultid', 1), ('blockid', 1)])
+
+            args = {
+                'projectid': deuce.context.project_id,
+                'vaultid': vault_id,
+                'blockid': str(block_id)
+            }
+
+            result = self._blocks.find_one(args)
+            if not result:
+                results.append(block_id)
+
+        return results
+
     def get_block_data(self, vault_id, block_id):
         """Returns the blocksize for this block"""
         self._blocks.ensure_index([('projectid', 1),
@@ -452,6 +472,39 @@ class MongoDbStorageDriver(MetadataStorageDriver):
         }
 
         self._blocks.update(block_args, update_args, upsert=False)
+
+    def assign_blocks(self, vault_id, file_id, block_ids, offsets):
+        # TODO(jdp): tweak this to support multiple assignments
+        # TODO(jdp): check for overlaps in metadata
+        for block_id, offset in zip(block_ids, offsets):
+            self._files.ensure_index([('projectid', 1),
+                ('vaultid', 1), ('fileid', 1)])
+            args = {
+                'projectid': deuce.context.project_id,
+                'vaultid': vault_id,
+                'fileid': file_id,
+                'blockid': block_id,
+                'offset': offset
+            }
+
+            self._fileblocks.update(args, args, upsert=True)
+            # Ordered in pymongo.ASCENDING.
+            self._fileblocks.ensure_index([('projectid', 1),
+                ('vaultid', 1),
+                ('fileid', 1),
+                ('blockid', 1)])
+
+            # Update the reftime
+            block_args = args.copy()
+            del block_args['fileid']
+            del block_args['offset']
+            update_args = {
+                '$set': {
+                    'reftime': int(datetime.datetime.utcnow().timestamp())
+                }
+            }
+
+            self._blocks.update(block_args, update_args, upsert=False)
 
     def register_block(self, vault_id, block_id, storage_id, blocksize):
         if not self.has_block(vault_id, block_id):
