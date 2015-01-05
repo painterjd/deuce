@@ -57,7 +57,7 @@ from deuce.tests.mock_cassandra import Session
 
 class Cluster(object):
 
-    def __init__(self, hosts):
+    def __init__(self, contact_points, auth_provider, ssl_options):
         # Create the mock driver in memory only
         self._sqliteconn = sqlite3.connect(':memory:')
 

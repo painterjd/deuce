@@ -2,6 +2,7 @@
 import importlib
 import datetime
 import six
+import ssl
 import uuid
 
 from deuce.drivers.metadatadriver import MetadataStorageDriver
@@ -247,6 +248,10 @@ CQL_HEALTH_CHECK = '''
 class CassandraStorageDriver(MetadataStorageDriver):
 
     def __init__(self):
+
+        ssl_options = None
+        auth_provider = None
+
         # Import the driver module.
         self.cassandra = importlib.import_module(
             conf.metadata_driver.cassandra.db_module)
@@ -255,8 +260,26 @@ class CassandraStorageDriver(MetadataStorageDriver):
         cluster_module = importlib.import_module(
             '{0}.cluster'.format(conf.metadata_driver.cassandra.db_module))
 
+        # Import the auth submodule
+        auth_module = importlib.import_module(
+            '{0}.auth'.format(conf.metadata_driver.cassandra.db_module))
+
+        if conf.metadata_driver.cassandra.ssl_enabled:
+            ssl_options = {
+                'ca_certs': conf.metadata_driver.cassandra.ssl_ca_certs,
+                'ssl_version': ssl.PROTOCOL_TLSv1_2
+            }
+
+        if conf.metadata_driver.cassandra.auth_enabled:
+            auth_provider = auth_module.PlainTextAuthProvider(
+                username=conf.metadata_driver.cassandra.username,
+                password=conf.metadata_driver.cassandra.password
+            )
+
         self._cluster = cluster_module.Cluster(
-            conf.metadata_driver.cassandra.cluster)
+            contact_points=conf.metadata_driver.cassandra.cluster,
+            auth_provider=auth_provider,
+            ssl_options=ssl_options)
 
         deuce_keyspace = conf.metadata_driver.cassandra.keyspace
         self._session = self._cluster.connect(deuce_keyspace)
