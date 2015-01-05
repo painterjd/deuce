@@ -267,7 +267,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
         if conf.metadata_driver.cassandra.ssl_enabled:
             ssl_options = {
                 'ca_certs': conf.metadata_driver.cassandra.ssl_ca_certs,
-                'ssl_version': ssl.PROTOCOL_TLSv1_2
+                'ssl_version': ssl.PROTOCOL_TLSv1
             }
 
         if conf.metadata_driver.cassandra.auth_enabled:
