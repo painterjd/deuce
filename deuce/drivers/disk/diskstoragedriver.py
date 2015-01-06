@@ -37,6 +37,7 @@ class DiskStorageDriver(BlockStorageDriver):
 
         if not os.path.exists(path):
             shutil.os.makedirs(path)
+            os.chmod(path, 0o750)
 
     def vault_exists(self, vault_id):
         path = self._get_vault_path(vault_id)
@@ -136,6 +137,7 @@ class DiskStorageDriver(BlockStorageDriver):
             if outfile is not None:
                 if not outfile.closed:
                     outfile.close()
+                os.chmod(path, 0o750)
 
         return (returnValue, returnStorageId)
 
@@ -162,6 +164,7 @@ class DiskStorageDriver(BlockStorageDriver):
                     if outfile is not None:  # pragma: no cover
                         if not outfile.closed:
                             outfile.close()
+                        os.chmod(path, 0o750)
 
             return (True, storage_ids)
 
