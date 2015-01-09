@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 REQUIRES = ['configobj', 'falcon', 'six', 'setuptools >= 1.1.6',
             'cassandra-driver', 'pymongo', 'msgpack-python',
-            'python-swiftclient', 'python-logstash', 'asyncio',
+            'python-swiftclient', 'asyncio',
             'aiohttp', 'stoplight']
 setup(
     name='deuce',
