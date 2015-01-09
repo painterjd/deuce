@@ -104,7 +104,7 @@ def get_container(url, token, container, limit=None, marker=None):
                                               headers=headers)
 
     if response.status >= 200 and response.status < 300:
-        json_content = json.loads(response.decode())
+        json_content = json.loads(content.decode())
         block_list = [block['name'] for block in json_content]
         return block_list
     else:
