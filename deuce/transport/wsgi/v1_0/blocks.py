@@ -3,6 +3,7 @@ from stoplight import validate
 import falcon
 import msgpack
 
+import deuce
 from deuce import conf
 from deuce.util import set_qs_on_url
 from deuce.model import Vault
@@ -34,11 +35,15 @@ class ItemResource(object):
         if not vault:
             logger.error('Vault [{0}] does not exist'.format(vault_id))
             raise errors.HTTPNotFound
+
+        # This is safe to construct before we check the status of the block
+        # b/c the constructor does not do anything other than save values
+        # to itself, no lookups, etc
+        block = Block(vault_id, block_id)
         try:
-            if not vault.has_block(block_id):
+            if not vault.has_block(block_id, check_storage=True):
                 logger.error('block [{0}] does not exist'.format(block_id))
                 raise errors.HTTPNotFound
-            block = Block(vault_id, block_id)
             ref_cnt = block.get_ref_count()
             resp.set_header('X-Block-Reference-Count', str(ref_cnt))
 
@@ -55,6 +60,20 @@ class ItemResource(object):
             resp.status = falcon.HTTP_204
 
         except ConsistencyError as ex:
+            # We have the block in metadata...
+            # so we can get anything that only touches metadata
+            ref_cnt = block.get_ref_count()
+            resp.set_header('X-Block-Reference-Count', str(ref_cnt))
+
+            ref_mod = block.get_ref_modified()
+            resp.set_header('X-Ref-Modified', str(ref_mod))
+
+            storage_id = block.get_storage_id()
+            resp.set_header('X-Storage-ID', str(storage_id))
+            resp.set_header('X-Block-ID', str(block_id))
+
+            # Block-size is retrieved from storage...
+
             logger.error(ex)
             raise errors.HTTPGone(str(ex))
 
@@ -70,27 +89,65 @@ class ItemResource(object):
         # in the vault controller
         assert vault is not None
 
-        block = vault.get_block(block_id)
+        try:
+            block = vault.get_block(block_id)
 
-        if block is None:
-            logger.error('block [{0}] does not exist'.format(block_id))
-            raise errors.HTTPNotFound
+            if block is None:
+                logger.error('block [{0}] does not exist'
+                             .format(block_id))
 
-        ref_cnt = block.get_ref_count()
-        resp.set_header('X-Block-Reference-Count', str(ref_cnt))
+                # We have to do the has_block() check in order to
+                # differentiate between a 404 and 410 error.
+                # 404 should be returned if even metadata doesn't know
+                # about the block; while 410 should be returned if
+                # metadata knows about the block but it is not found
+                # in storage. Since we already know the block doesn't
+                # exist in storage, we can skip the storage check
+                if vault.has_block(block_id, check_storage=False):
+                    logger.error('block [{0}] does not exist (vault check)'
+                                 .format(block_id))
+                    raise ConsistencyError(deuce.context.project_id,
+                                           vault_id, block_id,
+                                           msg='Block does not exist'
+                                               ' in Block Storage')
 
-        ref_mod = block.get_ref_modified()
-        resp.set_header('X-Ref-Modified', str(ref_mod))
+                raise errors.HTTPNotFound
 
-        storage_id = block.get_storage_id()
-        resp.set_header('X-Storage-ID', str(storage_id))
-        resp.set_header('X-Block-ID', str(block_id))
+            ref_cnt = block.get_ref_count()
+            resp.set_header('X-Block-Reference-Count', str(ref_cnt))
 
-        resp.stream = block.get_obj()
-        resp.stream_len = block.get_block_length()
+            ref_mod = block.get_ref_modified()
+            resp.set_header('X-Ref-Modified', str(ref_mod))
 
-        resp.status = falcon.HTTP_200
-        resp.content_type = 'application/octet-stream'
+            storage_id = block.get_storage_id()
+            resp.set_header('X-Storage-ID', str(storage_id))
+            resp.set_header('X-Block-ID', str(block_id))
+
+            resp.stream = block.get_obj()
+            resp.stream_len = block.get_block_length()
+
+            resp.status = falcon.HTTP_200
+            resp.content_type = 'application/octet-stream'
+
+        except ConsistencyError as ex:
+            # We have the block in metadata...
+            # so we can get anything that only touches metadata
+            block = Block(vault_id, block_id)
+
+            ref_cnt = block.get_ref_count()
+            resp.set_header('X-Block-Reference-Count', str(ref_cnt))
+
+            ref_mod = block.get_ref_modified()
+            resp.set_header('X-Ref-Modified', str(ref_mod))
+
+            storage_id = block.get_storage_id()
+            resp.set_header('X-Storage-ID', str(storage_id))
+            resp.set_header('X-Block-ID', str(block_id))
+
+            # Block-size is retrieved from storage...
+
+            logger.error(ex)
+            raise errors.HTTPGone(str(ex))
 
     @validate(vault_id=VaultPutRule, block_id=BlockPutRule)
     def on_put(self, req, resp, vault_id, block_id):
