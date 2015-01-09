@@ -56,6 +56,30 @@ class TestBlocksController(ControllerTest):
 
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
+    def test_get_invalid_block_id_swift_failure(self):
+        block_list = self.helper_create_blocks(1, async=True)
+        data = os.urandom(100)
+        block_id = self.calc_sha1(data)
+        path = self.get_block_path(self.vault_name, block_id)
+
+        from deuce.model import Vault
+        with patch.object(Vault, 'has_block', return_value=True):
+            response = self.simulate_get(path, headers=self._hdrs)
+
+            self.assertEqual(self.srmock.status, falcon.HTTP_404)
+
+    def test_get_inconsistent_metadata_block_id(self):
+        from deuce.model import Vault
+        with patch.object(Vault, '_storage_has_block', return_value=False):
+            block_list = self.helper_create_blocks(1, async=True)
+            path = self.get_block_path(self.vault_name, block_list[0])
+            self.simulate_get(path, headers=self._hdrs)
+            self.assertEqual(self.srmock.status, falcon.HTTP_410)
+            self.assertIn('x-block-id', str(self.srmock.headers))
+            self.assertIn('x-storage-id', str(self.srmock.headers))
+            self.assertIn('x-ref-modified', str(self.srmock.headers))
+            self.assertIn('x-block-reference-count', str(self.srmock.headers))
+
     def test_head_invalid_block_id(self):
         path = self.get_block_path(self.vault_name, 'invalid_block_id')
         response = self.simulate_get(path, headers=self._hdrs)
@@ -75,6 +99,10 @@ class TestBlocksController(ControllerTest):
             path = self.get_block_path(self.vault_name, block_list[0])
             self.simulate_head(path, headers=self._hdrs)
             self.assertEqual(self.srmock.status, falcon.HTTP_410)
+            self.assertIn('x-block-id', str(self.srmock.headers))
+            self.assertIn('x-storage-id', str(self.srmock.headers))
+            self.assertIn('x-ref-modified', str(self.srmock.headers))
+            self.assertIn('x-block-reference-count', str(self.srmock.headers))
 
     def test_head_block_nonexistent_vault(self):
         self.simulate_head('/v1.0/vaults/mock/blocks/'
