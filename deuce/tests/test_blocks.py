@@ -60,19 +60,20 @@ class TestBlocksController(ControllerTest):
         block_list = self.helper_create_blocks(1, async=True)
         data = os.urandom(100)
         block_id = self.calc_sha1(data)
+
         path = self.get_block_path(self.vault_name, block_id)
+        response = self.simulate_get(path, headers=self._hdrs)
 
-        from deuce.model import Vault
-        with patch.object(Vault, 'has_block', return_value=True):
-            response = self.simulate_get(path, headers=self._hdrs)
-
-            self.assertEqual(self.srmock.status, falcon.HTTP_404)
+        self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
     def test_get_inconsistent_metadata_block_id(self):
+        block_list = self.helper_create_blocks(1, async=True)
+        data = os.urandom(100)
+        block_id = self.calc_sha1(data)
+
         from deuce.model import Vault
-        with patch.object(Vault, '_storage_has_block', return_value=False):
-            block_list = self.helper_create_blocks(1, async=True)
-            path = self.get_block_path(self.vault_name, block_list[0])
+        with patch.object(Vault, '_meta_has_block', return_value=True):
+            path = self.get_block_path(self.vault_name, block_id)
             self.simulate_get(path, headers=self._hdrs)
             self.assertEqual(self.srmock.status, falcon.HTTP_410)
             self.assertIn('x-block-id', str(self.srmock.headers))

@@ -3,6 +3,7 @@ from stoplight import validate
 import falcon
 import msgpack
 
+import deuce
 from deuce import conf
 from deuce.util import set_qs_on_url
 from deuce.model import Vault
@@ -89,16 +90,27 @@ class ItemResource(object):
         assert vault is not None
 
         try:
-            if not vault.has_block(block_id, check_storage=True):
-                logger.error('block [{0}] does not exist (vault check)'
-                             .format(block_id))
-                raise errors.HTTPNotFound
-
             block = vault.get_block(block_id)
 
             if block is None:
-                logger.error('block [{0}] does not exist (storage error)'
+                logger.error('block [{0}] does not exist'
                              .format(block_id))
+
+                # We have to do the has_block() check in order to
+                # differentiate between a 404 and 410 error.
+                # 404 should be returned if even metadata doesn't know
+                # about the block; while 410 should be returned if
+                # metadata knows about the block but it is not found
+                # in storage. Since we already know the block doesn't
+                # exist in storage, we can skip the storage check
+                if vault.has_block(block_id, check_storage=False):
+                    logger.error('block [{0}] does not exist (vault check)'
+                                 .format(block_id))
+                    raise ConsistencyError(deuce.context.project_id,
+                                           vault_id, block_id,
+                                           msg='Block does not exist'
+                                               ' in Block Storage')
+
                 raise errors.HTTPNotFound
 
             ref_cnt = block.get_ref_count()

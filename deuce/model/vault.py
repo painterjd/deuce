@@ -123,13 +123,13 @@ class Vault(object):
 
     def has_block(self, block_id, check_storage=False):
         if self._meta_has_block(block_id):
-            if self._storage_has_block(block_id):
-                return True
-            else:
-                raise ConsistencyError(deuce.context.project_id,
-                                       self.id, block_id,
-                                       msg='Block does not exist'
-                                           ' in Block Storage')
+            if check_storage:
+                if not self._storage_has_block(block_id):
+                    raise ConsistencyError(deuce.context.project_id,
+                                           self.id, block_id,
+                                           msg='Block does not exist'
+                                               ' in Block Storage')
+            return True
         else:
             return False
 
