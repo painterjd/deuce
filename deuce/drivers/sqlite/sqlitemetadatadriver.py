@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from deuce import conf
 import deuce
 import importlib
@@ -606,6 +608,26 @@ class SqliteStorageDriver(MetadataStorageDriver):
         cnt = next(res)
         return cnt[0] > 0
 
+    # @lru_cache(maxsize=1024)
+    def has_blocks(self, vault_id, block_ids):
+        # Query the blocks table
+        results = []
+        for block_id in block_ids:
+            args = {
+                'projectid': deuce.context.project_id,
+                'vaultid': vault_id,
+                'blockid': block_id
+            }
+
+            res = self._conn.execute(SQL_HAS_BLOCK, args)
+
+            cnt = next(res)
+            result = cnt[0] > 0
+            if not result:
+                results.append(block_id)
+
+        return results
+
     def create_block_generator(self, vault_id, marker=None,
             limit=None):
 
@@ -675,6 +697,26 @@ class SqliteStorageDriver(MetadataStorageDriver):
         self._conn.execute(SQL_UPDATE_REF_TIME, args)
 
         self._conn.commit()
+
+    def assign_blocks(self, vault_id, file_id, block_ids, offsets):
+        # TODO(jdp): tweak this to support multiple assignments
+
+        for block_id, offset in zip(block_ids, offsets):
+            args = {
+                'projectid': deuce.context.project_id,
+                'vaultid': vault_id,
+                'fileid': file_id,
+                'blockid': block_id,
+                'offset': offset
+            }
+
+            self._conn.execute(SQL_ASSIGN_BLOCK_TO_FILE, args)
+
+            del args['fileid']
+            del args['offset']
+            self._conn.execute(SQL_UPDATE_REF_TIME, args)
+
+            self._conn.commit()
 
     def register_block(self, vault_id, block_id, storage_id, blocksize):
         if not self.has_block(vault_id, block_id):

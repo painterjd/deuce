@@ -81,20 +81,10 @@ class CollectionResource(object):
         body = req.stream.read(req.content_length)
         # TODO (TheSriram): Validate payload
         payload = json.loads(body.decode())
+        block_ids, offsets = zip(*payload)
 
-        missing_blocks = list()
-
-        for mapping in payload:
-            # NOTE(TheSriram): payload is a list of lists of the form
-            # [[block,offset],[block,offset],[block,offset]]
-            block_id, offset = mapping
-
-            if not deuce.metadata_driver.has_block(vault_id, block_id):
-
-                missing_blocks.append(block_id)
-
-            deuce.metadata_driver.assign_block(vault_id, file_id,
-                                               block_id,
-                                               offset)
+        missing_blocks = deuce.metadata_driver.has_blocks(vault_id, block_ids)
+        deuce.metadata_driver.assign_blocks(vault_id, file_id, block_ids,
+                                            offsets)
 
         resp.body = json.dumps(missing_blocks)

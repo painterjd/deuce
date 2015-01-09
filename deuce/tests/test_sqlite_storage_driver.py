@@ -294,6 +294,78 @@ class SqliteStorageDriverTest(V1Base):
         driver.delete_file(vault_id, file_id)
         self.assertEqual(driver.get_block_ref_count(vault_id, block_id), 0)
 
+    def test_assign_multiple_blocks_before_adding_blocks(self):
+        driver = self.create_driver()
+
+        vault_id = self.create_vault_id()
+        file_id = self.create_file_id()
+        block_ids = ['block_'.join(str(i)) for i in range(10)]
+        block_sizes = [random.randrange(10, 100) for _ in range(10)]
+        offsets = [0]
+        offset = 0
+
+        for block_size in block_sizes:
+            offset += block_size
+            offsets.append(offset)
+
+        driver.create_file(vault_id, file_id)
+
+        results = driver.has_blocks(vault_id, block_ids)
+        self.assertEqual(results, block_ids)
+
+        driver.assign_blocks(vault_id, file_id, block_ids, offsets[:-1])
+
+        for block_id, block_size in zip(block_ids, block_sizes):
+            driver.register_block(vault_id, block_id,
+                                  self._genstorageid(block_id),
+                                  block_size)
+
+        results = driver.has_blocks(vault_id, block_ids)
+        self.assertEqual(results, [])
+
+        for block_id in block_ids:
+            self.assertEqual(driver.get_block_ref_count(vault_id, block_id), 1)
+        driver.delete_file(vault_id, file_id)
+
+        for block_id in block_ids:
+            self.assertEqual(driver.get_block_ref_count(vault_id, block_id), 0)
+
+    def test_assign_multiple_blocks_after_adding_blocks(self):
+        driver = self.create_driver()
+
+        vault_id = self.create_vault_id()
+        file_id = self.create_file_id()
+        block_ids = ['block_'.join(str(i)) for i in range(10)]
+        block_sizes = [random.randrange(10, 100) for _ in range(10)]
+        offsets = [0]
+        offset = 0
+
+        for block_size in block_sizes:
+            offset += block_size
+            offsets.append(offset)
+
+        driver.create_file(vault_id, file_id)
+
+        results = driver.has_blocks(vault_id, block_ids)
+        self.assertEqual(results, block_ids)
+
+        for block_id, block_size in zip(block_ids, block_sizes):
+            driver.register_block(vault_id, block_id,
+                                  self._genstorageid(block_id),
+                                  block_size)
+
+        results = driver.has_blocks(vault_id, block_ids)
+        self.assertEqual(results, [])
+
+        driver.assign_blocks(vault_id, file_id, block_ids, offsets[:-1])
+
+        for block_id in block_ids:
+            self.assertEqual(driver.get_block_ref_count(vault_id, block_id), 1)
+        driver.delete_file(vault_id, file_id)
+
+        for block_id in block_ids:
+            self.assertEqual(driver.get_block_ref_count(vault_id, block_id), 0)
+
     def test_block_references(self):
 
         driver = self.create_driver()

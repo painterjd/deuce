@@ -195,6 +195,15 @@ class MetadataStorageDriver(object):
         raise NotImplementedError
 
     @abstractmethod
+    def has_blocks(self, vault_id, block_ids):
+        """Determines if the vault has the specified blocks and
+        returns the missing blocks.
+        :param vault_id: ID of the vault
+        :param block_ids: list of block_id
+        :returns : list of missing blocks"""
+        raise NotImplementedError
+
+    @abstractmethod
     def assign_block(self, vault_id, file_id, block_id, offset):
         """Assigns the specified block to a particular offset in
         the file. No check is performed as to whether or not the
@@ -205,6 +214,19 @@ class MetadataStorageDriver(object):
         :param file_id: The ID of the file
         :param block_id: The ID of the block being assigned to the file
         :param offset: The position of the block in"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def assign_blocks(self, vault_id, file_id, block_ids, offsets):
+        """Assigns the specified blocks to a particular offsets in
+        the file. No check is performed as to whether or not the
+        blocks overlap (it can't be done since a block that doesn't
+        yet exist in storage can be assigned to a file).
+
+        :param vault_id: The vault containing the file
+        :param file_id: The ID of the file
+        :param block_ids: The IDs of the blocks being assigned to the file
+        :param offsets: The positions of the blocks"""
         raise NotImplementedError
 
     @abstractmethod

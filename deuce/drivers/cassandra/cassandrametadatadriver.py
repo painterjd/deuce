@@ -527,6 +527,28 @@ class CassandraStorageDriver(MetadataStorageDriver):
         except IndexError:
             return None
 
+    def _get_block_sizes(self, vault_id, block_ids):
+        """Returns the size of the specified block. If the block
+        is not found, None is returned"""
+
+        def get_result(future):
+            try:
+                return future[0][0]
+            except IndexError:
+                return None
+
+        futures = []
+        for block_id in block_ids:
+            args = dict(
+                projectid=deuce.context.project_id,
+                vaultid=vault_id,
+                blockid=block_id
+            )
+
+            future = self._session.execute_async(CQL_GET_BLOCK_SIZE, args)
+            futures.append(future)
+        return [get_result(future.result()) for future in futures]
+
     def get_file_data(self, vault_id, file_id):
         """Returns a tuple representing data for this file"""
         args = dict(
@@ -557,13 +579,30 @@ class CassandraStorageDriver(MetadataStorageDriver):
         cnt = res[0]
         return cnt[0] > 0
 
+    def has_blocks(self, vault_id, block_ids):
+
+        futures = []
+
+        for block_id in block_ids:
+            args = dict(
+                projectid=deuce.context.project_id,
+                vaultid=vault_id,
+                blockid=block_id
+            )
+
+            future = self._session.execute_async(CQL_HAS_BLOCK, args)
+            futures.append((future, block_id))
+
+        return [block_id for future, block_id in futures
+                if future.result()[0][0] == 0]
+
     def create_block_generator(self, vault_id, marker=None,
                                limit=None):
 
         args = dict(
             projectid=deuce.context.project_id,
             vaultid=vault_id,
-            marker=marker or '0',
+            marker=marker or '',
             limit=self._determine_limit(limit)
         )
 
@@ -617,6 +656,33 @@ class CassandraStorageDriver(MetadataStorageDriver):
         query_res = self._session.execute(query, args)
 
         return [(row[0], row[1]) for row in query_res]
+
+    def assign_blocks(self, vault_id, file_id, block_ids, offsets):
+
+        blocksizes = self._get_block_sizes(vault_id, block_ids)
+
+        # Note: blocksize can be None if the block does not yet exist. This
+        # will probably not be allowed in the future, but for now we allow
+        # this to be compatible with the other drivers.
+        futures = []
+        for block_id, blocksize, offset in zip(block_ids, blocksizes,
+                                               offsets):
+            args = dict(
+                projectid=deuce.context.project_id,
+                vaultid=vault_id,
+                fileid=uuid.UUID(file_id),
+                blockid=block_id,
+                blocksize=blocksize,
+                offset=offset
+            )
+
+            future = self._session.execute_async(CQL_ASSIGN_BLOCK_TO_FILE,
+                                                 args)
+            futures.append(future)
+
+        for future in futures:
+            future.result()
+        self._inc_block_ref_counts(vault_id, block_ids)
 
     def assign_block(self, vault_id, file_id, block_id, offset):
 
@@ -678,6 +744,49 @@ class CassandraStorageDriver(MetadataStorageDriver):
             return res[0][0]
         except IndexError:
             return 0
+
+    def _inc_block_ref_counts(self, vault_id, block_ids, cnt=1):
+
+        futures = []
+        for block_id in block_ids:
+            args = dict(
+                projectid=deuce.context.project_id,
+                vaultid=vault_id,
+                blockid=block_id,
+                delta=cnt
+            )
+
+            future = self._session.execute_async(CQL_INC_BLOCK_REF_COUNT, args)
+            futures.append(future)
+
+        for future in futures:
+            future.result()
+        # The Ref-time value is stored in the blocks table
+        # if the block doesn't exist then the ref-time insertion
+        # will cause it to exist and then the register_block() will
+        # fail to insert the data correctly. Therefore, only
+        # insert the ref-time if we already have the block
+        #
+        # Note: the block registration will automatically insert the
+        # ref-time as well.
+
+        missing_block_ids = self.has_blocks(vault_id, block_ids)
+        update_block_ids = set(block_ids) - set(missing_block_ids)
+        futures = []
+        for block_id in update_block_ids:
+
+            reftime_args = dict(
+                projectid=deuce.context.project_id,
+                vaultid=vault_id,
+                blockid=block_id,
+                reftime=int(datetime.datetime.utcnow().timestamp())
+            )
+            future = self._session.execute_async(CQL_UPDATE_REF_TIME,
+                                                 reftime_args)
+            futures.append(future)
+
+        for future in futures:
+            future.result()
 
     def _inc_block_ref_count(self, vault_id, block_id, cnt=1):
 

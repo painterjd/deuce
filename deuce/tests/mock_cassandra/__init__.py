@@ -1,9 +1,16 @@
-
-
 import deuce.drivers.cassandra.cassandrametadatadriver \
     as actual_driver
 
 import uuid
+
+
+class Future(object):
+
+    def __init__(self, result):
+        self._result = result
+
+    def result(self):
+        return [element for element in self._result]
 
 
 class Session(object):
@@ -80,3 +87,9 @@ class Session(object):
         res = list(res)
 
         return res
+
+    def execute_async(self, query, queryargs):
+
+        res = self.execute(query, queryargs)
+
+        return Future(res)
