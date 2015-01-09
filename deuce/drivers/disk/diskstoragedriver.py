@@ -21,6 +21,9 @@ class DiskStorageDriver(BlockStorageDriver):
     any production environment.
     """
 
+    vault_permission = 0o750
+    block_permission = 0o640
+
     def __init__(self):
         self._path = conf.block_storage_driver.options.path
 
@@ -37,6 +40,7 @@ class DiskStorageDriver(BlockStorageDriver):
 
         if not os.path.exists(path):
             shutil.os.makedirs(path)
+            os.chmod(path, DiskStorageDriver.vault_permission)
 
     def vault_exists(self, vault_id):
         path = self._get_vault_path(vault_id)
@@ -136,6 +140,7 @@ class DiskStorageDriver(BlockStorageDriver):
             if outfile is not None:
                 if not outfile.closed:
                     outfile.close()
+                os.chmod(path, DiskStorageDriver.block_permission)
 
         return (returnValue, returnStorageId)
 
@@ -162,6 +167,7 @@ class DiskStorageDriver(BlockStorageDriver):
                     if outfile is not None:  # pragma: no cover
                         if not outfile.closed:
                             outfile.close()
+                        os.chmod(path, DiskStorageDriver.block_permission)
 
             return (True, storage_ids)
 
