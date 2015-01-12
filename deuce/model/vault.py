@@ -107,6 +107,12 @@ class Vault(object):
                                                                   storage_ids,
                                                                   blockdatas,
                                                                   block_sizes):
+                logger.info('Project {0}, Vault {1}: Associating metadata '
+                            'block {2} with storage block {3}'
+                            .format(deuce.context.project_id,
+                                    self.id,
+                                    block_id,
+                                    storageid))
                 deuce.metadata_driver.register_block(
                     self.id,
                     block_id,
