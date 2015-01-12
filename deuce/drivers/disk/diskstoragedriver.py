@@ -27,9 +27,11 @@ class DiskStorageDriver(BlockStorageDriver):
     def __init__(self):
         self._path = conf.block_storage_driver.options.path
 
+    def _get_project_path(self):
+        return os.path.join(self._path, str(deuce.context.project_id))
+
     def _get_vault_path(self, vault_id):
-        return os.path.join(self._path, str(deuce.context.project_id),
-            vault_id)
+        return os.path.join(self._get_project_path(), vault_id)
 
     def _get_block_path(self, vault_id, storage_block_id):
         vault_path = self._get_vault_path(vault_id)
@@ -40,6 +42,8 @@ class DiskStorageDriver(BlockStorageDriver):
 
         if not os.path.exists(path):
             shutil.os.makedirs(path)
+            os.chmod(self._get_project_path(),
+                     DiskStorageDriver.vault_permission)
             os.chmod(path, DiskStorageDriver.vault_permission)
 
     def vault_exists(self, vault_id):
