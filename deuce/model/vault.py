@@ -93,6 +93,8 @@ class Vault(object):
             block_ids,
             blockdatas)
 
+        retblocks = []
+
         # (BenjamenMeyer): If we fail to upload any one block then we
         # let the Validation and Clean-Up Service remove any uploaded blocks
         # and fail out the request as a whole
@@ -118,8 +120,9 @@ class Vault(object):
                     block_id,
                     storageid,
                     block_size)
+                retblocks.append((block_id, storageid))
 
-        return retval
+        return (retval, retblocks)
 
     def get_blocks(self, marker, limit):
         gen = deuce.metadata_driver.create_block_generator(
