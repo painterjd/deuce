@@ -125,7 +125,7 @@ class TestUploadBlocks(base.TestBase):
         msgpacked_data = msgpack.packb(data)
         resp = self.client.upload_multiple_blocks(self.vaultname,
                                                   msgpacked_data)
-        self.assert_201_response(resp)
+        self.assert_200_response(resp)
 
     def tearDown(self):
         super(TestUploadBlocks, self).tearDown()
@@ -249,7 +249,7 @@ class TestBlockUploaded(base.TestBase):
         data = {self.blockid: self.block_data}
         msgpack_data = msgpack.packb(data)
         resp = self.client.upload_multiple_blocks(self.vaultname, msgpack_data)
-        self.assert_201_response(resp)
+        self.assert_200_response(resp)
 
         resp = self.client.block_head(self.vaultname, self.blockid)
         self.assert_204_response(resp)
@@ -581,7 +581,7 @@ class TestAssignBlocksFirst(base.TestBase):
         data = dict([(block.Id, block.Data) for block in self.blocks])
         msgpack_data = msgpack.packb(data)
         resp = self.client.upload_multiple_blocks(self.vaultname, msgpack_data)
-        self.assert_201_response(resp)
+        self.assert_200_response(resp)
 
         for block in self.blocks:
             resp = self.client.block_head(self.vaultname, block.Id)

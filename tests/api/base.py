@@ -372,7 +372,19 @@ class TestBase(fixtures.BaseTestFixture):
         data = dict([(block.Id, block.Data) for block in uploaded])
         msgpack_data = msgpack.packb(data)
         resp = self.client.upload_multiple_blocks(self.vaultname, msgpack_data)
-        return 201 == resp.status_code
+        if resp.status_code == 200:
+            block_mapping = resp.json()
+            block_id_list = [block.Id for block in uploaded]
+            for block_id in block_id_list:
+                if block_id not in block_mapping.keys():
+                    raise Exception('Could not locate block {0} in response'
+                                    .format(block_id))
+            for sha1, storageid in block_mapping.items():
+                if sha1 not in block_id_list:
+                    raise Exception('Could not locate block {0} in response'
+                                    .format(sha1))
+
+        return 200 == resp.status_code
 
     def upload_multiple_blocks(self, nblocks, size=30720):
         """

@@ -10,7 +10,7 @@ To run the tests:
    - jsonschema
    - opencafe
 
-#) Make a copy of *deuce/tests/api/etc/tests.conf.sample* and edit it with the appropriate information for the deuce base url of the environment being tested.
+#) Make a copy of *deuce/tests/etc/tests.conf.sample* and edit it with the appropriate information for the deuce base url of the environment being tested.
 #) Set up the following environment variables:
 
    - **CAFE_CONFIG_FILE_PATH** (points to the complete path to your test configuration file) 
