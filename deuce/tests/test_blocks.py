@@ -57,7 +57,7 @@ class TestBlocksController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
     def test_get_invalid_block_id_swift_failure(self):
-        block_list = self.helper_create_blocks(1, async=True)
+        block_list = self.helper_create_blocks(1, async=True)[0]
         data = os.urandom(100)
         block_id = self.calc_sha1(data)
 
@@ -67,7 +67,7 @@ class TestBlocksController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
     def test_get_inconsistent_metadata_block_id(self):
-        block_list = self.helper_create_blocks(1, async=True)
+        block_list = self.helper_create_blocks(1, async=True)[0]
         data = os.urandom(100)
         block_id = self.calc_sha1(data)
 
@@ -96,7 +96,7 @@ class TestBlocksController(ControllerTest):
     def test_head_inconsistent_metadata_block_id(self):
         from deuce.model import Vault
         with patch.object(Vault, '_storage_has_block', return_value=False):
-            block_list = self.helper_create_blocks(1, async=True)
+            block_list = self.helper_create_blocks(1, async=True)[0]
             path = self.get_block_path(self.vault_name, block_list[0])
             self.simulate_head(path, headers=self._hdrs)
             self.assertEqual(self.srmock.status, falcon.HTTP_410)
@@ -111,7 +111,7 @@ class TestBlocksController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_404)
 
     def test_head_block(self):
-        block_list = self.helper_create_blocks(1, async=True)
+        block_list = self.helper_create_blocks(1, async=True)[0]
         path = self.get_block_path(self.vault_name, block_list[0])
         self.simulate_head(path, headers=self._hdrs)
         self.assertEqual(self.srmock.status, falcon.HTTP_204)
@@ -160,7 +160,7 @@ class TestBlocksController(ControllerTest):
 
     def test_put_happy_case(self):
 
-        block_list = self.helper_create_blocks(num_blocks=1)
+        block_list = self.helper_create_blocks(num_blocks=1)[0]
         self.assertEqual(len(block_list), 1)
 
         self.assertEqual(self.srmock.status, falcon.HTTP_201)
@@ -241,7 +241,7 @@ class TestBlocksController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_405)
 
     def test_with_bad_marker_and_limit(self):
-        block_list = self.helper_create_blocks(5)
+        block_list = self.helper_create_blocks(5)[0]
 
         # TODO: Need reenable after each function can cleanup/delete
         # blocks afterward.
@@ -298,10 +298,15 @@ class TestBlocksController(ControllerTest):
         self.assertEqual(self.srmock.status, falcon.HTTP_405)
 
         # Create 5 blocks
-        block_list = self.helper_create_blocks(num_blocks=5,
-                                               async=async_status)
+        block_list, response = self.helper_create_blocks(num_blocks=5,
+                                                         async=async_status)
         self.total_block_num = 5
         self.block_list += block_list
+
+        # verify all blocks in the block list also have an entry in
+        # the response list
+        if async_status is True:
+            self.helper_exam_block_metadata(block_list, response)
 
         # List all.
         next_batch_url = self.helper_get_blocks(path,
@@ -322,7 +327,7 @@ class TestBlocksController(ControllerTest):
 
         # Create more blocks.
         num_blocks = int(1.5 * conf.api_configuration.default_returned_num)
-        block_list = self.helper_create_blocks(num_blocks=num_blocks)
+        block_list = self.helper_create_blocks(num_blocks=num_blocks)[0]
         self.block_list += block_list
         self.total_block_num += num_blocks
 
@@ -366,7 +371,7 @@ class TestBlocksController(ControllerTest):
 
     def test_delete_blocks_no_references(self):
         # Just create and delete blocks
-        blocklist = self.helper_create_blocks(10)
+        blocklist = self.helper_create_blocks(10)[0]
         for block in blocklist:
             response = self.simulate_delete(
                 self.get_block_path(self.vault_name, block),
@@ -383,7 +388,7 @@ class TestBlocksController(ControllerTest):
             rel_url, querystring = relative_uri(
                 self.srmock.headers_dict['Location'])
             file_ids.append(rel_url)
-        block_list = self.helper_create_blocks(3, singleblocksize=True)
+        block_list = self.helper_create_blocks(3, singleblocksize=True)[0]
 
         offsets = [x * 100 for x in range(3)]
         data = list(zip(block_list, offsets))
@@ -410,7 +415,7 @@ class TestBlocksController(ControllerTest):
         from deuce.model import Vault
         with patch.object(Vault,
                           'put_async_block',
-                          return_value=False):
+                          return_value=(False, [])):
             self.helper_create_blocks(1, async=True)
             self.assertEqual(self.srmock.status, falcon.HTTP_500)
 
@@ -448,6 +453,7 @@ class TestBlocksController(ControllerTest):
         block_list = [self.calc_sha1(d) for d in data]
 
         block_data = zip(block_sizes, data, block_list)
+        response = None
         if async:
             contents = dict(zip(block_list, data))
             request_body = msgpack.packb(contents)
@@ -476,7 +482,7 @@ class TestBlocksController(ControllerTest):
                 response = self.simulate_put(path, headers=headers,
                                              body=data)
 
-        return block_list
+        return (block_list, response)
 
     def helper_get_blocks(self, path, marker, limit, assert_ret_url,
                           assert_data_len, repeat=False,
@@ -542,6 +548,30 @@ class TestBlocksController(ControllerTest):
 
             self.assertEqual(self.srmock.status, falcon.HTTP_200)
             self.assertIn('x-block-reference-count', str(self.srmock.headers))
+
+            # Now re-hash the data, the data that
+            # was returned should match the original
+            # sha1
+            z = hashlib.sha1()
+            z.update(response.read())
+            self.assertEqual(z.hexdigest(), sha1)
+
+    def helper_exam_block_metadata(self, block_list, upload_response):
+        # Now verify each uploaded block is there
+        uploaded_data = json.loads(upload_response[0].decode())
+        for sha1 in block_list:
+            self.assertIn(sha1, uploaded_data)
+
+            path = self.get_block_path(self.vault_name, sha1)
+            response = self.simulate_get(path, headers=self._hdrs)
+
+            self.assertEqual(self.srmock.status, falcon.HTTP_200)
+            self.assertIn('x-block-reference-count', str(self.srmock.headers))
+            # ensure each reported x-storage-id matches between the
+            # upload and download operations
+            self.assertIn('x-storage-id', str(self.srmock.headers))
+            self.assertEqual(uploaded_data[sha1],
+                             self.srmock.headers_dict['x-storage-id'])
 
             # Now re-hash the data, the data that
             # was returned should match the original
