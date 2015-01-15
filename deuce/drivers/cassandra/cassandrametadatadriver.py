@@ -38,6 +38,15 @@ CQL_CREATE_FILE = '''
     VALUES (%(projectid)s, %(vaultid)s, %(fileid)s, false, %(size)s)
 '''
 
+CQL_MARK_BLOCK_AS_BAD = '''
+    UPDATE blocks SET
+    isinvalid = true
+    WHERE
+    projectid = %(projectid)s AND
+    vaultid = %(vaultid)s AND
+    blockid = %(blockid)s
+'''
+
 CQL_GET_FILE = '''
     SELECT finalized
     FROM files
@@ -167,9 +176,9 @@ CQL_ASSIGN_BLOCK_TO_FILE = '''
 
 CQL_REGISTER_BLOCK = '''
     INSERT INTO blocks
-    (projectid, vaultid, blockid, storageid, blocksize, reftime)
+    (projectid, vaultid, blockid, storageid, blocksize, isinvalid, reftime)
     VALUES (%(projectid)s, %(vaultid)s, %(blockid)s, %(storageid)s,
-    %(blocksize)s, %(reftime)s)
+    %(blocksize)s, %(isinvalid)s, %(reftime)s)
 '''
 
 CQL_UNREGISTER_BLOCK = '''
@@ -227,12 +236,8 @@ CQL_DEL_BLOCK_REF_COUNT = '''
     AND blockid = %(blockid)s
 '''
 
-# TODO: Optimize this. Now need to
-# count all of the blocks, we can just
-# get the first, limit by 1, and
-# return on that.
 CQL_HAS_BLOCK = '''
-    SELECT count(*)
+    SELECT isinvalid
     FROM blocks
     WHERE projectid = %(projectid)s
     AND vaultid = %(vaultid)s
@@ -591,7 +596,17 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
         return row
 
-    def has_block(self, vault_id, block_id):
+    def mark_block_as_bad(self, vault_id, block_id):
+
+        args = dict(
+            projectid=deuce.context.project_id,
+            vaultid=vault_id,
+            blockid=block_id
+        )
+
+        self._session.execute(CQL_MARK_BLOCK_AS_BAD, args)
+
+    def has_block(self, vault_id, block_id, check_status=False):
         retval = False
 
         args = dict(
@@ -601,10 +616,16 @@ class CassandraStorageDriver(MetadataStorageDriver):
         )
 
         res = self._session.execute(CQL_HAS_BLOCK, args)
-        cnt = res[0]
-        return cnt[0] > 0
 
-    def has_blocks(self, vault_id, block_ids):
+        if len(res) == 0:  # No blocks exist
+            return False
+
+        if check_status and res[0][0] == 1:  # Block is invalid
+            return False
+
+        return True
+
+    def has_blocks(self, vault_id, block_ids, check_status=False):
 
         futures = []
 
@@ -618,8 +639,18 @@ class CassandraStorageDriver(MetadataStorageDriver):
             future = self._session.execute_async(CQL_HAS_BLOCK, args)
             futures.append((future, block_id))
 
+        # this function determines whether or not
+        # the block exists, taking into consideration
+        # the check_status flag.
+        def exists(result):
+            if len(result) == 0:
+                return False
+            if check_status and result[0][0] == 1:  # Invalid block
+                return False
+            return True
+
         return [block_id for future, block_id in futures
-                if future.result()[0][0] == 0]
+                if not exists(future.result())]
 
     def create_block_generator(self, vault_id, marker=None,
                                limit=None):
@@ -736,6 +767,7 @@ class CassandraStorageDriver(MetadataStorageDriver):
                 blockid=block_id,
                 storageid=storage_id,
                 reftime=int(datetime.datetime.utcnow().timestamp()),
+                isinvalid=False,
                 blocksize=int(blocksize)
             )
 
