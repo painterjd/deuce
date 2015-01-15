@@ -17,6 +17,7 @@ CREATE TABLE blocks (
   storageid TEXT,
   blocksize INT,
   reftime DATETIME,
+  isinvalid BOOLEAN,
   PRIMARY KEY(projectid, vaultid, blockid)
 );
 """, """
