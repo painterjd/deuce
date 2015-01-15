@@ -190,17 +190,35 @@ class MetadataStorageDriver(object):
         raise NotImplementedError
 
     @abstractmethod
-    def has_block(self, vault_id, block_id):
-        """Determines if the vault has the specified block."""
+    def mark_block_as_bad(self, vault_id, block_id, check_status=False):
+        """Marks the block in the metadata driver as being a bad
+        block."""
         raise NotImplementedError
 
     @abstractmethod
-    def has_blocks(self, vault_id, block_ids):
+    def has_block(self, vault_id, block_id, check_status=False):
+        """Determines if the vault has the specified block.
+
+        :param vault_id: The vault to check for the block
+        :param block_id: The ID of the block to check for
+        :param check_status: Determines whether or not to determine
+            the status of the block. If True, and the block was
+            previously marked as being 'bad', this function will
+            return False. If check_status is False, the status
+            of the block is not considered at all"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def has_blocks(self, vault_id, block_ids, check_status=False):
         """Determines if the vault has the specified blocks and
-        returns the missing blocks.
+        returns the missing blocks
+
         :param vault_id: ID of the vault
         :param block_ids: list of block_id
-        :returns : list of missing blocks"""
+        :param check_status: Whether or not to consider the status
+           of the block. See parameter ``check_status`` in
+           function ``has_block`` for explanation.
+        :returns: list of missing blocks ids"""
         raise NotImplementedError
 
     @abstractmethod
