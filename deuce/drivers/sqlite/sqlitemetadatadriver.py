@@ -262,7 +262,7 @@ SQL_MARK_BLOCK_AS_BAD = '''
     blockid = :blockid
 '''
 
-SQL_HAS_BLOCK = '''
+SQL_GET_BLOCK_STATUS = '''
     SELECT isinvalid
     FROM blocks
     WHERE projectid=:projectid
@@ -612,6 +612,16 @@ class SqliteStorageDriver(MetadataStorageDriver):
         self._conn.execute(SQL_MARK_BLOCK_AS_BAD, args)
         self._conn.commit()
 
+    @staticmethod
+    def _block_exists(res, check_status):
+        if len(res) == 0:
+            return False
+
+        if check_status and res[0][0] == 1:
+            return False
+
+        return True
+
     def has_block(self, vault_id, block_id, check_status=False):
         # Query the blocks table
         retval = False
@@ -624,28 +634,13 @@ class SqliteStorageDriver(MetadataStorageDriver):
 
         # This query should only ever return zero or 1 row, so
         # return that value here
-        res = list(self._conn.execute(SQL_HAS_BLOCK, args))
+        res = list(self._conn.execute(SQL_GET_BLOCK_STATUS, args))
 
-        if len(res) == 0:
-            return False
+        return SqliteStorageDriver._block_exists(res, check_status)
 
-        if check_status and res[0][0] == 1:
-            return False
-
-        return True
-
-    # @lru_cache(maxsize=1024)
     def has_blocks(self, vault_id, block_ids, check_status=False):
-        # Query the blocks table
-
-        def exists(res):
-            if len(res) == 0:
-                return False
-            if check_status and res[0][0] == 1:
-                return False
-            return True
-
         results = []
+
         for block_id in block_ids:
             args = {
                 'projectid': deuce.context.project_id,
@@ -653,9 +648,9 @@ class SqliteStorageDriver(MetadataStorageDriver):
                 'blockid': block_id
             }
 
-            res = list(self._conn.execute(SQL_HAS_BLOCK, args))
+            res = list(self._conn.execute(SQL_GET_BLOCK_STATUS, args))
 
-            if exists(res) is False:
+            if SqliteStorageDriver._block_exists(res, check_status) is False:
                 results.append(block_id)
 
         return results

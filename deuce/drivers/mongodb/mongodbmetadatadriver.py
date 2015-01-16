@@ -335,6 +335,14 @@ class MongoDbStorageDriver(MetadataStorageDriver):
 
         self._blocks.update(args, update_args, upsert=False)
 
+    @staticmethod
+    def _block_exists(result, check_status):
+        if check_status and result is not None:
+            isinvalid = result.get('isinvalid') or False
+            return not isinvalid
+        else:
+            return result is not None
+
     def has_block(self, vault_id, block_id, check_status=False):
         # Query BLOCKS for the block
         self._blocks.ensure_index([('projectid', 1),
@@ -348,21 +356,10 @@ class MongoDbStorageDriver(MetadataStorageDriver):
 
         res = self._blocks.find_one(args)
 
-        if check_status and res is not None:
-            isinvalid = res.get('isinvalid') or False
-            return not isinvalid
-        else:
-            return res is not None
+        return MongoDbStorageDriver._block_exists(res, check_status)
 
     # @lru_cache(maxsize=1024)
     def has_blocks(self, vault_id, block_ids, check_status=False):
-        def exists(result):
-            if check_status and result is not None:
-                isinvalid = result.get('isinvalid') or False
-                return not isinvalid
-            else:
-                return result is not None
-
         # Query BLOCKS for the block
         results = []
 
@@ -378,7 +375,8 @@ class MongoDbStorageDriver(MetadataStorageDriver):
 
             result = self._blocks.find_one(args)
 
-            if exists(result) is False:
+            if MongoDbStorageDriver._block_exists(result,
+                                                  check_status) is False:
                 results.append(block_id)
 
         return results

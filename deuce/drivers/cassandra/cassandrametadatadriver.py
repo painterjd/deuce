@@ -236,7 +236,7 @@ CQL_DEL_BLOCK_REF_COUNT = '''
     AND blockid = %(blockid)s
 '''
 
-CQL_HAS_BLOCK = '''
+CQL_GET_BLOCK_STATUS = '''
     SELECT isinvalid
     FROM blocks
     WHERE projectid = %(projectid)s
@@ -606,6 +606,19 @@ class CassandraStorageDriver(MetadataStorageDriver):
 
         self._session.execute(CQL_MARK_BLOCK_AS_BAD, args)
 
+    @staticmethod
+    def _block_exists(result, check_status):
+        """Helper function to check the result of a cassandra
+        block query taking into consideration whether or not
+        we should be considering the status of the block"""
+        if len(result) == 0:  # No blocks exist
+            return False
+
+        if check_status and result[0][0] is True:
+            return False
+
+        return True
+
     def has_block(self, vault_id, block_id, check_status=False):
         retval = False
 
@@ -615,15 +628,9 @@ class CassandraStorageDriver(MetadataStorageDriver):
             blockid=block_id
         )
 
-        res = self._session.execute(CQL_HAS_BLOCK, args)
+        res = self._session.execute(CQL_GET_BLOCK_STATUS, args)
 
-        if len(res) == 0:  # No blocks exist
-            return False
-
-        if check_status and res[0][0] == 1:  # Block is invalid
-            return False
-
-        return True
+        return CassandraStorageDriver._block_exists(res, check_status)
 
     def has_blocks(self, vault_id, block_ids, check_status=False):
 
@@ -636,18 +643,11 @@ class CassandraStorageDriver(MetadataStorageDriver):
                 blockid=block_id
             )
 
-            future = self._session.execute_async(CQL_HAS_BLOCK, args)
+            future = self._session.execute_async(CQL_GET_BLOCK_STATUS, args)
             futures.append((future, block_id))
 
-        # this function determines whether or not
-        # the block exists, taking into consideration
-        # the check_status flag.
-        def exists(result):
-            if len(result) == 0:
-                return False
-            if check_status and result[0][0] == 1:  # Invalid block
-                return False
-            return True
+        exists = lambda res: CassandraStorageDriver._block_exists(
+            res, check_status)
 
         return [block_id for future, block_id in futures
                 if not exists(future.result())]
