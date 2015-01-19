@@ -47,6 +47,7 @@ schemas.append([
         storageid TEXT NOT NULL,
         size INTEGER NOT NULL,
         reftime DATETIME NOT NULL,
+        isinvalid BOOLEAN NOT NULL DEFAULT 0,
         PRIMARY KEY(projectid, vaultid, blockid)
     )
     """,
@@ -253,8 +254,16 @@ SQL_UNREGISTER_BLOCK = '''
     WHERE projectid=:projectid AND blockid=:blockid
 '''
 
-SQL_HAS_BLOCK = '''
-    SELECT count(*)
+SQL_MARK_BLOCK_AS_BAD = '''
+    UPDATE blocks SET
+    isinvalid = 1 WHERE
+    projectid = :projectid AND
+    vaultid = :vaultid AND
+    blockid = :blockid
+'''
+
+SQL_GET_BLOCK_STATUS = '''
+    SELECT isinvalid
     FROM blocks
     WHERE projectid=:projectid
     AND blockid = :blockid
@@ -593,7 +602,32 @@ class SqliteStorageDriver(MetadataStorageDriver):
 
         return row
 
-    def has_block(self, vault_id, block_id):
+    def mark_block_as_bad(self, vault_id, block_id, check_status=False):
+        args = {
+            'projectid': deuce.context.project_id,
+            'vaultid': vault_id,
+            'blockid': block_id
+        }
+
+        self._conn.execute(SQL_MARK_BLOCK_AS_BAD, args)
+        self._conn.commit()
+
+    @staticmethod
+    def _block_exists(res, check_status):
+        if len(res) == 0:
+            return False
+
+        # The result should contain exactly
+        # one row and one column.
+        assert len(res) == 1
+        assert len(res[0]) == 1
+
+        if check_status and res[0][0] == 1:
+            return False
+
+        return True
+
+    def has_block(self, vault_id, block_id, check_status=False):
         # Query the blocks table
         retval = False
 
@@ -603,15 +637,15 @@ class SqliteStorageDriver(MetadataStorageDriver):
             'blockid': block_id
         }
 
-        res = self._conn.execute(SQL_HAS_BLOCK, args)
+        # This query should only ever return zero or 1 row, so
+        # return that value here
+        res = list(self._conn.execute(SQL_GET_BLOCK_STATUS, args))
 
-        cnt = next(res)
-        return cnt[0] > 0
+        return SqliteStorageDriver._block_exists(res, check_status)
 
-    # @lru_cache(maxsize=1024)
-    def has_blocks(self, vault_id, block_ids):
-        # Query the blocks table
+    def has_blocks(self, vault_id, block_ids, check_status=False):
         results = []
+
         for block_id in block_ids:
             args = {
                 'projectid': deuce.context.project_id,
@@ -619,11 +653,9 @@ class SqliteStorageDriver(MetadataStorageDriver):
                 'blockid': block_id
             }
 
-            res = self._conn.execute(SQL_HAS_BLOCK, args)
+            res = list(self._conn.execute(SQL_GET_BLOCK_STATUS, args))
 
-            cnt = next(res)
-            result = cnt[0] > 0
-            if not result:
+            if SqliteStorageDriver._block_exists(res, check_status) is False:
                 results.append(block_id)
 
         return results

@@ -18,11 +18,15 @@ CREATE COLUMNFAMILY blocks (
   storageid TEXT,
   blocksize INT,
   reftime BIGINT,
+  isinvalid BOOLEAN,
   PRIMARY KEY((projectid, vaultid), blockid)
 );
 
 CREATE INDEX storageid_index
     on blocks (storageid);
+
+CREATE INDEX invalid_block_index
+    on blocks (isinvalid);
 
 CREATE TABLE files (
   projectid TEXT,

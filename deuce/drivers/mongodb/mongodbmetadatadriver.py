@@ -321,7 +321,29 @@ class MongoDbStorageDriver(MetadataStorageDriver):
 
         return [res.get('finalized')]
 
-    def has_block(self, vault_id, block_id):
+    def mark_block_as_bad(self, vault_id, block_id):
+        args = {
+            'projectid': deuce.context.project_id, 'vaultid': vault_id,
+            'blockid': str(block_id)
+        }
+
+        update_args = {
+            '$set': {
+                'isinvalid': True
+            }
+        }
+
+        self._blocks.update(args, update_args, upsert=False)
+
+    @staticmethod
+    def _block_exists(result, check_status):
+        if check_status and result is not None:
+            isinvalid = result.get('isinvalid') or False
+            return not isinvalid
+        else:
+            return result is not None
+
+    def has_block(self, vault_id, block_id, check_status=False):
         # Query BLOCKS for the block
         self._blocks.ensure_index([('projectid', 1),
             ('vaultid', 1), ('blockid', 1)])
@@ -332,12 +354,15 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             'blockid': str(block_id)
         }
 
-        return self._blocks.find_one(args) is not None
+        res = self._blocks.find_one(args)
+
+        return MongoDbStorageDriver._block_exists(res, check_status)
 
     # @lru_cache(maxsize=1024)
-    def has_blocks(self, vault_id, block_ids):
+    def has_blocks(self, vault_id, block_ids, check_status=False):
         # Query BLOCKS for the block
         results = []
+
         for block_id in block_ids:
             self._blocks.ensure_index([('projectid', 1),
                 ('vaultid', 1), ('blockid', 1)])
@@ -349,7 +374,9 @@ class MongoDbStorageDriver(MetadataStorageDriver):
             }
 
             result = self._blocks.find_one(args)
-            if not result:
+
+            if MongoDbStorageDriver._block_exists(result,
+                                                  check_status) is False:
                 results.append(block_id)
 
         return results
@@ -514,6 +541,7 @@ class MongoDbStorageDriver(MetadataStorageDriver):
                 'blockid': str(block_id),
                 'storageid': storage_id,
                 'blocksize': blocksize,
+                'isinvalid': False,
                 'reftime': int(datetime.datetime.utcnow().timestamp())
             }
 

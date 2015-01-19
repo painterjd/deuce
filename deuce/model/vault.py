@@ -134,6 +134,11 @@ class Vault(object):
         if self._meta_has_block(block_id):
             if check_storage:
                 if not self._storage_has_block(block_id):
+
+                    # Record in metadata that the block is bad
+                    deuce.metadata_driver.mark_block_as_bad(
+                        self.id, block_id)
+
                     raise ConsistencyError(deuce.context.project_id,
                                            self.id, block_id,
                                            msg='Block does not exist'

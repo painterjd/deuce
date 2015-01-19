@@ -666,6 +666,55 @@ class SqliteStorageDriverTest(V1Base):
         self.assertEqual(list(outblocks), block_ids)
         self.assertEqual(list(outoffsets), offsets)
 
+    def test_bad_block_marker(self):
+        driver = self.create_driver()
+        vault_id = self.create_vault_id()
+
+        num_blocks = 50
+
+        block_ids = ['block_{0}'.format(id) for id in range(0, num_blocks)]
+
+        for bid in block_ids:
+            driver.register_block(vault_id, bid,
+                self._genstorageid(bid), 1024)
+
+        # All of these blocks should exist, and none should be bad.
+        for bid in block_ids:
+            self.assertEqual(driver.has_block(vault_id, bid,
+                check_status=False), True)
+
+            self.assertEqual(driver.has_block(vault_id, bid,
+                check_status=True), True)
+
+        # Now check has_blocks. None of the blocks are bad so
+        # the list returned should be empty
+        self.assertEqual(driver.has_blocks(vault_id, block_ids,
+            check_status=True), [])
+
+        # Now get a random sampling of blocks that we can mark
+        # as being bad.
+        bad_block_ids = random.sample(block_ids, num_blocks // 2)
+
+        for bid in bad_block_ids:
+            driver.mark_block_as_bad(vault_id, bid)
+
+        for bid in block_ids:
+            self.assertEqual(driver.has_block(vault_id, bid,
+                check_status=False), True)
+
+            self.assertEqual(driver.has_block(vault_id, bid,
+                check_status=True), bid not in bad_block_ids)
+
+            # Ensure that we did not erase other information
+            # about the block such as the block size (this is
+            # mos likely in Cassandra)
+            self.assertEqual(driver.get_block_data(vault_id, bid)['blocksize'],
+                             1024)
+
+        self.assertEqual(
+            sorted(driver.has_blocks(vault_id, block_ids, check_status=True)),
+            sorted(bad_block_ids))
+
     def test_file_block_generator_marker_limit(self):
         driver = self.create_driver()
 

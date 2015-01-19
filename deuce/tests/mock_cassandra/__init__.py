@@ -86,6 +86,18 @@ class Session(object):
         res = self.conn.execute(query, queryargs)
         res = list(res)
 
+        if original_query == actual_driver.CQL_GET_BLOCK_STATUS:
+            # Special-case the return value of this query. Returns
+            # 1 or 0 and should be true or false
+            if res == [(0,)]:
+                res = [(False,)]
+            elif res == [(1,)]:
+                res = [(True,)]
+            elif res == []:
+                pass  # Do nothing
+            else:
+                raise Exception("Unexpected result")
+
         return res
 
     def execute_async(self, query, queryargs):
