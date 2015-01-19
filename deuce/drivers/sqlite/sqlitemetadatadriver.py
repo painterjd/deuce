@@ -617,6 +617,11 @@ class SqliteStorageDriver(MetadataStorageDriver):
         if len(res) == 0:
             return False
 
+        # The result should contain exactly
+        # one row and one column.
+        assert len(res) == 1
+        assert len(res[0]) == 1
+
         if check_status and res[0][0] == 1:
             return False
 

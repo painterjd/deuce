@@ -614,6 +614,10 @@ class CassandraStorageDriver(MetadataStorageDriver):
         if len(result) == 0:  # No blocks exist
             return False
 
+        # There should be exactly one row and one column
+        assert len(result) == 1
+        assert len(result[0]) == 1
+
         if check_status and result[0][0] is True:
             return False
 
